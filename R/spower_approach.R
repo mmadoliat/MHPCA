@@ -141,16 +141,16 @@ cv_score_sparse = function(data,G,S,K_fold,sparse_tuning_single,sparse_tuning_ty
 
 cv_score_smooth = function(data,mvmfd_obj,G,G_half,S_smooth,v,smooth_tuning){
   p = mvmfd_obj$nvar
-  index1 = prod(mvmfd_obj$basis$nbasis[[1]])
-  index2 = prod(mvmfd_obj$basis$nbasis[[2]])
   B_subtilde = data%*%G_half
   if (all(smooth_tuning == 0)) {
     error_smooth_score <- 0
-  } else{
+  } else {
     if (p == 1) {
       error_smooth_score <- (sum(((diag(dim(S_smooth)[1]) - S_smooth) %*% (t(B_subtilde) %*% v))^2) / ((1 - sum(diag(S_smooth)) / dim(G)[1])^2)) / dim(G)[1]
     }
     else{
+      index1 = prod(mvmfd_obj$basis$nbasis[[1]])
+      index2 = prod(mvmfd_obj$basis$nbasis[[2]])
       s_alpha_tilde_1 = S_smooth[1:index1,1:index1]
       s_alpha_tilde_2 = S_smooth[(1+index1):(index1+index2),(1+index1):(index1+index2)]
       B_subtilde_1 = B_subtilde[,1:index1]
