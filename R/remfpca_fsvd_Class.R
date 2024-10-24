@@ -7,7 +7,7 @@ s_power_class <- R6::R6Class("s_power_class",
                              public = list(
                                initialize = function(mvmfd_obj, 
                                                      method = "power", 
-                                                     ncomp, 
+                                                     ncomp , 
                                                      smooth_tuning = NULL,
                                                      sparse_tuning = NULL, 
                                                      centerfns = TRUE, 
