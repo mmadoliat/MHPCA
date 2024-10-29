@@ -420,7 +420,13 @@ s_power_algorithm <- function(mvmfd_obj,
         temp_count <- index_end
       }
       lsv = cbind(lsv,v)
-      variance[i] <- (norm(B %*% G %*% b, type = "2") / sqrt(mvmfd_obj$nobs - 1))^2
+      BGb <- B %*% G %*% b
+      if (!is.null(vdata)){
+        Xv <- vdata %*% bv[,i]
+        variance[i] <- (t(Xv)%*%Xv+2*t(Xv)%*%BGb+t(BGb)%*%BGb)/(mvmfd_obj$nobs - 1)
+      } else {
+        variance[i] <- (t(BGb)%*%BGb)/(mvmfd_obj$nobs - 1)
+      }
     }
   }
   return(list(pc, lsv, variance,smooth_tuning_result,sparse_tuning_result,bv))
