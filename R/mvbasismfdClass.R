@@ -15,7 +15,7 @@
 #'
 #' @importFrom fda is.basis eval.basis
 #' @importFrom Matrix Matrix bdiag
-#' @seealso \code{\link{mvmfd}}, \code{\link{basismfd}}
+#' @seealso \code{\link{hd}}, \code{\link{basismfd}}
 #' @export
 mvbasismfd <- R6::R6Class("mvbasismfd",
   public = list(
@@ -137,7 +137,7 @@ mvbasismfd <- R6::R6Class("mvbasismfd",
 Mvbasismfd <- function(basis) mvbasismfd$new(basis)
 #' @rdname mvbasismfd
 #'
-#' @param mvbasismfd_obj An 'mvmfd' object
+#' @param mvbasismfd_obj An 'hd' object
 #' @param i An index or indices specifying the subsets to extract for the first dimension
 #' @return An `mvbasismfd` object containing the specified subsets
 #' @export

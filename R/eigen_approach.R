@@ -1,8 +1,8 @@
 #' @importFrom expm sqrtm
 #' @importFrom utils  txtProgressBar setTxtProgressBar
-eigen_approach <- function(mvmfd_obj, n, alpha, centerfns, penalty_type) {
-  m.rep <- mvmfd_obj$nobs
-  p <- mvmfd_obj$nvar
+eigen_approach <- function(hd_obj, n, alpha, centerfns, penalty_type) {
+  m.rep <- hd_obj$nobs
+  p <- hd_obj$nvar
   if (is.null(alpha)) {
     for (i in 1:p) {
       alpha <- c(alpha, list(2^seq(-20, 20, length.out = 5)))
@@ -11,31 +11,33 @@ eigen_approach <- function(mvmfd_obj, n, alpha, centerfns, penalty_type) {
   if (p == 2) {
     gcv_row <- length(alpha[[1]])
     gcv_column <- length(alpha[[2]])
+    index1 = hd_obj$basis$nbasis[[1]]
+    index2 = hd_obj$basis$nbasis[[2]]
   }
   alpha <- expand.grid(alpha) 
-  penalty <- pen_fun(mvmfd_obj, type = penalty_type)
-  G <- as.matrix(mvmfd_obj$basis$gram)
+  penalty <- pen_fun(hd_obj, type = penalty_type)
+  G <- as.matrix(hd_obj$basis$gram)
   G_half <- expm::sqrtm(G)
 
   B <- c()
   B_c <- c()
   if (centerfns) {
     for (i in 1:p) {
-      if (is.matrix(mvmfd_obj$coefs[[i]])) {
-        B <- rbind(B, mvmfd_obj$coefs[[i]])
-        B_c <- rbind(B_c, mvmfd_obj$coefs[[i]] - rowMeans(mvmfd_obj$coefs[[i]]))
+      if (is.matrix(hd_obj$coefs[[i]])) {
+        B <- rbind(B, hd_obj$coefs[[i]])
+        B_c <- rbind(B_c, hd_obj$coefs[[i]] - rowMeans(hd_obj$coefs[[i]]))
       } else {
-        cc <- apply(mvmfd_obj$coefs[[i]], 3, as.vector)
+        cc <- apply(hd_obj$coefs[[i]], 3, as.vector)
         B <- rbind(B, cc)
         B_c <- rbind(B_c, cc - rowMeans(cc))
       }
     }
   } else {
     for (i in 1:p) {
-      if (is.matrix(mvmfd_obj$coefs[[i]])) {
-        B <- rbind(B, mvmfd_obj$coefs[[i]])
+      if (is.matrix(hd_obj$coefs[[i]])) {
+        B <- rbind(B, hd_obj$coefs[[i]])
       } else {
-        cc <- apply(mvmfd_obj$coefs[[i]], 3, as.vector)
+        cc <- apply(hd_obj$coefs[[i]], 3, as.vector)
         B <- rbind(B, cc)
       }
     }
@@ -65,7 +67,7 @@ eigen_approach <- function(mvmfd_obj, n, alpha, centerfns, penalty_type) {
 
   for (j in 1:dim(alpha)[1]) {
     setTxtProgressBar(pb, j)
-    I <- I_alpha(mvmfd_obj, alpha[j, ])
+    I <- I_alpha(hd_obj, alpha[j, ])
     D <- I %*% penalty
     L <- t(chol(G + D))
     S <- as.matrix(solve(L))
@@ -82,7 +84,19 @@ eigen_approach <- function(mvmfd_obj, n, alpha, centerfns, penalty_type) {
     if (all(alpha[j, ] == 0)) {
       GCV_score_temp <- 0
     } else {
-      GCV_score_temp <- (sum(((diag(dim(s_alpha_tilde)[1]) - s_alpha_tilde) %*% (t(B_subtilde) %*% v_temp))^2) / ((1 - sum(diag(s_alpha_tilde)) / dim(G)[1])^2)) / dim(G)[1]
+      # GCV_score_temp <- (sum(((diag(dim(s_alpha_tilde)[1]) - s_alpha_tilde) %*% (t(B_subtilde) %*% v_temp))^2) / ((1 - sum(diag(s_alpha_tilde)) / dim(G)[1])^2)) / dim(G)[1]
+      if (p == 1) {
+        GCV_score_temp <- (sum(((diag(dim(s_alpha_tilde)[1]) - s_alpha_tilde) %*% (t(B_subtilde) %*% v_temp))^2) / ((1 - sum(diag(s_alpha_tilde)) / dim(G)[1])^2)) / dim(G)[1]
+      }
+      else{
+        s_alpha_tilde_1 = s_alpha_tilde[1:index1,1:index1]
+        s_alpha_tilde_2 = s_alpha_tilde[(1+index1):(index1+index2),(1+index1):(index1+index2)]
+        B_subtilde_1 = B_subtilde[,1:index1]
+        B_subtilde_2 = B_subtilde[,(1+index1):(index1+index2)]
+        GCV_score_temp_1 <- sum(((diag(index1) - s_alpha_tilde_1) %*% (t(B_subtilde_1) %*% v_temp))^2)/(1-sum(diag(s_alpha_tilde_1))/index1)^2
+        GCV_score_temp_2 <- sum(((diag(index2) - s_alpha_tilde_2) %*% (t(B_subtilde_2) %*% v_temp))^2)/(1-sum(diag(s_alpha_tilde_2))/index2)^2
+        GCV_score_temp = GCV_score_temp_1 + GCV_score_temp_2
+      }
     }
     GCVs <- c(GCVs, GCV_score_temp)
 
@@ -101,9 +115,9 @@ eigen_approach <- function(mvmfd_obj, n, alpha, centerfns, penalty_type) {
   pc <- list()
   for (i in 1:p) {
     index_start <- (temp_count + 1)
-    index_end <- (temp_count + prod(mvmfd_obj$basis$nbasis[[i]]))
+    index_end <- (temp_count + prod(hd_obj$basis$nbasis[[i]]))
     pc[[i]] <- b[index_start:index_end, ]
-    temp_count <- temp_count + prod(mvmfd_obj$basis$nbasis[[i]])
+    temp_count <- temp_count + prod(hd_obj$basis$nbasis[[i]])
   }
   variance <- diag(t(b) %*% G %*% V %*% G %*% b)
   sigma <- sqrt(variance)
@@ -113,5 +127,5 @@ eigen_approach <- function(mvmfd_obj, n, alpha, centerfns, penalty_type) {
   for (k in 1:p) {
     bbbb <- rbind(bbbb, pc[[k]])
   }
-  return(list(pc, lsv, variance, GCV_result, GCVs))
+  return(list(pc, lsv, variance, GCV_result, 0))
 }

@@ -1,15 +1,14 @@
 #' @title  Penalty Function
 #'
 #' @description
-#' Calculate the penalty matrix for `mvmfd` objects.
+#' Calculate the penalty matrix for `hd` objects.
 #'
-#' @param data an object of class `mvmfd`.
+#' @param data an object of class `hd`.
 #' @param devorder The order of the derivative.
 #' @param type The type of penalty. The types "coefpen" and "basispen" is supported.
 #' @return The penalty matrix.
 #' @importFrom fda eval.penalty
 pen_fun <- function(data, devorder = 2, type) {
-  # Roughness penalty 
   init_pen_check(data, devorder, type)
   D_final <- c()
   if (type == "basispen") {
@@ -61,7 +60,7 @@ pen_fun <- function(data, devorder = 2, type) {
 # a function to check the validity
 init_pen_check <- function(data, devorder, type) {
   stopifnot(
-    is.mvmfd(data),
+    is.hd(data),
     devorder >= 1,
     type == "basispen" | type == "coefpen"
   )

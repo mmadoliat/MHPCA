@@ -28,55 +28,57 @@ plot_mfd <- function(mfd_obj, obs = 1, xlab = "", ylab = "", main = "", type = "
   }
 }
 
-#' @title Length of an object of classes `mfd`or `mvmfd`.
+#' @title Length of an object of classes `mfd`or `hd`.
 #'
 #' @description
-#' Length of an object of an object of classes `mfd` or `mvmfd`.
+#' Length of an object of an object of classes `mfd` or `hd`.
 #'
-#' @param x An object of classes `mfd` or `mvmfd`.
+#' @param x An object of classes `mfd` or `hd`.
 #' @param ... all `length` function arguments.
 #' @export
 length <- function(x, ...) {
-  if (inherits(x, c("mfd", "mvmfd"))) {
+  if (inherits(x, c("mfd","vd","hd"))) {
     return(x$nobs)
   } else {
     return(base::length(x, ...))
   }
 }
 
-#' @title plots an object of classes `mfd`, `mvmfd` or `remfpca`
+#' @title plots an object of classes `mfd`, `hd` or `mhpca`
 #'
 #' @description
-#'  plot an object of classes `mfd`, `mvmfd` or `remfpca`
-#' @param x An object of classes `mfd`, `mvmfd` or `remfpca`
+#'  plot an object of classes `mfd`, `hd` or `mhpca`
+#' @param x An object of classes `mfd`, `hd` or `mhpca`
 #' @param ... all `plot` function arguments.
 #' @export
 plot <- function(x, ...) {
   if (inherits(x, "mfd")) {
     return(plot_mfd(x, ...))
-  } else if (inherits(x, "mvmfd")) {
-    return(plot_mvmfd(x, ...))
-  } else if (inherits(x, "remfpca")) {
-    return(plot_remfpca(x, ...))
+  } else if (inherits(x, "hd")) {
+    return(plot_hd(x, ...))
+  } else if (inherits(x, "mhpca")) {
+    return(plot_mhpca(x, ...))
   } else {
     return(base::plot(x, ...))
   }
 }
 
-#' @title mean of an object of classes `mfd`or `mvmfd`.
+#' @title mean of an object of classes `mfd`or `hd`.
 #'
 #' @description
-#' mean of an object of classes `mfd`or `mvmfd`.
-#' @param x An object of classes `mfd` or `mvmfd`.
+#' mean of an object of classes `mfd`or `hd`.
+#' @param x An object of classes `mfd` or `hd`.
 #' @param ... all `mean` function arguments.
 #' @return An object of class `mfd`
 #' @export
 mean <- function(x, ...) {
   if (inherits(x, "mfd")) {
     return(mean_mfd(x))
-  } else if (inherits(x, "mvmfd")) {
-    return(mean_mvmfd(x))
-  } else {
+  } else if (inherits(x, "hd")) {
+    return(mean_hd(x))
+  } else if (inherits(x,"vd")){
+    return(mean_vd(x))
+    } else {
     return(base::mean(x, ...))
   }
 }
@@ -92,6 +94,8 @@ mean <- function(x, ...) {
 sd <- function(x, ...) {
   if (inherits(x, "mfd")) {
     return(sd_mfd(x))
+  } else if (inherits(x,"vd")) {
+    return(sd_vd(x))
   } else {
     return(stats::sd(x, ...))
   }

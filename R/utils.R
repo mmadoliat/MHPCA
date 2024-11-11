@@ -43,7 +43,35 @@ init_mfd_list_check <- function(mfd_list) {
   }
 }
 
+# A function to check the validity of initializer
+init_vd_list_check <- function(vd_list) {
+  if (!all(sapply(vd_list, is.vd))) {
+    stop("All the elements of the inputs list must have the class of `vd`")
+  }
+  n <- vd_list[[1]]$nobs
+  for (y in vd_list) {
+    if (n != y$nobs) stop("The number of observations in all variables should be equal.")
+  }
+}
 
+# A function to check the validity of initializer
+init_hd_list_check <- function(hd_list) {
+  mfd_list <- list()
+  vd_list <- list()
+  for (i in 1:length(hd_list)) {
+    if (is.mfd(hd_list[[i]])){
+      mfd_list[[length(mfd_list)+1]] <- hd_list[[i]]
+    } else if (is.vd(hd_list[[i]])){
+      vd_list[[length(vd_list)+1]] <- hd_list[[i]]
+    } else {
+      stop("All the elements of the inputs list must have the class of `mfd` or `vd`")
+    }
+  }
+  n <- hd_list[[1]]$nobs
+  for (y in hd_list) {
+    if (n != y$nobs) stop("The number of observations in all variables should be equal.")
+  }
+}
 # Function to check the validity of evaluation
 eval_mvbasismf_validity_check <- function(evalarg, nvar) {
   if (!is.list(evalarg) & !is.numeric(evalarg)) {

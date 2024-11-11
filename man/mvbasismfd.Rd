@@ -15,7 +15,7 @@ Mvbasismfd(basis)
 \arguments{
 \item{basis}{A list of basisfd objects}
 
-\item{mvbasismfd_obj}{An 'mvmfd' object}
+\item{mvbasismfd_obj}{An 'hd' object}
 
 \item{i}{An index or indices specifying the subsets to extract for the first dimension}
 }
@@ -29,7 +29,7 @@ This class utilizes basis objects `basismfd`.
 Constructor for `mvbasismfd` objects (same as `Mvbasismfd`)
 }
 \seealso{
-\code{\link{mvmfd}}, \code{\link{basismfd}}
+\code{\link{hd}}, \code{\link{basismfd}}
 }
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}

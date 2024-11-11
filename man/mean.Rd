@@ -2,12 +2,12 @@
 % Please edit documentation in R/mfdMethods.R
 \name{mean}
 \alias{mean}
-\title{mean of an object of classes `mfd`or `mvmfd`.}
+\title{mean of an object of classes `mfd`or `hd`.}
 \usage{
 mean(x, ...)
 }
 \arguments{
-\item{x}{An object of classes `mfd` or `mvmfd`.}
+\item{x}{An object of classes `mfd` or `hd`.}
 
 \item{...}{all `mean` function arguments.}
 }
@@ -15,5 +15,5 @@ mean(x, ...)
 An object of class `mfd`
 }
 \description{
-mean of an object of classes `mfd`or `mvmfd`.
+mean of an object of classes `mfd`or `hd`.
 }
