@@ -43,29 +43,53 @@ init_mfd_list_check <- function(mfd_list) {
   }
 }
 
-# A function to check the validity of initializer
-init_vd_list_check <- function(vd_list) {
-  if (!all(sapply(vd_list, is.vd))) {
-    stop("All the elements of the inputs list must have the class of `vd`")
+convert_to_nfd <- function(x) {
+  if (is.nfd(x)) {
+    return(x)  # Already an 'nfd' object
+  } else if (is.matrix(x) || is.array(x)) {
+    return(nfd(x))  # Convert to 'nfd'
+  } else {
+    stop("All elements must be either 'nfd', 'matrix', or 'array'.")
   }
-  n <- vd_list[[1]]$nobs
-  for (y in vd_list) {
-    if (n != y$nobs) stop("The number of observations in all variables should be equal.")
+}
+
+# A function to check the validity of initializer
+init_nfd_list_check <- function(nfd_list) {
+  nfd_list <- lapply(nfd_list, convert_to_nfd)
+  if (!all(sapply(nfd_list, is.nfd))) {
+    stop("All the elements of the inputs list must have the class of `nfd`")
+  }
+  n <- nrow(nfd_list[[1]])
+  for (y in nfd_list) {
+    if (n != nrow(y)) stop("The number of observations in all variables should be equal.")
   }
 }
 
 # A function to check the validity of initializer
 init_hd_list_check <- function(hd_list) {
   mfd_list <- list()
-  vd_list <- list()
+  mvmfd_list <- list()
+  nfd_list <- list()
+  mvnfd_list <- list()
   for (i in 1:length(hd_list)) {
     if (is.mfd(hd_list[[i]])){
       mfd_list[[length(mfd_list)+1]] <- hd_list[[i]]
-    } else if (is.vd(hd_list[[i]])){
-      vd_list[[length(vd_list)+1]] <- hd_list[[i]]
-    } else {
-      stop("All the elements of the inputs list must have the class of `mfd` or `vd`")
+    } else if (is.mvmfd(hd_list[[i]])) {
+      mvmfd_list[[length(mvmfd_list)+1]] <- hd_list[[i]]
+    } else if (is.nfd(hd_list[[i]])){
+      nfd_list[[length(nfd_list)+1]] <- hd_list[[i]]
+    } else if (is.mvnfd(hd_list[[i]])) {
+      mvnfd_list[[length(mvnfd_list)+1]] <- hd_list[[i]]
     }
+    else {
+      stop("All the elements of the inputs list must have the class of `mfd` , `mvmfd`, `nfd` or `mvnfd`")
+    }
+  }
+  if (length(mfd_list) > 0 && length(mvmfd_list) > 0) {
+    stop("You can only provide either 'mfd' or 'mvmfd' objects, not both.")
+  }
+  if (length(mvmfd_list) > 1) {
+    stop("You can only provide one 'mvmfd' objects.")
   }
   n <- hd_list[[1]]$nobs
   for (y in hd_list) {

@@ -3,7 +3,7 @@
 \name{hd}
 \alias{hd}
 \alias{Hd}
-\title{Define a Set of Multivariate Multidimensional Functional Data objects}
+\title{Define a Set of Hybrid Data objects}
 \usage{
 Hd(...)
 }
@@ -51,13 +51,9 @@ bimfdplot(hd1)
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
 \describe{
-\item{\code{basis}}{A `mvbasismfd` object}
+\item{\code{mf}}{a `mvmfd` object}
 
-\item{\code{coefs}}{a matrix of the coefficients.}
-
-\item{\code{nobs}}{number of observation}
-
-\item{\code{nvar}}{number of variables}
+\item{\code{nf}}{a `mvnfd` object}
 }
 \if{html}{\out{</div>}}
 }
@@ -82,7 +78,7 @@ Constructor for `hd` objects (same as 'Hd')
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{...}}{A `mfd` objects which have separated by comma}
+\item{\code{...}}{A `mfd` or `nfd` objects which have separated by comma}
 }
 \if{html}{\out{</div>}}
 }

@@ -1,14 +1,10 @@
-####################not completed yet
-
-#' @title Define a Set of Multivariate Multidimensional Functional Data objects
+#' @title Define a Set of Hybrid Data objects
 #'
 #' @description
 #' The `hd` class represents functional data ...
 
-#' @field basis A `mvbasismfd` object
-#' @field coefs a matrix of the coefficients.
-#' @field nobs number of observation
-#' @field nvar number of variables
+#' @field mf a `mvmfd` object
+#' @field nf  a `mvnfd` object
 #'
 #' @examples
 #' require(fda)
@@ -44,140 +40,103 @@
 #'
 #' @export
 hd <- R6::R6Class("hd",
-  public = list(
-    #' @description
-    #' Constructor for `hd` objects (same as 'Hd')
-    #'
-    #' @param ... A `mfd` objects which have separated by comma
-    #'
-    initialize = function(...) {
-      hd_list <- list(...)
-      if (is.list(hd_list[[1]])) hd_list <- hd_list[[1]]
-      init_hd_list_check(hd_list)
-      mfd_list <- list()
-      vd_list <- list()
-      for (i in 1:length(hd_list)) {
-        if(inherits(hd_list[[i]],"mfd")) {
-          mfd_list[[length(mfd_list)+1]] <- hd_list[[i]]
-        } else if(inherits(hd_list[[i]],"vd")) {
-          vd_list[[length(vd_list)+1]] <- hd_list[[i]]
-        }
-      }
-      #init_mfd_list_check(mfd_list)
-      #init_vd_list_check(vd_list)
-      basis_list <- list()
-      private$.nobs <- hd_list[[1]]$nobs
-      private$.nvar <- length(mfd_list)
-      if (length(vd_list) > 0){
-        private$.ncols <- sapply(vd_list,function(x) x$ncols)
-      }
-      if (private$.nvar > 0) {
-        for (i in 1:private$.nvar) {
-          mfd_list[[i]] <- mfd_list[[i]]$clone()
-          basis_list[[i]] <- mfd_list[[i]]$basis
-          private$.coefs[[i]] <- mfd_list[[i]]$coefs
-        }
-        private$.basis <- mvbasismfd$new(basis_list)
-      }
-      if (length(vd_list)) {
-        private$.vdata <- Vd(do.call("cbind",lapply(vd_list,function(x) x$data)))
-      }
-    },
-
-    #' @description
-    #' Eval method for `hd` objects
-    #'
-    #' @param evalarg A list of numeric vectors of argument values at which the `hd` is to be evaluated.
-    #' @return A list of evaluated values
-    eval = function(evalarg) {
-      Bmat <- private$.basis$eval(evalarg)
-      Xhat <- list()
-      for (i in 1:private$.nvar) {
-        if (is.matrix(private$.coefs[[i]])) {
-          Xhat[[i]] <- Bmat[[i]][[1]] %*% private$.coefs[[i]]
-        } else {
-          Xhat[[i]] <- (Bmat[[i]][[2]] %x% Bmat[[i]][[1]]) %*% apply(private$.coefs[[i]], 3, as.vector)
-          Xhat[[i]] <- array(Xhat[[i]], dim = c(sapply(evalarg[[i]], length), private$.nobs))
-        }
-      }
-      return(Xhat)
-    },
-    #' @description
-    #' Print method for `hd` objects
-    #'
-    #' @param ... Additional arguments to be passed to `print`
-    #'
-    print = function(...) {
-      cat("A 'hd' object with", private$.nvar, "variable(s):\n")
-      for (i in 1:private$.nvar) {
-        cat("\nVariable ", i, ":\n", sep = "")
-        print(self[, i])
-      }
-      cat("\nVector Data", ":\n", sep = "")
-      print(self$vdata)
-      invisible(self)
-    }
-  ),
-  active = list(
-    # basis field
-    basis = function(value) {
-      if (missing(value)) {
-        private$.basis
-      } else {
-        stop("`$basis` is read only", call. = FALSE)
-      }
-    },
-
-    # coefs field
-    coefs = function(value) {
-      if (missing(value)) {
-        private$.coefs
-      } else {
-        stop("`$coefs` is read only", call. = FALSE)
-      }
-    },
-
-    # nvar field
-    nvar = function(value) {
-      if (missing(value)) {
-        private$.nvar
-      } else {
-        stop("`$nvar` is read only", call. = FALSE)
-      }
-    },
-
-    # nobs field
-    nobs = function(value) {
-      if (missing(value)) {
-        private$.nobs
-      } else {
-        stop("`$nobs` is read only", call. = FALSE)
-      }
-    },
-    ncols = function(value){
-      if (missing(value)) {
-        private$.ncols
-      } else {
-        stop("`$ncols` is read only", call. = FALSE)
-      }
-    }, 
-    vdata = function(value){
-      if (missing(value)) {
-        private$.vdata
-      } else {
-        stop("`$vdata` is read only", call. = FALSE)
-      }
-    }
-    
-  ),
-  private = list(
-    .basis = NULL,
-    .coefs = NULL, # we record vectorized of the coefs
-    .nobs = NULL,
-    .nvar = NULL,
-    .vdata = NULL,
-    .ncols = NULL
-  )
+                  public = list(
+                    #' @description
+                    #' Constructor for `hd` objects (same as 'Hd')
+                    #'
+                    #' @param ... A `mfd` or `nfd` objects which have separated by comma
+                    #'
+                    initialize = function(...) {
+                      hd_list <- list(...)
+                      if (is.list(hd_list[[1]])) hd_list <- hd_list[[1]]
+                      init_hd_list_check(hd_list)
+                      mfd_list <- list()
+                      nfd_list <- list()
+                      mvmfd_list <- list()
+                      mvnfd_list <- list()
+                      for (i in seq_along(hd_list)) {
+                        if(inherits(hd_list[[i]],"mfd")) {
+                          mfd_list[[length(mfd_list)+1]] <- hd_list[[i]]
+                        } else if (inherits(hd_list[[i]],"mvmfd")){
+                          mvmfd_list[[length(mvmfd_list)+1]] <- hd_list[[i]]
+                        } else if(inherits(hd_list[[i]],"nfd")) {
+                          nfd_list[[length(nfd_list)+1]] <- hd_list[[i]]
+                        } else if(inherits(hd_list[[i]],"mvnfd")) {
+                          mvnfd_list[[length(nfd_list)+1]] <- hd_list[[i]]
+                        }
+                      }
+                      if (length(mfd_list) > 0 & length(mvmfd_list) > 0){
+                        stop("Only one object type can be provided: either `mfd` or `mvmfd`, not both.")
+                      } 
+                      if (length(nfd_list) > 0 & length(mvnfd_list) > 0){
+                        stop("Only one object type can be provided: either `nfd` or `mvnfd`, not both.")
+                      }
+                      if (length(mvmfd_list) > 1){
+                        stop("Only one `mvmfd' object type can be provided")
+                      }
+                      if (length(mvnfd_list) > 1){
+                        stop("Only one `mvnfd' object type can be provided")
+                      }
+                      if (length(nfd_list) > 0) mvnfd_list <- list(Mvnfd(nfd_list))
+                      if (length(mfd_list) > 0) mvmfd_list <- list(Mvmfd(mfd_list))
+                      if (length(mvnfd_list) > 0) private$.nf <- mvnfd_list[[1]] 
+                      if (length(mvmfd_list) > 0) private$.mf <- mvmfd_list[[1]]  
+                    },
+                    
+                    #' @description
+                    #' Eval method for `hd` objects
+                    #'
+                    #' @param evalarg A list of numeric vectors of argument values at which the `hd` is to be evaluated.
+                    #' @return A list of evaluated values
+                    eval = function(evalarg) {
+                      if (!is.null(private$.mf)) {
+                        fdata <- private$.mf$eval(evalarg)
+                        names(fdata) <- paste0("fd",seq_along(fdata))
+                      } else {
+                          fdata <- NULL
+                        }
+                      if (!is.null(private$.nf)) {
+                        nfdata <- private$.nf$data
+                        names(nfdata) <- paste0("nfd",seq_along(nfdata))
+                      } else {
+                          nfdata <- NULL
+                        }
+                      return(c(fdata,nfdata))
+                    },
+                    #' @description
+                    #' Print method for `hd` objects
+                    #'
+                    #' @param ... Additional arguments to be passed to `print`
+                    #'
+                    print = function(...) {
+                      cat("An 'hd' object contains:\n")
+                      if (!is.null(private$.mf)) print(private$.mf)
+                      cat("\n")
+                      if (!is.null(private$.nf)) print(private$.nf)
+                      invisible(self)
+                    }
+                  ),
+                  active = list(
+                    # basis field
+                    nf = function(value) {
+                      if (missing(value)) {
+                        private$.nf
+                      } else {
+                        stop("`$nf` is read only", call. = FALSE)
+                      }
+                    },
+                    mf = function(value) {
+                      if (missing(value)) {
+                        private$.mf
+                      } else {
+                        stop("`$mf` is read only", call. = FALSE)
+                      }
+                    }
+                  ),
+                  private = list(
+                    .mf = NULL,
+                    .nf = NULL
+                  )
 )
 #' @rdname hd
 #' @seealso \code{\link{mvbasismfd}}, \code{\link{mfd}}

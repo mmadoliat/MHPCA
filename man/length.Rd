@@ -2,15 +2,15 @@
 % Please edit documentation in R/mfdMethods.R
 \name{length}
 \alias{length}
-\title{Length of an object of classes `mfd`or `hd`.}
+\title{Length of an object of classes `mfd`, `mvmfd`, `nfd` or `hd`.}
 \usage{
 length(x, ...)
 }
 \arguments{
-\item{x}{An object of classes `mfd` or `hd`.}
+\item{x}{An object of classes `mfd`, `mvmfd`, `nfd` or `hd`.}
 
 \item{...}{all `length` function arguments.}
 }
 \description{
-Length of an object of an object of classes `mfd` or `hd`.
+Length of an object of an object of classes `mfd`, `mvmfd`,`nfd` or `hd`.
 }

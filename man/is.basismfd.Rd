@@ -16,5 +16,5 @@ TRUE if the object is of class 'basismfd', FALSE otherwise.
 Check if an object is of class 'basismfd'
 }
 \seealso{
-\code{\link{is.mvbasismfd}}, \code{\link{is.mfd}}, \code{\link{is.hd}}
+\code{\link{is.mvbasismfd}}, \code{\link{is.mfd}}, \code{\link{is.mvmfd}}
 }

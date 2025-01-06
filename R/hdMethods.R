@@ -1,22 +1,24 @@
 mean_hd <- function(hd_obj) {
-  p <- hd_obj$nvar
-  mvlist <- lapply(1:p, function(j) mean(hd_obj[, j]))
+  mf <- NULL
+  nf <- NULL
+  if (!is.null(hd_obj$mf)) mf <- mean(hd_obj$mf)
+  if (!is.null(hd_obj$nf)) nf <- mean(hd_obj$nf)
+  mvlist <- Filter(Negate(is.null),list(mf,nf))
   return(Hd(mvlist))
 }
 
+sd_hd <- function(hd_obj) {
+  mf <- NULL
+  nf <- NULL
+  if (!is.null(hd_obj$mf)) mf <- sd(hd_obj$mf)
+  if (!is.null(hd_obj$nf)) nf <- sd(hd_obj$nf)
+  mvlist <- Filter(Negate(is.null),list(mf,nf))
+  return(Hd(mvlist))
+}
 
 plot_hd <- function(hd_obj, xlab = NULL, ylab = NULL, ...) {
-  old <- par()
-  exclude_pars <- c("cin", "cra", "csi", "cxy", "din", "page")
-  ind <- which(!(names(old) %in% exclude_pars))
-  on.exit(par(old[ind]))
-  p <- hd_obj$nvar
-  par(mfrow = c(p, 1))
-  if (is.null(ylab)) ylab <- paste("Variable ", 1:p)
-  if (is.null(xlab)) xlab <- rep("time", p)
-  for (i in 1:p) {
-    plot(hd_obj[, i], ylab = ylab[i], xlab = xlab[i], ...)
-  }
+  if (is.null(hd_obj$mf)) stop("hd objects doesn't have functional part")
+  plot(hd_obj$mf, ...)
 }
 
 #' @title Addition of two `hd` objects
@@ -31,11 +33,17 @@ plot_hd <- function(hd_obj, xlab = NULL, ylab = NULL, ...) {
   if (is.null(obj2)) {
     return(obj1)
   }
-  p <- obj1$nvar
-  mvlist <- list()
-  for (j in 1:p) {
-    mvlist[[j]] <- obj1[, j] + obj2[, j]
+  if (!is.null(obj1$mf) & !is.null(obj2$mf)){
+    mf <- obj1$mf + obj2$mf
+  } else {
+    mf <- NULL
   }
+  if (!is.null(obj1$nf) & !is.null(obj2$nf)){
+    nf <- obj1$nf + obj2$nf
+  } else {
+    nf <- NULL
+  }
+  mvlist <- Filter(Negate(is.null), list(mf,nf))
   return(Hd(mvlist))
 }
 
@@ -50,12 +58,7 @@ plot_hd <- function(hd_obj, xlab = NULL, ylab = NULL, ...) {
   if (is.null(obj2)) {
     return((-1) * obj1)
   }
-  p <- obj1$nvar
-  mvlist <- list()
-  for (j in 1:p) {
-    mvlist[[j]] <- obj1[, j] + (-1) * obj2[, j]
-  }
-  return(Hd(mvlist))
+  return(obj1 + (-1) * obj2)
 }
 
 #'  Multiplication of an `hd` object with a scalar
@@ -75,15 +78,15 @@ plot_hd <- function(hd_obj, xlab = NULL, ylab = NULL, ...) {
         obj2 <- temp
       }
     }
-    p <- obj1$nvar
-    mvlist <- list()
-    for (j in 1:p) {
-      mvlist[[j]] <- obj1[, j] * obj2
-    }
+    mf <- NULL
+    nf <- NULL
+    if (!is.null(obj1$mf)) mf <- obj2 * obj1$mf
+    if (!is.null(obj1$nf)) nf <- obj2 * obj1$nf
+    mv_list <- list(Filter(Negate(is.null), list(mf,nf)))
   } else {
     stop("One object must be an hd, and the other one a scalar")
   }
-  return(Hd(mvlist))
+  return(Hd(mv_list))
 }
 
 #'  Extract subsets of an `hd` object
@@ -94,32 +97,35 @@ plot_hd <- function(hd_obj, xlab = NULL, ylab = NULL, ...) {
 #' @return An `hd` object containing the specified subsets
 #' @seealso \code{\link{hd}},\code{\link{mvbasismfd}}
 #' @export
-"[.hd" <- function(hd_obj, i = "index", j = "index") {
-  if (i[1] == "index") i <- 1:hd_obj$nobs
-  if (j[1] == "index") j <- 1:hd_obj$nvar
-  if (max(i) > hd_obj$nobs | min(i) < 1) stop(" subscript i out of bounds")
-  if (max(j) > hd_obj$nvar | min(i) < 1) stop(" subscript j out of bounds")
-  dimSupp <- hd_obj$basis$dimSupp
-  bs <- hd_obj$basis[j]
-  if (length(j) == 1) {
-    if (dimSupp[j] == 1) {
-      coef <- hd_obj$coefs[[j]][, i]
-    } else {
-      coef <- hd_obj$coefs[[j]][, , i]
-    }
-    return(mfd$new(X = coef, mdbs = bs, method = "coefs"))
-  } else {
-    hd_list <- list()
-    for (k in 1:length(j)) {
-      if (dimSupp[k] == 1) {
-        coef <- hd_obj$coefs[[k]][, i]
-      } else {
-        coef <- hd_obj$coefs[[k]][, , i]
-      }
-      hd_list[[k]] <- mfd$new(X = coef, mdbs = bs[k], method = "coefs")
-    }
-    return(Hd(hd_list))
+"[.hd" <- function(hd_obj, i = NULL, j = NULL) {
+  jj <- 0
+  if (!is.null(hd_obj$mf)){
+    nobs <- hd_obj$mf$nobs
+    jj <- jj+1
   }
+  if (!is.null(hd_obj$nf)){
+    nobs <- hd_obj$nf$nobs
+    jj <- jj+1
+  }
+  if (is.null(i)) i <- 1:nobs
+  if (is.null(j)) j <- 1:jj
+  if (max(i) > nobs | min(i) < 1) stop(" subscript i out of bounds")
+  if (max(j) > jj | min(i) < 1) stop(" subscript j out of bounds")
+  if (length(j) == 2){
+    mf_obj_subset <- list(hd_obj$mf[i,])
+    nf_obj_subset <- list(hd_obj$nf[i,])
+  } else if (length(j) == 1){
+    if (!is.null(hd_obj$mf)) {
+      mf_obj_subset <- list(hd_obj$mf[i,])
+      nf_obj_subset <- NULL
+    } else {
+        nf_obj_subset <- list(hd_obj$nf[i,])
+        mf_obj_subset <- NULL
+        }
+  }
+  mv_list <- Filter(Negate(is.null),c(mf_obj_subset,nf_obj_subset))
+  return(Hd(mv_list))
+  
 }
 
 
@@ -136,13 +142,15 @@ plot_hd <- function(hd_obj, xlab = NULL, ylab = NULL, ...) {
 #'
 #' @export
 bimfdplot <- function(hd_obj, type = "l", lty = 1, xlab = "", ylab = "", main = "", ...) {
-  nvar <- hd_obj$nvar
+  if (is.null(hd_obj$mf)) stop("There is no functional part in hf object")
+  mf_obj <- hd_obj$mf
+  nvar <- mf_obj$nvar
   stopifnot(nvar == 2)
-  stopifnot(all(hd_obj$basis$supp[[1]] == hd_obj$basis$supp[[2]]))
-  supp <- hd_obj$basis$supp[[1]]
+  stopifnot(all(mf_obj$basis$supp[[1]] == mf_obj$basis$supp[[2]]))
+  supp <- mf_obj$basis$supp[[1]]
   x_grids <- seq(supp[1, 1], supp[2, 1], len = 1000)
-  X <- hd_obj[, 1]$eval(x_grids)
-  Y <- hd_obj[, 2]$eval(x_grids)
+  X <- mf_obj[, 1]$eval(x_grids)
+  Y <- mf_obj[, 2]$eval(x_grids)
   matplot(X, Y, type = type, lty = lty, xlab = xlab, ylab = ylab, main = main, ...)
 }
 
@@ -155,14 +163,14 @@ bimfdplot <- function(hd_obj, type = "l", lty = 1, xlab = "", ylab = "", main = 
 #' @seealso \code{\link{hd}},\code{\link{mvbasismfd}}
 #' @export
 inprod_hd <- function(hd_obj1, hd_obj2) {
-  p <- hd_obj1$nvar
-  if (p != hd_obj2$nvar) stop("The number of variables must be equal.")
-  m <- hd_obj1$nobs
-  n <- hd_obj2$nobs
-  inpr <- matrix(0, nrow = m, ncol = n)
-  for (j in 1:p) {
-    inpr <- inpr + inprod_mfd(hd_obj1[, j], hd_obj2[, j])
+  inpr <- 0
+  if (!is.null(hd_obj1$mf) & !is.null(hd_obj1$mf)){
+    inpr <- inpr + inprod_mvmfd(hd_obj1$mf,hd_obj2$mf)
   }
+  if (!is.null(hd_obj1$nf) & !is.null(hd_obj2$nf)){
+    inpr <- inpr + inprod_mvnfd(hd_obj1$nf,hd_obj2$nf)
+  }
+  
   return(inpr)
 }
 
@@ -173,5 +181,49 @@ inprod_hd <- function(hd_obj1, hd_obj2) {
 #' @seealso \code{\link{hd}},\code{\link{mvbasismfd}}
 #' @export
 norm_hd <- function(hd_obj) {
-  return(as.numeric(sqrt(diag(inprod_hd(hd_obj, hd_obj)))))
+  inprod_hd(hd_obj,hd_obj)
+}
+
+center_hd <- function(hd_obj){
+  if (!is.hd(hd_obj)) {
+    stop("Input 'hd_obj' must be of class 'hd'.")
+  }
+  mhd <- mean(hd_obj)
+  mfd_list <- NULL
+  nfd_list <- NULL
+  if (!is.null(hd_obj$mf)){
+    mfd_list <- lapply(seq_len(mhd$mf$nvar),function(i){
+      if (is.matrix(hd_obj$mf$coefs[[i]])){
+        coefs <- sweep(hd_obj$mf$coefs[[i]],1,mhd$mf$coefs[[i]],"-")
+        Mfd(X = coefs,mdbs = mhd$mf$basis[i],method = "coefs")
+      } else if (is.array(hd_obj$mf$coefs[[i]])){
+        # I'm not sure about this code check it later for array 
+        flattened_current <- apply(hd_obj$mf$coefs[[i]], 3, as.vector)
+        flattened_mean <- apply(mhd$mf$coefs[[i]], 3, as.vector)
+        row_means <- rowMeans(flattened_mean)
+        centered_flattened <- sweep(flattened_current, 1, row_means, "-")
+        centered_coef <- centered_flattened
+        Mfd(X = center_coef,mdbs = mhd$mf$basis[i],method = "coefs")
+      }
+      
+    })
+  }
+  if (!is.null(hd_obj$nf)){
+    nfd_list <- lapply(seq_len(mhd$nf$nvar),function(i){
+      if (is.matrix(hd_obj$nf$data[[i]])){
+        data <- sweep(hd_obj$nf$data[[i]],2,mhd$nf$data[[i]],"-")
+        nfd(data)
+      } else if (is.array(hd_obj$nf$data[[i]])){
+        # I'm not sure about this code check it later for array 
+        flattened_current <- apply(hd_obj$nf$data[[i]], 3, as.vector)
+        flattened_mean <- apply(mhd$nf$data[[i]], 3, as.vector)
+        row_means <- rowMeans(flattened_mean)
+        centered_flattened <- sweep(flattened_current, 1, row_means, "-")
+        centered_data <- centered_flattened
+        nfd(centered_data)
+      }
+      
+    })
+  }
+  return(Hd(c(mfd_list,nfd_list)))
 }

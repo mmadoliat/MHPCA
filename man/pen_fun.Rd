@@ -7,7 +7,7 @@
 pen_fun(data, devorder = 2, type)
 }
 \arguments{
-\item{data}{an object of class `hd`.}
+\item{data}{an object of class `mvmfd`.}
 
 \item{devorder}{The order of the derivative.}
 
@@ -17,5 +17,5 @@ pen_fun(data, devorder = 2, type)
 The penalty matrix.
 }
 \description{
-Calculate the penalty matrix for `hd` objects.
+Calculate the penalty matrix for `mvmfd` objects.
 }

@@ -1,9 +1,9 @@
 #' @title  Penalty Function
 #'
 #' @description
-#' Calculate the penalty matrix for `hd` objects.
+#' Calculate the penalty matrix for `mvmfd` objects.
 #'
-#' @param data an object of class `hd`.
+#' @param data an object of class `mvmfd`.
 #' @param devorder The order of the derivative.
 #' @param type The type of penalty. The types "coefpen" and "basispen" is supported.
 #' @return The penalty matrix.
@@ -60,7 +60,7 @@ pen_fun <- function(data, devorder = 2, type) {
 # a function to check the validity
 init_pen_check <- function(data, devorder, type) {
   stopifnot(
-    is.hd(data),
+    is.mvmfd(data),
     devorder >= 1,
     type == "basispen" | type == "coefpen"
   )

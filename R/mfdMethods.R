@@ -28,33 +28,35 @@ plot_mfd <- function(mfd_obj, obs = 1, xlab = "", ylab = "", main = "", type = "
   }
 }
 
-#' @title Length of an object of classes `mfd`or `hd`.
+#' @title Length of an object of classes `mfd`, `mvmfd`, `nfd` or `hd`.
 #'
 #' @description
-#' Length of an object of an object of classes `mfd` or `hd`.
+#' Length of an object of an object of classes `mfd`, `mvmfd`,`nfd` or `hd`.
 #'
-#' @param x An object of classes `mfd` or `hd`.
+#' @param x An object of classes `mfd`, `mvmfd`, `nfd` or `hd`.
 #' @param ... all `length` function arguments.
 #' @export
 length <- function(x, ...) {
-  if (inherits(x, c("mfd","vd","hd"))) {
+  if (inherits(x, c("mfd","mvmfd","nfd","hd"))) {
     return(x$nobs)
   } else {
     return(base::length(x, ...))
   }
 }
 
-#' @title plots an object of classes `mfd`, `hd` or `mhpca`
+#' @title plots an object of classes `mfd`, `mvmfd`, `hd` or `mhpca`
 #'
 #' @description
-#'  plot an object of classes `mfd`, `hd` or `mhpca`
-#' @param x An object of classes `mfd`, `hd` or `mhpca`
+#'  plot an object of classes `mfd`, `mvmfd`, `hd` or `mhpca`
+#' @param x An object of classes `mfd`, `mvmfd`, `hd` or `mhpca`
 #' @param ... all `plot` function arguments.
 #' @export
 plot <- function(x, ...) {
   if (inherits(x, "mfd")) {
     return(plot_mfd(x, ...))
-  } else if (inherits(x, "hd")) {
+  } else if (inherits(x, "mvmfd")) {
+    return(plot_mvmfd(x, ...))
+  } else if (inherits(x, "hd")){
     return(plot_hd(x, ...))
   } else if (inherits(x, "mhpca")) {
     return(plot_mhpca(x, ...))
@@ -62,40 +64,50 @@ plot <- function(x, ...) {
     return(base::plot(x, ...))
   }
 }
-
-#' @title mean of an object of classes `mfd`or `hd`.
+# mean should change to include vector data as well 
+#' @title mean of an object of classes `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`.
 #'
 #' @description
-#' mean of an object of classes `mfd`or `hd`.
-#' @param x An object of classes `mfd` or `hd`.
+#' mean of an object of classes `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`.
+#' @param x An object of classes `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`.
 #' @param ... all `mean` function arguments.
 #' @return An object of class `mfd`
 #' @export
 mean <- function(x, ...) {
   if (inherits(x, "mfd")) {
-    return(mean_mfd(x))
+    return(mean_mfd(x, ...))
+  } else if (inherits(x, "mvmfd")){
+    return(mean_mvmfd(x, ...))
   } else if (inherits(x, "hd")) {
-    return(mean_hd(x))
-  } else if (inherits(x,"vd")){
-    return(mean_vd(x))
-    } else {
+    return(mean_hd(x, ...))
+  } else if (inherits(x,"nfd")){
+    return(mean_nfd(x, ...))
+  } else if (inherits(x,"mvnfd")) {
+    return(mean_mvnfd(x, ...))
+  } else {
     return(base::mean(x, ...))
   }
 }
 
-#' @title Standard deviation of an object of class `mfd`.
+#' @title Standard deviation of an object of class `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`..
 #'
 #' @description
-#' Standard deviation an object of class `mfd`.
-#' @param x An object of class `mfd`
+#' Standard deviation an object of class `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`..
+#' @param x An object of class `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`.
 #' @param ... all `sd` function arguments.
-#' @return An object of class `mfd`
+#' @return An object of class `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`.
 #' @export
 sd <- function(x, ...) {
   if (inherits(x, "mfd")) {
-    return(sd_mfd(x))
-  } else if (inherits(x,"vd")) {
-    return(sd_vd(x))
+    return(sd_mfd(x, ...))
+  } else if (inherits(x, "mvmfd")){
+    return(sd_mvmfd(x, ...))
+  } else if (inherits(x, "hd")) {
+    return(sd_hd(x, ...))
+  } else if (inherits(x,"nfd")){
+    return(sd_nfd(x, ...))
+  } else if (inherits(x,"mvnfd")) {
+    return(sd_mvnfd(x, ...))
   } else {
     return(stats::sd(x, ...))
   }

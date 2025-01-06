@@ -4,7 +4,7 @@
 \alias{[.hd}
 \title{Extract subsets of an `hd` object}
 \usage{
-\method{[}{hd}(hd_obj, i = "index", j = "index")
+\method{[}{hd}(hd_obj, i = NULL, j = NULL)
 }
 \arguments{
 \item{hd_obj}{An `hd` object}

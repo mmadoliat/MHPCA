@@ -2,18 +2,18 @@
 % Please edit documentation in R/mfdMethods.R
 \name{sd}
 \alias{sd}
-\title{Standard deviation of an object of class `mfd`.}
+\title{Standard deviation of an object of class `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`..}
 \usage{
 sd(x, ...)
 }
 \arguments{
-\item{x}{An object of class `mfd`}
+\item{x}{An object of class `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`.}
 
 \item{...}{all `sd` function arguments.}
 }
 \value{
-An object of class `mfd`
+An object of class `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`.
 }
 \description{
-Standard deviation an object of class `mfd`.
+Standard deviation an object of class `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`..
 }
