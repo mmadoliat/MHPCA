@@ -81,7 +81,8 @@ mhpca <- R6::R6Class("mhpca",
                            if (is.mfd(hd_obj) || is.mvmfd(hd_obj)){
                              if (is.mfd(hd_obj)) {
                                hd_obj <- Mvmfd(hd_obj)
-                               }
+                             }
+                             #browser()
                              result <- Remfpca(mvmfd_obj = hd_obj,
                                                method = method,
                                                ncomp = ncomp,
@@ -91,10 +92,12 @@ mhpca <- R6::R6Class("mhpca",
                                                alpha_orth = alpha_orth,
                                                smoothing_type = smoothing_type,
                                                sparse_type = sparse_type,
-                                               K_fold = k_fold,
+                                               K_fold = K_fold,
                                                sparse_CV = sparse_CV, 
                                                smooth_GCV = smooth_GCV
                                                )
+                             return(result)
+                             
                            }
                            if (method == "power" & alpha_orth == "FALSE") {
                              # Adjust the vector length to match the required dimensions if they are incorrect

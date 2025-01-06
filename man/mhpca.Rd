@@ -108,6 +108,21 @@ Re3$alpha
 \seealso{
 \code{\link{hd}}
 }
+\section{Public fields}{
+\if{html}{\out{<div class="r6-fields">}}
+\describe{
+\item{\code{pc_mfd}}{An object of class `mvmfd` where the first indices (fields)
+represents harmonics and  second indices represents variables}
+
+\item{\code{pc_nfd}}{An object of class `mvnfd` where the first indices (fields)
+represents harmonics and  second indices represents variables}
+
+\item{\code{mean_mfd}}{A multivariate functional data object giving the mean function}
+
+\item{\code{mean_nfd}}{A data object giving the mean of non functional objects}
+}
+\if{html}{\out{</div>}}
+}
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
 \describe{
