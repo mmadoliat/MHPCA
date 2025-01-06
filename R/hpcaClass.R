@@ -77,6 +77,7 @@ mhpca <- R6::R6Class("mhpca",
                                                smooth_GCV, 
                                                penalize_nfd = FALSE,
                                                penalize_u = FALSE) {
+                           #browser()
                            if (is.mfd(hd_obj) || is.mvmfd(hd_obj)){
                              if (is.mfd(hd_obj)) {
                                hd_obj <- Mvmfd(hd_obj)
@@ -267,13 +268,14 @@ mhpca <- R6::R6Class("mhpca",
                            pcnfd <- lapply(seq_along(pc_nfd_len), function(i) {
                                   start_row <- cumulative_indices[i] + 1
                                   end_row <- cumulative_indices[i + 1]
-                                  pc_nfd[start_row:end_row, 1:ncomp, drop = FALSE]
-                                  nfd(pc_nfd)
+                                  t(nfd(pc_nfd[start_row:end_row, 1:ncomp, drop = FALSE]))
                                   })
                            mfd_obj <- Mvmfd(pcmfd)
                            #nfd_obj <- Mvnfd(pcnfd)
-                           private$.pc_mfd <- mfd_obj
-                           private$.pc_nfd <- pcnfd #nfd_obj
+                           hd_obj <- Hd(mfd_obj, Mvnfd(pcnfd))
+                           private$.pc_hd <- hd_obj
+                           #private$.pc_mfd <- mfd_obj
+                           #private$.pc_nfd <- pcnfd #nfd_obj
           
                            private$.lsv <- result$lsv
                            private$.values <- result$variance
@@ -286,23 +288,17 @@ mhpca <- R6::R6Class("mhpca",
                              private$.GCVs <- result$GCV_score
                            }
                            # private$.sparse_tuning <- result[[5]]
-                           private$.mean_mfd <- mean(mfd_obj)
-                           private$.mean_nfd <- mean(mfd_obj) # change it later
+                           #private$.mean_mfd <- mean(mfd_obj)
+                           #private$.mean_nfd <- mean(mfd_obj) # change it later
+                           private$.mean_hd <- mean(hd_obj)
                          }
                        ),
                        active = list(
-                         pc_mfd = function(value) {
+                         pc_hd = function(value) {
                            if (missing(value)) {
-                             private$.pc_mfd
+                             private$.pc_hd
                            } else {
-                             stop("`$pc_mfd` is read only", call. = FALSE)
-                           }
-                         }, 
-                         pc_nfd = function(value) {
-                           if (missing(value)) {
-                             private$.pc_nfd
-                           } else {
-                             stop("`$pc_nfd` is read only", call. = FALSE)
+                             stop("`$pc_hd` is read only", call. = FALSE)
                            }
                          }, 
                          lsv = function(value) {
@@ -347,32 +343,23 @@ mhpca <- R6::R6Class("mhpca",
                              stop("`$CVs` is read only", call. = FALSE)
                            }
                          },
-                         mean_mfd = function(value) {
+                         mean_hd = function(value) {
                            if (missing(value)) {
-                             private$.mean_mfd
+                             private$.mean_hd
                            } else {
-                             stop("`$mean_mfd` is read only", call. = FALSE)
-                           }
-                         } , 
-                         mean_nfd = function(value) {
-                           if (missing(value)) {
-                             private$.mean_nfd
-                           } else {
-                             stop("`$mean_nfd` is read only", call. = FALSE)
+                             stop("`$mean_hd` is read only", call. = FALSE)
                            }
                          }
                        ),
                        private = list(
-                         .pc_mfd = NULL,
-                         .pc_nfd = NULL,
+                         .pc_hd = NULL,
                          .lsv = NULL,
                          .values = NULL,
                          .smooth_tuning = NULL,
                          .sparse_tuning = NULL,
                          .GCVs = NULL,
                          .CVs = NULL,
-                         .mean_mfd = NULL,
-                         .mean_nfd = NULL
+                         .mean_hd = NULL
                        )
 )
 

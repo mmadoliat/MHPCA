@@ -56,7 +56,7 @@ print.nfd = function(x,...) {
     if (!is.null(colnames(x))) {
       return(colnames(x))
     } else {
-      return(paste0("V"), seq_len(ncol(x)))
+      return(paste0("V", seq_len(ncol(x))))
     }
   } else if (name == "data"){
     return(unclass(x))
