@@ -2,15 +2,15 @@
 % Please edit documentation in R/mfdMethods.R
 \name{plot}
 \alias{plot}
-\title{plots an object of classes `mfd`, `mvmfd`, `hd` or `mhpca`}
+\title{plots an object of classes `mfd`, `mvmfd`, `hd`, `remfpca` or `mhpca`}
 \usage{
 plot(x, ...)
 }
 \arguments{
-\item{x}{An object of classes `mfd`, `mvmfd`, `hd` or `mhpca`}
+\item{x}{An object of classes `mfd`, `mvmfd`, `hd`, `remfpca` or `mhpca`}
 
 \item{...}{all `plot` function arguments.}
 }
 \description{
-plot an object of classes `mfd`, `mvmfd`, `hd` or `mhpca`
+plot an object of classes `mfd`, `mvmfd`, `hd`, `remfpca` or `mhpca`
 }

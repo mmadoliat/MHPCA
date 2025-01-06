@@ -44,11 +44,11 @@ length <- function(x, ...) {
   }
 }
 
-#' @title plots an object of classes `mfd`, `mvmfd`, `hd` or `mhpca`
+#' @title plots an object of classes `mfd`, `mvmfd`, `hd`, `remfpca` or `mhpca`
 #'
 #' @description
-#'  plot an object of classes `mfd`, `mvmfd`, `hd` or `mhpca`
-#' @param x An object of classes `mfd`, `mvmfd`, `hd` or `mhpca`
+#'  plot an object of classes `mfd`, `mvmfd`, `hd`, `remfpca` or `mhpca`
+#' @param x An object of classes `mfd`, `mvmfd`, `hd`, `remfpca` or `mhpca`
 #' @param ... all `plot` function arguments.
 #' @export
 plot <- function(x, ...) {
@@ -60,6 +60,8 @@ plot <- function(x, ...) {
     return(plot_hd(x, ...))
   } else if (inherits(x, "mhpca")) {
     return(plot_mhpca(x, ...))
+  } else if (inherits(x, "remfpca")) {
+    return(plot_remfpca(x, ...))
   } else {
     return(base::plot(x, ...))
   }
