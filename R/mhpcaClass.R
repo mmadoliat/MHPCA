@@ -34,7 +34,7 @@
 #' X_2 <- X_2t + noise
 #' bs <- create.bspline.basis(c(0, 1), 51)
 #' mdbs <- Basismfd(bs)
-#' mfd1 <- Mfd(X = X_1, mdbs = mdbs)
+#' mfd1 <- Mfd(X = X_1, mdbs = mdbs) #123
 #' mfd2 <- Mfd(X = X_2, mdbs = mdbs)
 #' hd_obj <- Hd(mfd1, mfd2)
 #' k <- 2
