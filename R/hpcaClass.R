@@ -225,7 +225,7 @@ mhpca <- R6::R6Class("mhpca",
                              if (method == "power") {
                                result <- joint_power_hybrid(hd_obj = hd_obj, n = ncomp, smooth_tuning = smooth_tuning, centerfns = centerfns, alpha_orth = alpha_orth, smooth_tuning_type = smoothing_type)
                              } else{
-                               result <- eigen_approach(hd_obj = hd_obj, n = ncomp, alpha = smooth_tuning, centerfns = centerfns, penalty_type = smoothing_type)
+                               result <- eigen_approach_hybrid(hd_obj = hd_obj, n = ncomp, alpha = smooth_tuning, centerfns = centerfns, penalty_type = smoothing_type)
                              }
                              
                              # result <- joint_power(hd_obj = hd_obj, n = ncomp, smooth_tuning = smooth_tuning, centerfns = centerfns, alpha_orth = alpha_orth, smooth_tuning_type = smoothing_type)
