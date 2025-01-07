@@ -62,7 +62,6 @@ remfpca <- R6::R6Class("remfpca",
                              public = list(
                                # initialize = function(mvmfd_obj, method = "power", ncomp, smooth_tuning = NULL, sparse_tuning = 0, centerfns = TRUE, alpha_orth = FALSE, smoothing_type = "coefpen", sparse_type = "soft", K_fold = 30, sparsity_CV = "marginal") {
                                initialize = function(mvmfd_obj, method = "power", ncomp, smooth_tuning = NULL, sparse_tuning = NULL, centerfns = TRUE, alpha_orth = FALSE, smoothing_type = "coefpen", sparse_type = "soft", K_fold = 30, sparse_CV, smooth_GCV) {
-                                 #browser()
                                  # if (is.numeric(smooth_tuning)) smooth_tuning <- as.list(smooth_tuning)
                                  # if (is.vector(smooth_tuning)) smooth_tuning <- as.list(smooth_tuning)
                                  # if (is.vector(smooth_tuning)&& !is.list(smooth_tuning)) smooth_tuning <- list(smooth_tuning)
