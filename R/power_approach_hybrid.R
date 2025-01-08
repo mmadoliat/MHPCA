@@ -133,7 +133,6 @@ init_joint_hybrid = function(fdata, nfdata, S_smooth = NULL, S_2_inverse = NULL,
   nfv_old <- if (!is.null(nfdata)) svd(nfdata)$v[, 1:n] else NULL
   
   errors = 10^60
-  if(!is.null(nfdata)) nc_nfdata <- ncol(nfdata)
   while (errors > 10^-10) {
     u_old <- 0
     if (!is.null(fdata)) {
@@ -147,6 +146,7 @@ init_joint_hybrid = function(fdata, nfdata, S_smooth = NULL, S_2_inverse = NULL,
     M2 <- if(!is.null(nfdata)) as.matrix(t(nfdata)%*%u_old) else NULL
     M <- rbind(M1,M2)
     M <- qr.Q(qr(rbind(M)))
+    # double check normalizaron 
     if (!is.null(fdata) && !is.null(nfdata)){
       fv_new <- S_smooth%*%M[1:(nrow(M) - ncol(nfdata)),]
       nfv_new <- M[(nrow(M) - (ncol(nfdata)-1)):nrow(M),]
@@ -202,7 +202,6 @@ init_joint_hybrid = function(fdata, nfdata, S_smooth = NULL, S_2_inverse = NULL,
 cv_local_hybrid = function(fdata, nfdata, G_half, K_fold, sparse_tuning_single, sparse_tuning_type, shuffled_row, group_size, penalize_nfd = FALSE, penalize_u = FALSE){
   data_double_tilde = if (!is.null(fdata)) t(fdata%*%G_half) else NULL
   error_score_sparse = 0
-  #browser()
   for (k in 1:K_fold) {
     rows_to_remove = shuffled_row[((k-1)*group_size+1):((k)*group_size)]
     fdata_train = if (!is.null(fdata)) data_double_tilde[-rows_to_remove, ,drop = FALSE] else NULL
@@ -231,8 +230,7 @@ cv_local_hybrid = function(fdata, nfdata, G_half, K_fold, sparse_tuning_single, 
 
 #computing gcv score for smoothing tuning
 gcv_local_hybrid = function(fdata, nfdata, hd_obj, G, G_half, S_smooth, u, smooth_tuning) {
-  mvmfd_obj <- hd_obj$mf
-  nfd_obj <- hd_obj$nf
+  mvmfd_obj <-  hd_obj$mf 
   p = mvmfd_obj$nvar
   indices <- sapply(1:p, function(i) prod(mvmfd_obj$basis$nbasis[[i]]))
   C_subtilde = fdata %*% G_half
@@ -264,7 +262,7 @@ gcv_local_hybrid = function(fdata, nfdata, hd_obj, G, G_half, S_smooth, u, smoot
 }
 
 # Function to handle smooth tuning selection with progress bar and GCV score calculation
-handle_smooth_tuning_hybrid <- function(fdata, nfvdata, G_half, G, S_smooth, S_2_inverse, G_half_inverse, 
+handle_smooth_tuning_hybrid <- function(fdata, nfdata, G_half, G, S_smooth, S_2_inverse, G_half_inverse, 
                                         hd_obj, sparse_tuning_selection = NULL, sparse_tuning_type = NULL, smooth_tuning, 
                                         CV_score_smooth, power_type = "sequential", n = NULL, pb, 
                                         count, penalize_nfd = F, penalize_u = FALSE) {
@@ -285,13 +283,13 @@ handle_smooth_tuning_hybrid <- function(fdata, nfvdata, G_half, G, S_smooth, S_2
         S_smooth[[smooth_index]] <- diag(dim(G)[1])
       }
       if (power_type == "sequential") {
-        test_temp <- init_sequential_hybrid(fdata %*% G_half, nfvdata, sparse_tuning_selection, sparse_tuning_type, S_smooth[[smooth_index]], 
+        test_temp <- init_sequential_hybrid(fdata %*% G_half, nfdata, sparse_tuning_selection, sparse_tuning_type, S_smooth[[smooth_index]], 
                                             S_2_inverse[[smooth_index]], G_half_inverse, G_half,penalize_nfd = penalize_nfd, penalize_u = penalize_u)
       } else {
-        test_temp <- init_joint_hybrid(fdata %*% G_half, nfvdata ,S_smooth[[smooth_index]], S_2_inverse[[smooth_index]], G_half_inverse, G_half, n = n)
+        test_temp <- init_joint_hybrid(fdata %*% G_half, nfdata ,S_smooth[[smooth_index]], S_2_inverse[[smooth_index]], G_half_inverse, G_half, n = n)
       }
       u_temp <- test_temp[[3]]
-      smooth_score <- gcv_local_hybrid(fdata, nfvdata, hd_obj, G, G_half, S_smooth[[smooth_index]], u_temp, smooth_tuning = smooth_tuning[smooth_index, ])
+      smooth_score <- gcv_local_hybrid(fdata, nfdata, hd_obj, G, G_half, S_smooth[[smooth_index]], u_temp, smooth_tuning = smooth_tuning[smooth_index, ])
       gcv_scores <- c(gcv_scores, smooth_score)
       if (smooth_score <= CV_score_smooth) {
         CV_score_smooth <- smooth_score
@@ -304,7 +302,7 @@ handle_smooth_tuning_hybrid <- function(fdata, nfvdata, G_half, G, S_smooth, S_2
 }
 
 # Function to handle sparse tuning selection
-handle_sparse_tuning_hybrid <- function(fdata, nfvdata,G_half, sparse_tuning, sparse_tuning_type, K_fold, shuffled_row, group_size, CV_score_sparse, pb, penalize_nfd = FALSE, penalize_u = FALSE) {
+handle_sparse_tuning_hybrid <- function(fdata, nfdata,G_half, sparse_tuning, sparse_tuning_type, K_fold, shuffled_row, group_size, CV_score_sparse, pb, penalize_nfd = FALSE, penalize_u = FALSE) {
   count <- 0
   cv_scores <- c()
   sparse_tuning_selection <- NULL
@@ -317,7 +315,7 @@ handle_sparse_tuning_hybrid <- function(fdata, nfvdata,G_half, sparse_tuning, sp
     for (sparse_tuning_single in sparse_tuning) {
       count <- count + 1
       setTxtProgressBar(pb, count)
-      sparse_score <- cv_local_hybrid(fdata, nfvdata, G_half, K_fold, sparse_tuning_single, sparse_tuning_type, shuffled_row, group_size, penalize_nfd = penalize_nfd, penalize_u = penalize_u)
+      sparse_score <- cv_local_hybrid(fdata, nfdata, G_half, K_fold, sparse_tuning_single, sparse_tuning_type, shuffled_row, group_size, penalize_nfd = penalize_nfd, penalize_u = penalize_u)
       cv_scores <- c(cv_scores, sparse_score)
       if (sparse_score <= CV_score_sparse) {
         CV_score_sparse <- sparse_score
@@ -375,16 +373,19 @@ gcv_joint_hybrid <- function(fdata, nfdata, G_half, G, S_smooth, S_2_inverse, G_
 handle_variance_update_hybrid <- function(i, n, C, nf_data, G, fv_total, nfv_total,hd_obj, all_equal_check, 
                                    sparse_tuning, pc, lsv, fv, nfv, u, G_half, test_result, temp_count, fp) {
   mvmfd_obj <- hd_obj$mf
-  for (j in 1:fp) {
-    index_start <- (temp_count + 1)
-    index_end <- (temp_count + prod(mvmfd_obj$basis$nbasis[[j]]))
-    if (i == 1) {
-      pc[[j]] <- fv[index_start:index_end, ]
-    } else {
-      pc[[j]] <- cbind(pc[[j]], fv[index_start:index_end, ])
+  if (!is.null(mvmfd_obj)){
+    for (j in 1:fp) {
+      index_start <- (temp_count + 1)
+      index_end <- (temp_count + prod(mvmfd_obj$basis$nbasis[[j]]))
+      if (i == 1) {
+        pc[[j]] <- fv[index_start:index_end, ]
+      } else {
+        pc[[j]] <- cbind(pc[[j]], fv[index_start:index_end, ])
+      }
+      temp_count <- index_end
     }
-    temp_count <- index_end
   }
+  
   lsv = cbind(lsv, u)
   fv_total = cbind(fv_total, fv)
   nfv_total = cbind(nfv_total, nfv)
