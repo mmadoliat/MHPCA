@@ -401,8 +401,8 @@ handle_variance_update_hybrid <- function(i, n, C, nf_data, G, fv_total, nfv_tot
     # variance <- t(CGv)%*%CGv / (mvmfd_obj$nobs - 1)
   } else {
     # it is completely wrong for now, fix it later by writting its math
-    CGvfv <- (!is.null(mvmfd_obj)) C %*% G %*% fv_total
-    G_pc = (!is.null(mvmfd_obj)) t(fv_total)%*%G%*%fv_total 
+    CGvfv <- if (!is.null(mvmfd_obj)) C %*% G %*% fv_total
+    G_pc = if (!is.null(mvmfd_obj)) t(fv_total)%*%G%*%fv_total 
     coef_pc = CGv %*% solve(G_pc)
     total_variance = sum(diag((coef_pc%*%t(fv_total)) %*% G %*% t(coef_pc%*%t(fv_total))))
     G_pc_pre = t(v_total[, -i])%*%G%*%v_total[, -i]
