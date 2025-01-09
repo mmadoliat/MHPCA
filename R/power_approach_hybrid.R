@@ -391,15 +391,18 @@ handle_variance_update_hybrid <- function(i, n, C, nf_data, G, fv_total, nfv_tot
   nfv_total = cbind(nfv_total, nfv)
   ### correct it later
   if (i == 1 || all(all_equal_check) || T & (is.null(sparse_tuning) || all(unique(sparse_tuning) == 0))) {
-    CGfv <- C %*% G %*% fv
-    Xnfv <- nf_data %*% nfv
-    variance <- (t(Xnfv)%*%Xnfv+2*t(Xnfv)%*% CGfv+t(CGfv)%*% CGfv)/(mvmfd_obj$nobs - 1)
+    CGfv <- if (!is.null(mvmfd_obj)) C %*% G %*% fv else NULL
+    Xnfv <- if (!is.null(hd_obj$nf)) nf_data %*% nfv else NULL
+    if (!is.null(CGfv) && !is.null(Xnfv)) variance <- (t(Xnfv)%*%Xnfv+2*t(Xnfv)%*% CGfv+t(CGfv)%*% CGfv)/(mvmfd_obj$nobs - 1)
+    if (!is.null(CGfv) && is.null(Xnfv)) variance <- (t(CGfv)%*% CGfv)/(mvmfd_obj$nobs - 1)
+    if (is.null(CGfv) && !is.null(Xnfv)) variance <- (t(Xnfv)%*%Xnfv)/(hd_obj$nf$nobs - 1)
+    #variance <- (t(Xnfv)%*%Xnfv+2*t(Xnfv)%*% CGfv+t(CGfv)%*% CGfv)/(mvmfd_obj$nobs - 1)
     # CGv <- C %*% G %*% v
     # variance <- t(CGv)%*%CGv / (mvmfd_obj$nobs - 1)
   } else {
     # it is completely wrong for now, fix it later by writting its math
-    CGv <- C %*% G %*% fv_total
-    G_pc = t(fv_total)%*%G%*%fv_total
+    CGvfv <- (!is.null(mvmfd_obj)) C %*% G %*% fv_total
+    G_pc = (!is.null(mvmfd_obj)) t(fv_total)%*%G%*%fv_total 
     coef_pc = CGv %*% solve(G_pc)
     total_variance = sum(diag((coef_pc%*%t(fv_total)) %*% G %*% t(coef_pc%*%t(fv_total))))
     G_pc_pre = t(v_total[, -i])%*%G%*%v_total[, -i]
@@ -414,31 +417,42 @@ handle_variance_update_hybrid <- function(i, n, C, nf_data, G, fv_total, nfv_tot
 sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, sparse_tuning, sparse_tuning_type, centerfns, alpha_orth, K_fold, sparse_CV, smooth_GCV, penalize_nfd = FALSE, penalize_u = FALSE) {
   #######centralize########
   if (centerfns) hd_obj <- center_hd(hd_obj)
-  #C <- centralized_mvmfd(mf_obj, centerfns)
   mvmfd_obj <- hd_obj$mf
   nf_obj <- hd_obj$nf
-  C <- do.call("rbind",mvmfd_obj$coefs)
   if (!is.null(nf_obj)) {
     nf_data <- do.call("cbind",nf_obj$data)
   } else {
-      nf_data <- NULL
-    }
-  p <- mvmfd_obj$nvar
-  smooth_penalty <- MHPCA:::pen_fun(mvmfd_obj, type = smooth_tuning_type)
-  
-  # #######centralize########
-  # C <- centralized_mvmfd(mvmfd_obj, centerfns)
-  ########some initial setting#######
-  C <- t(C)
-  lsv <- c()
-  pc <- list()
-  variance <- vector()
-  smooth_tuning_result  <- list()
-  sparse_tuning_result  <- list()
-  G <- as.matrix(mvmfd_obj$basis$gram)
-  G_half <- sqrtm(G)
-  G_half_inverse = solve(G_half)
-  all_equal_check <- sapply(smooth_tuning, function(x) length(unique(x)) == 1)
+    nf_data <- NULL
+  }
+  if (!is.null(mvmfd_obj)){
+    C <- do.call("rbind",mvmfd_obj$coefs) 
+    p <- mvmfd_obj$nvar 
+    smooth_penalty <-  MHPCA:::pen_fun(mvmfd_obj, type = smooth_tuning_type) 
+    C <- t(C)
+    lsv <- c()
+    pc <- list()
+    variance <- vector()
+    smooth_tuning_result  <- list()
+    sparse_tuning_result  <- list()
+    G <- as.matrix(mvmfd_obj$basis$gram)
+    G_half <- sqrtm(G)
+    G_half_inverse = solve(G_half)
+    all_equal_check <- sapply(smooth_tuning, function(x) length(unique(x)) == 1)
+  } else {
+    C <- NULL 
+    p <- NULL
+    smooth_penalty <-  NULL
+    C <- t(C)
+    lsv <- c()
+    pc <- list()
+    variance <- vector()
+    smooth_tuning_result  <- list()
+    sparse_tuning_result  <- list()
+    G <- NULL
+    G_half <- NULL
+    G_half_inverse = NULL
+    all_equal_check <- NULL
+  }
   
   #########matrix input of smoothing parameters###########
   if (smooth_GCV == FALSE) {
@@ -460,18 +474,32 @@ sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type
         smooth_tuning_temp = expand.grid(lapply(smooth_tuning, function(x) x[i]))
       }
       if (i == 1) {
-        C_temp = C
-        nf_data_temp <- nf_data
+        if (!is.null(mvmfd_obj)) C_temp = C
+        if (!is.null(nf_obj)) nf_data_temp <- nf_data
       } 
       else{
-        b_original = t(C_temp)%*%u
-        C_temp = C_temp - u%*%t(b_original)
-        if (!is.null(nf_data)) nf_data_temp <- nf_data_temp - u %*% t(t(nf_data_temp)%*%u)
+        if (!is.null(mvmfd_obj)) {
+          b_original = t(C_temp)%*%u
+          C_temp = C_temp - u%*%t(b_original)
+        } else {
+          b_original = NULL
+          C_temp = NULL
+        }
+        
+        if (!is.null(nf_data)) nf_data_temp <- nf_data_temp - u %*% t(t(nf_data_temp)%*%u) else nf_data_temp <- NULL
       }
-      D <- MHPCA:::I_alpha(mvmfd_obj, smooth_tuning_temp) %*% smooth_penalty
-      S_2 <- solve(G + D)
-      S_2_inverse[[1]] = solve(S_2)
-      S_smooth[[1]] <- G_half %*% (S_2) %*% G_half
+      if (!is.null(mvmfd_obj)){
+        D <- MHPCA:::I_alpha(mvmfd_obj, smooth_tuning_temp) %*% smooth_penalty
+        S_2 <- solve(G + D)
+        S_2_inverse[[1]] = solve(S_2)
+        S_smooth[[1]] <- G_half %*% (S_2) %*% G_half
+      } else {
+        D <- NULL
+        S_2 <- NULL
+        S_2_inverse[[1]] = NULL
+        S_smooth[[1]] <- NULL
+      }
+      
       
       if (!is.null(sparse_tuning)) {
         sparse_tuning_temp <- if (sparse_CV == FALSE) sparse_tuning[i] else sparse_tuning
@@ -500,7 +528,8 @@ sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type
         CV_score[[i]] = cv_result[[4]]
       }
       GCV_score = c(GCV_score, cv_result[[5]])
-      test_result = init_sequential_hybrid(C_temp%*%G_half, nf_data_temp,sparse_result, sparse_tuning_type, S_smooth[[1]], S_2_inverse[[1]], G_half_inverse, G_half, penalize_nfd = penalize_nfd, penalize_u =  penalize_u)
+      CG_temp <- if(!is.null(mvmfd_obj)) C_temp%*%G_half else NULL
+      test_result = init_sequential_hybrid(CG_temp, nf_data_temp,sparse_result, sparse_tuning_type, S_smooth[[1]], S_2_inverse[[1]], G_half_inverse, G_half, penalize_nfd = penalize_nfd, penalize_u =  penalize_u)
       u = test_result[[3]]
       fv = test_result[[1]]
       nfv <- test_result[[2]]
@@ -532,14 +561,24 @@ sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type
                          width = 50,   # Progress bar width. Defaults to getOption("width")
                          char = "=")   # Character used to create the bar
     #####Do the following computation in advance to save computational cost#####
-    for (smooth_index in 1:dim(smooth_tuning_temp)[1]) {
-      setTxtProgressBar(pb, smooth_index)
-      D <- MHPCA:::I_alpha(mvmfd_obj, smooth_tuning_temp[smooth_index, ]) %*% smooth_penalty
-      S_2 <- solve(G + D)
-      S_2_inverse[[smooth_index]] = solve(S_2)
-      S_smooth[[smooth_index]] <- G_half %*% (S_2) %*% G_half
+    
+    if (!is.null(mvmfd_obj)){
+      for (smooth_index in 1:dim(smooth_tuning_temp)[1]) {
+        setTxtProgressBar(pb, smooth_index)
+        D <- MHPCA:::I_alpha(mvmfd_obj, smooth_tuning_temp[smooth_index, ]) %*% smooth_penalty
+        S_2 <- solve(G + D)
+        S_2_inverse[[smooth_index]] = solve(S_2)
+        S_smooth[[smooth_index]] <- G_half %*% (S_2) %*% G_half
+        close(pb)
+      }
+    } else {
+      D <- NULL
+      S_2 <- NULL
+      S_2_inverse[[smooth_index]] = NULL
+      S_smooth[[smooth_index]] <- NULL
     }
-    close(pb)
+   
+    
     fv_total = c()
     nfv_total = c()
     GCV_score = list()
@@ -555,8 +594,15 @@ sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type
         nf_data_temp <- nf_data
       } 
       else{
-        b_original = t(C_temp)%*%u
-        C_temp = C_temp - u%*%t(b_original)
+        if (!is.null(mvmfd_obj)){
+          b_original = t(C_temp)%*%u
+          C_temp = C_temp - u%*%t(b_original)
+          
+        } else {
+          b_original = NULL
+          C_temp = NULL
+          
+        }
         if (!is.null(nf_data)) nf_data_temp <- nf_data_temp - u %*% t(t(nf_data_temp)%*%u)
       }
       
@@ -577,7 +623,8 @@ sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type
         G_half_inverse = G_half_inverse, 
         S_smooth = S_smooth, 
         S_2_inverse = S_2_inverse, 
-        penalize_nfd = penalize_nfd, penalize_u = penalize_u
+        penalize_nfd = penalize_nfd, 
+        penalize_u = penalize_u
       )
       
       sparse_result = cv_result[[1]]
@@ -588,7 +635,8 @@ sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type
         CV_score[[i]] = cv_result[[4]]
       }
       GCV_score[[i]] = cv_result[[5]]
-      test_result = init_sequential_hybrid(C_temp%*%G_half, nf_data_temp,sparse_result, sparse_tuning_type, S_smooth[[smooth_result_index]], S_2_inverse[[smooth_result_index]], G_half_inverse, G_half, penalize_nfd = penalize_nfd, penalize_u = penalize_u)
+      CG_temp <- if(!is.null(mvmfd_obj)) C_temp%*%G_half else NULL
+      test_result = init_sequential_hybrid(CG_temp, nf_data_temp,sparse_result, sparse_tuning_type, S_smooth[[smooth_result_index]], S_2_inverse[[smooth_result_index]], G_half_inverse, G_half, penalize_nfd = penalize_nfd, penalize_u = penalize_u)
 
       u = test_result[[3]]
       fv = test_result[[1]]
@@ -620,24 +668,38 @@ joint_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, cen
   if (centerfns) hd_obj <- center_hd(hd_obj)
   mvmfd_obj <- hd_obj$mf
   nf_obj <- hd_obj$nf
-  if (!is.null(nf_obj)) {
-    nf_data <- do.call("cbind",nf_obj$data)} else {
-      nf_data <- NULL
-    }
-  p <- mvmfd_obj$nvar
-  smooth_penalty <- MHPCA:::pen_fun(mvmfd_obj, type = smooth_tuning_type)
-  C <- do.call("rbind",mvmfd_obj$coefs)  
-  ########some initial setting#######
-  C <- t(C)
-  lsv <- c()
-  pc <- list()
-  variance <- vector()
-  smooth_tuning_result  <- list()
-  sparse_tuning_result  <- list()
-  G <- as.matrix(mvmfd_obj$basis$gram)
-  G_half <- sqrtm(G)
-  G_half_inverse = solve(G_half)
-  ###################################
+  nf_data <- if (!is.null(nf_obj)) do.call("cbind",nf_obj$data) else NULL
+  if (!is.null(mvmfd_obj)){
+    p <- mvmfd_obj$nvar
+    smooth_penalty <- MHPCA:::pen_fun(mvmfd_obj, type = smooth_tuning_type)
+    C <- do.call("rbind",mvmfd_obj$coefs)  
+    ########some initial setting#######
+    C <- t(C)
+    lsv <- c()
+    pc <- list()
+    variance <- vector()
+    smooth_tuning_result  <- list()
+    sparse_tuning_result  <- list()
+    G <- as.matrix(mvmfd_obj$basis$gram)
+    G_half <- sqrtm(G)
+    G_half_inverse = solve(G_half)
+    ###################################
+  } else {
+    p <- NULL
+    smooth_penalty <- NULL
+    C <- NULL  
+    ########some initial setting#######
+    lsv <- c()
+    pc <- list()
+    variance <- vector()
+    smooth_tuning_result  <- list()
+    sparse_tuning_result  <- list()
+    G <- NULL
+    G_half <- NULL
+    G_half_inverse = NULL
+    ###################################
+  }
+  
   
   #####smoothing parameter#######
   if (is.null(smooth_tuning)) {
@@ -658,14 +720,25 @@ joint_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, cen
                        width = 50,   # Progress bar width. Defaults to getOption("width")
                        char = "=")   # Character used to create the bar
   #####Do the following computation in advance to save computational cost#####
-  for (smooth_index in 1:dim(smooth_tuning_temp)[1]) {
-    setTxtProgressBar(pb, smooth_index)
-    D <- MHPCA:::I_alpha(mvmfd_obj, smooth_tuning_temp[smooth_index, ]) %*% smooth_penalty
-    S_2 <- solve(G + D)
-    S_2_inverse[[smooth_index]] = solve(S_2)
-    S_smooth[[smooth_index]] <- G_half %*% (S_2) %*% G_half
+  if (!is.null(mvmfd_obj)){
+    for (smooth_index in 1:dim(smooth_tuning_temp)[1]) {
+      setTxtProgressBar(pb, smooth_index)
+      D <- MHPCA:::I_alpha(mvmfd_obj, smooth_tuning_temp[smooth_index, ]) %*% smooth_penalty
+      S_2 <- solve(G + D)
+      S_2_inverse[[smooth_index]] = solve(S_2)
+      S_smooth[[smooth_index]] <- G_half %*% (S_2) %*% G_half
+    }
+    close(pb)
+  } else {
+    for (smooth_index in 1:dim(smooth_tuning_temp)[1]) {
+      D <- NULL
+      S_2 <- NULL
+      S_2_inverse[[smooth_index]] = NULL
+      S_smooth[[smooth_index]] <- NULL
+    }
+   
   }
-  close(pb)
+  
   cat(sprintf("Computing PCs...\n"))
 
   # cv_result = gcv_joint(data = C, mvmfd_obj = mvmfd_obj, smooth_tuning = smooth_tuning, G = G, G_half = G_half, G_half_inverse = G_half_inverse, S_smooth = S_smooth, S_2_inverse = S_2_inverse, n = n)
@@ -682,7 +755,8 @@ joint_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, cen
   )
   smooth_result_index = cv_result[[2]]
   GCV_score = cv_result[[3]]
-  test_result = init_joint_hybrid(C%*%G_half, nf_data,S_smooth[[smooth_result_index]], S_2_inverse[[smooth_result_index]], G_half_inverse, G_half, n = n)
+  CG_temp <- if (!is.null(mvmfd_obj)) C%*%G_half else NULL
+  test_result = init_joint_hybrid(CG_temp, nf_data,S_smooth[[smooth_result_index]], S_2_inverse[[smooth_result_index]], G_half_inverse, G_half, n = n)
   u = test_result[[3]]
   fv = test_result[[1]]
   nfv <- test_result[[2]]
@@ -690,26 +764,31 @@ joint_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, cen
   temp_count <- 0
   
   temp_count <- 0
-  for (j in 1:p) {
-    index_start <- (temp_count + 1)
-    index_end <- (temp_count + prod(mvmfd_obj$basis$nbasis[[j]]))
-    pc[[j]] <- fv[index_start:index_end, ]
-    temp_count <- index_end
-  }
+  if (!is.null(mvmfd_obj)){
+    for (j in 1:p) {
+      index_start <- (temp_count + 1)
+      index_end <- (temp_count + prod(mvmfd_obj$basis$nbasis[[j]]))
+      pc[[j]] <- fv[index_start:index_end, ]
+      temp_count <- index_end
+    }
+  } else {
+    pc[[j]] <- NULL
+    }
+  
   
   lsv = cbind(lsv, u)
   fv_total = fv
   nfv_total = nfv
   for (k in 1:n) {
-    CGfv <- C %*% G %*% fv[,k]
-    if (!is.null(nf_data)) {
-      Xnfv <- nf_data %*% nfv[,k]
+    CGfv <- if (!is.null(mvmfd_obj)) C %*% G %*% fv[,k] else NULL
+    Xnfv <- if (!is.null(nf_data)) nf_data %*% nfv[,k] else NULL
+    if (!is.null(mvmfd_obj) && !is.null(nf_data) ) {
       variance[k] <- (t(Xnfv)%*%Xnfv+2*t(Xnfv)%*% CGfv+t(CGfv)%*% CGfv)/(mvmfd_obj$nobs - 1)
-    } else {
-        variance[k] <- (t(CGfv)%*% CGfv)/(mvmfd_obj$nobs - 1)
-    }
-    # CGv <- C %*% G %*% fv[, k]
-    # variance[k] <- t(CGv)%*%CGv / (mvmfd_obj$nobs - 1)
+    } else if (!is.null(mvmfd_obj) && is.null(nf_data) ){
+      variance[k] <- (t(CGfv)%*% CGfv)/(mvmfd_obj$nobs - 1)
+    } else if (is.null(mvmfd_obj) && !is.null(nf_data) ){
+      variance[k] <- (t(Xnfv)%*%Xnfv)/(nf_obj$nobs - 1)
+    } 
   }
   return(list(pc_fd = pc, pc_nfd = nfv_total,lsv = lsv, variance = variance, smooth_tuning_result = smooth_tuning_result, GCV_score = GCV_score))
 } 

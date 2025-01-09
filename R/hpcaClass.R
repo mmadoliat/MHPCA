@@ -156,7 +156,6 @@ mhpca <- R6::R6Class("mhpca",
                              result <- sequential_power_hybrid(hd_obj = hd_obj, n = ncomp, smooth_tuning = smooth_tuning, sparse_tuning=sparse_tuning, centerfns = centerfns, alpha_orth = alpha_orth, smooth_tuning_type = smoothing_type, sparse_tuning_type = sparse_type, K_fold = K_fold, sparse_CV, smooth_GCV)
                            } 
                            
-                           # else if (method == "power" & alpha_orth == "TRUE") {
                            else if (method == "eigen" || alpha_orth == "TRUE") {
                              # Adjust the vector to match the required lengths if they are incorrect
                              if (is.vector(smooth_tuning) & !is.list(smooth_tuning)) {
