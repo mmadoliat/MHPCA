@@ -78,6 +78,7 @@ mhpca <- R6::R6Class("mhpca",
                                                penalize_nfd = FALSE,
                                                penalize_u = FALSE) {
                            if (method == "power" & alpha_orth == "FALSE") {
+                             
                              # Adjust the vector length to match the required dimensions if they are incorrect
                              if (is.vector(smooth_tuning) & !is.list(smooth_tuning)) {
                                if (smooth_GCV == FALSE) {
@@ -232,6 +233,7 @@ mhpca <- R6::R6Class("mhpca",
                            # else if (method == "eigen") {
                            #   result <- eigen_approach(hd_obj = hd_obj, n = ncomp, alpha = smooth_tuning, centerfns = centerfns, penalty_type = smoothing_type)
                            # }
+                           
                            coef <- result$pc_fd
                            pcmfd <- list()
                            for (i in 1:hd_obj$mf$nvar) {
@@ -250,9 +252,20 @@ mhpca <- R6::R6Class("mhpca",
                                   end_row <- cumulative_indices[i + 1]
                                   t(nfd(pc_nfd[start_row:end_row, 1:ncomp, drop = FALSE]))
                                   })
-                           mfd_obj <- Mvmfd(pcmfd)
-                           #nfd_obj <- Mvnfd(pcnfd)
-                           hd_obj <- Hd(mfd_obj, Mvnfd(pcnfd))
+                           if (!is.null(hd_obj$mf) && !is.null(hd_obj$nf)){
+                             mfd_obj <- Mvmfd(pcmfd)
+                             nfd_obj <- Mvnfd(pcnfd)
+                             hd_obj <- Hd(mfd_obj, nfd_obj)
+                           } else if (!is.null(hd_obj$mf) && is.null(hd_obj$nf)){
+                             mfd_obj <- Mvmfd(pcmfd)
+                             nfd_obj <- NULL
+                             hd_obj <- Hd(mfd_obj)
+                           } else if (is.null(hd_obj$mf) && !is.null(hd_obj$nf)){
+                             mfd_obj <- NULL
+                             nfd_obj <- Mvnfd(pcnfd)
+                             hd_obj <- Hd(nfd_obj)
+                           }
+                           
                            private$.pc_hd <- hd_obj
                            #private$.pc_mfd <- mfd_obj
                            #private$.pc_nfd <- pcnfd #nfd_obj

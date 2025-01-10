@@ -1,7 +1,7 @@
 #' @importFrom expm sqrtm
 #' @importFrom utils  txtProgressBar setTxtProgressBar
 
-eigen_approach <- function(hd_obj, n, alpha, centerfns, penalty_type) {
+eigen_approach_hybrid <- function(hd_obj, n, alpha, centerfns, penalty_type) {
   mvmfd_obj <- hd_obj$mf
   mvnfd_obj <- hd_obj$nf
   if (!is.null(mvmfd_obj)){
