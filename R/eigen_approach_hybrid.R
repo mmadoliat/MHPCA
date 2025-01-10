@@ -110,12 +110,23 @@ eigen_approach <- function(hd_obj, n, alpha, centerfns, penalty_type) {
     for (k in 1:n) {
       b_temp <- cbind(b_temp, ((t(S) %*% u[, k]) %*% (t(u[, k]) %*% S %*% Matrix::bdiag(G,diag(ncol(mvnfd_data))) %*% t(S) %*% u[, k])^(-0.5)))
     }
-    bv_temp <- as.matrix(b_temp[(nrow(b_temp) - (ncol(mvnfd_data)- 1)):nrow(b_temp), ])
-    b_temp <- as.matrix(b_temp[1:(nrow(b_temp) - ncol(mvnfd_data)),])
+    if (!is.null(mvmfd_obj) && !is.null(mvnfd_obj)){
+      bv_temp <- as.matrix(b_temp[(nrow(b_temp) - (ncol(mvnfd_data)- 1)):nrow(b_temp), ])
+      b_temp <- as.matrix(b_temp[1:(nrow(b_temp) - ncol(mvnfd_data)),])
+      v_temp <- B_c %*% G %*% b_temp + mvnfd_data%*%bv_temp
+    } else if (!is.null(mvmfd_obj) && is.null(mvnfd_obj)){
+      bv_temp <- NULL
+      v_temp <- B_c %*% G %*% b_temp 
+    } else if (is.null(mvmfd_obj) && !is.null(mvnfd_obj)){
+      bv_temp <- b_temp
+      b_temp <- NULL
+      v_temp <- mvnfd_data%*%bv_temp
+    }
     
-    v_temp <- B_c %*% G %*% b_temp + mvnfd_data%*%bv_temp
+    
+    
     v_temp <- sweep(v_temp,2,sqrt(diag(t(v_temp)%*%v_temp)),"/")
-    GCV_score_temp = gcv_local(data = B_c, mvmfd_obj = mvmfd_obj, G = G, G_half = G_half, S_smooth = s_alpha_tilde, u = v_temp, smooth_tuning = alpha[j, ])
+    GCV_score_temp = if (!is.null(mvmfd_obj)) gcv_local(data = B_c, mvmfd_obj = mvmfd_obj, G = G, G_half = G_half, S_smooth = s_alpha_tilde, u = v_temp, smooth_tuning = alpha[j, ]) else NULL
     GCVs <- c(GCVs, GCV_score_temp)
     
     if (GCV_score_temp < GCV_score) {
@@ -131,12 +142,17 @@ eigen_approach <- function(hd_obj, n, alpha, centerfns, penalty_type) {
   }
   temp_count <- 0
   pc <- list()
-  for (i in 1:p) {
-    index_start <- (temp_count + 1)
-    index_end <- (temp_count + prod(mvmfd_obj$basis$nbasis[[i]]))
-    pc[[i]] <- b[index_start:index_end, ]
-    temp_count <- temp_count + prod(mvmfd_obj$basis$nbasis[[i]])
+  if (!is.null(mvmfd_obj)){
+    for (i in 1:p) {
+      index_start <- (temp_count + 1)
+      index_end <- (temp_count + prod(mvmfd_obj$basis$nbasis[[i]]))
+      pc[[i]] <- b[index_start:index_end, ]
+      temp_count <- temp_count + prod(mvmfd_obj$basis$nbasis[[i]])
+    }
+  } else {
+    pc <- NULL
   }
+  
   bv <- bv_temp
   #variance <- diag(t(b) %*% G %*% V %*% G %*% b)
   variance <- (diag(t(as.matrix(rbind(b,bv))) %*% V %*% as.matrix(rbind(b,bv))))
