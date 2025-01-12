@@ -41,16 +41,16 @@ init_sequential_hybrid <- function(fdata,
         nfv_new <- if (penalize_nfd) sparse_pen_fun(y = nfv_new, tuning_parameter = sparse_tuning_result, type = sparse_tuning_type) else nfv_new
       }
 
-      if (!is.null(nfdata) && !is.null(nfdata)) {
+      if (!is.null(fdata) && !is.null(nfdata)) {
         coef_norm <- sqrt(norm(fv_new, "2")^2 + norm(nfv_new, "2")^2)
         fv_new <- fv_new / coef_norm
         nfv_new <- nfv_new / coef_norm
-      } else if (!is.null(nfdata) && is.null(nfdata)) {
+      } else if (!is.null(fdata) && is.null(nfdata)) {
         coef_norm <- norm(fv_new, "2")
         fv_new <- fv_new / coef_norm
-      } else if (is.null(nfdata) && !is.null(nfdata)) {
+      } else if (is.null(fdata) && !is.null(nfdata)) {
         coef_norm <- norm(nfv_new, "2")
-        fv_new <- nfv_new / coef_norm
+        nfv_new <- nfv_new / coef_norm
       }
 
       y <- 0
@@ -160,7 +160,7 @@ init_joint_hybrid = function(fdata, nfdata, S_smooth = NULL, S_2_inverse = NULL,
     } else if (!is.null(fdata) && is.null(nfdata)){
       fv_new <- S_smooth%*%M
       nfv_new <- NULL
-    } else if (!is.null(fdata) && is.null(nfdata)){
+    } else if (is.null(fdata) && !is.null(nfdata)){
       nfv_new <- M
       fv_new <- NULL
     }
@@ -200,6 +200,7 @@ init_joint_hybrid = function(fdata, nfdata, S_smooth = NULL, S_2_inverse = NULL,
 
 #computing cv score for sparse tuning
 cv_local_hybrid = function(fdata, nfdata, G_half, K_fold, sparse_tuning_single, sparse_tuning_type, shuffled_row, group_size, penalize_nfd = FALSE, penalize_u = FALSE){
+  
   data_double_tilde = if (!is.null(fdata)) t(fdata%*%G_half) else NULL
   error_score_sparse = 0
   for (k in 1:K_fold) {
@@ -210,7 +211,7 @@ cv_local_hybrid = function(fdata, nfdata, G_half, K_fold, sparse_tuning_single, 
     nfdata_test = if (!is.null(nfdata)) nfdata[,rows_to_remove , drop = FALSE] else NULL
     u_test = init_sequential_hybrid(t(fdata_train), nfdata_train ,sparse_tuning_single, sparse_tuning_type, cv_flag = TRUE, penalize_nfd = penalize_nfd, penalize_u = penalize_u)
     fv_test = if (!is.null(fdata)) fdata_test%*%u_test else NULL
-    nfv_test = if (!is.null(fdata)) t(nfdata_test)%*%u_test else NULL
+    nfv_test = if (!is.null(nfdata)) t(nfdata_test)%*%u_test else NULL
     fv_test_smooth_back = if (!is.null(fdata)) (data_double_tilde%*%u_test)[rows_to_remove, , drop = FALSE] else NULL
     fdata_test_smooth_back = if (!is.null(fdata)) t(data_double_tilde)[, rows_to_remove, drop = FALSE] else NULL
     fv_error <- if (!is.null(fdata)) sum((t(fdata_test_smooth_back)-fv_test_smooth_back%*%t(u_test))^2) else 0
@@ -266,39 +267,45 @@ handle_smooth_tuning_hybrid <- function(fdata, nfdata, G_half, G, S_smooth, S_2_
                                         hd_obj, sparse_tuning_selection = NULL, sparse_tuning_type = NULL, smooth_tuning, 
                                         CV_score_smooth, power_type = "sequential", n = NULL, pb, 
                                         count, penalize_nfd = F, penalize_u = FALSE) {
-  mvmfd_obj <- hd_obj$mf
-  gcv_scores <- NULL
-  smooth_tuning_selection <- NULL
-  index_selection <- NULL
-  if (is.null(smooth_tuning)) {
-    count <- count + 1
-    setTxtProgressBar(pb, count)
-    smooth_tuning_selection <- expand.grid(lapply(rep(0, mvmfd_obj$nvar), function(x) x[1]))
-    index_selection <- 1
-  } else {
-    for (smooth_index in 1:dim(smooth_tuning)[1]) {
+  if (!is.null(hd_obj$mf)){
+    mvmfd_obj <- hd_obj$mf
+    gcv_scores <- NULL
+    smooth_tuning_selection <- NULL
+    index_selection <- NULL
+    if (is.null(smooth_tuning)) {
       count <- count + 1
       setTxtProgressBar(pb, count)
-      if (all(smooth_tuning == 0)) {
-        S_smooth[[smooth_index]] <- diag(dim(G)[1])
-      }
-      if (power_type == "sequential") {
-        test_temp <- init_sequential_hybrid(fdata %*% G_half, nfdata, sparse_tuning_selection, sparse_tuning_type, S_smooth[[smooth_index]], 
-                                            S_2_inverse[[smooth_index]], G_half_inverse, G_half,penalize_nfd = penalize_nfd, penalize_u = penalize_u)
-      } else {
-        test_temp <- init_joint_hybrid(fdata %*% G_half, nfdata ,S_smooth[[smooth_index]], S_2_inverse[[smooth_index]], G_half_inverse, G_half, n = n)
-      }
-      u_temp <- test_temp[[3]]
-      smooth_score <- gcv_local_hybrid(fdata, nfdata, hd_obj, G, G_half, S_smooth[[smooth_index]], u_temp, smooth_tuning = smooth_tuning[smooth_index, ])
-      gcv_scores <- c(gcv_scores, smooth_score)
-      if (smooth_score <= CV_score_smooth) {
-        CV_score_smooth <- smooth_score
-        smooth_tuning_selection <- smooth_tuning[smooth_index, ]
-        index_selection <- smooth_index
+      smooth_tuning_selection <- expand.grid(lapply(rep(0, mvmfd_obj$nvar), function(x) x[1]))
+      index_selection <- 1
+    } else {
+      for (smooth_index in 1:dim(smooth_tuning)[1]) {
+        count <- count + 1
+        setTxtProgressBar(pb, count)
+        if (all(smooth_tuning == 0)) {
+          S_smooth[[smooth_index]] <- diag(dim(G)[1])
+        }
+        if (power_type == "sequential") {
+          test_temp <- init_sequential_hybrid(fdata %*% G_half, nfdata, sparse_tuning_selection, sparse_tuning_type, S_smooth[[smooth_index]], 
+                                              S_2_inverse[[smooth_index]], G_half_inverse, G_half,penalize_nfd = penalize_nfd, penalize_u = penalize_u)
+        } else {
+          test_temp <- init_joint_hybrid(fdata %*% G_half, nfdata ,S_smooth[[smooth_index]], S_2_inverse[[smooth_index]], G_half_inverse, G_half, n = n)
+        }
+        u_temp <- test_temp[[3]]
+        smooth_score <- gcv_local_hybrid(fdata, nfdata, hd_obj, G, G_half, S_smooth[[smooth_index]], u_temp, smooth_tuning = smooth_tuning[smooth_index, ])
+        gcv_scores <- c(gcv_scores, smooth_score)
+        if (smooth_score <= CV_score_smooth) {
+          CV_score_smooth <- smooth_score
+          smooth_tuning_selection <- smooth_tuning[smooth_index, ]
+          index_selection <- smooth_index
+        }
       }
     }
+    return(list(smooth_tuning_selection = smooth_tuning_selection, index_selection = index_selection, gcv_scores = gcv_scores))
+  } else {
+    return(NULL)
   }
-  return(list(smooth_tuning_selection = smooth_tuning_selection, index_selection = index_selection, gcv_scores = gcv_scores))
+  
+  
 }
 
 # Function to handle sparse tuning selection
@@ -332,6 +339,7 @@ cv_gcv_sequential_hybrid <- function(fdata, nfdata, hd_obj, smooth_tuning, spars
   CV_score_sparse <- CV_score_smooth <- Inf
   result <- c()
   count <- 0
+  #browser()
   shuffled_row <- sample(ncol(fdata))
   group_size <- length(shuffled_row) / K_fold
   
@@ -442,7 +450,6 @@ sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type
     C <- NULL 
     p <- NULL
     smooth_penalty <-  NULL
-    C <- t(C)
     lsv <- c()
     pc <- list()
     variance <- vector()
@@ -469,7 +476,7 @@ sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type
     for (i in 1:n) {
       cat(sprintf("Computing the %s PC...\n", ordinal_msg(i)))
       if (is.null(smooth_tuning)) {
-        smooth_tuning_temp = expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1]))
+        smooth_tuning_temp = if (!is.null(mvmfd_obj)) expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1])) else expand.grid(lapply(rep(0,mvnfd_obj$nvar), function(x) x[1]))
       } else{
         smooth_tuning_temp = expand.grid(lapply(smooth_tuning, function(x) x[i]))
       }
@@ -547,7 +554,7 @@ sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type
   #########sequential inputs of smoothing parameters###########
   else{
     if (is.null(smooth_tuning)) {
-      smooth_tuning_temp = expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1]))
+      smooth_tuning_temp = if (!is.null(mvmfd_obj)) expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1])) else expand.grid(lapply(rep(0,mvnfd_obj$nvar), function(x) x[1]))
     } else{
       smooth_tuning_temp <- expand.grid(smooth_tuning)
     }
@@ -574,8 +581,8 @@ sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type
     } else {
       D <- NULL
       S_2 <- NULL
-      S_2_inverse[[smooth_index]] = NULL
-      S_smooth[[smooth_index]] <- NULL
+      S_2_inverse = NULL
+      S_smooth <- NULL
     }
    
     
@@ -663,6 +670,7 @@ sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type
 
 # joint smooth and sparse power algorithm
 joint_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, centerfns, alpha_orth) {
+  
   print("*****")
   #######centralize########
   if (centerfns) hd_obj <- center_hd(hd_obj)
@@ -703,7 +711,7 @@ joint_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, cen
   
   #####smoothing parameter#######
   if (is.null(smooth_tuning)) {
-    smooth_tuning_temp = expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1]))
+    smooth_tuning_temp = if (!is.null(mvmfd_obj)) expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1])) else NULL
   } else{
     smooth_tuning_temp <- expand.grid(smooth_tuning)
   }
@@ -712,13 +720,17 @@ joint_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, cen
   ####joint power####
   # I_a <- D <- S_2 <- S_smooth <- S_2_inverse <- list()
   S_smooth <- S_2_inverse <- list()
-  cat("Preprocessing...\n")
   n_iter1 <- dim(smooth_tuning_temp)[1]
-  pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
-                       max = n_iter1, # Maximum value of the progress bar
-                       style = 3,    # Progress bar style (also available style = 1 and style = 2)
-                       width = 50,   # Progress bar width. Defaults to getOption("width")
-                       char = "=")   # Character used to create the bar
+  if (!is.null(mvmfd_obj)){
+    cat("Preprocessing...\n")
+    
+    pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
+                         max = n_iter1, # Maximum value of the progress bar
+                         style = 3,    # Progress bar style (also available style = 1 and style = 2)
+                         width = 50,   # Progress bar width. Defaults to getOption("width")
+                         char = "=")   # Character used to create the bar
+  }
+  
   #####Do the following computation in advance to save computational cost#####
   if (!is.null(mvmfd_obj)){
     for (smooth_index in 1:dim(smooth_tuning_temp)[1]) {
@@ -730,16 +742,16 @@ joint_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, cen
     }
     close(pb)
   } else {
-    for (smooth_index in 1:dim(smooth_tuning_temp)[1]) {
       D <- NULL
       S_2 <- NULL
-      S_2_inverse[[smooth_index]] = NULL
-      S_smooth[[smooth_index]] <- NULL
-    }
-   
+      S_2_inverse = NULL
+      S_smooth <- NULL
   }
   
-  cat(sprintf("Computing PCs...\n"))
+  if (!is.null(mvmfd_obj)){
+    cat(sprintf("Computing PCs...\n"))
+  }
+  
 
   # cv_result = gcv_joint(data = C, mvmfd_obj = mvmfd_obj, smooth_tuning = smooth_tuning, G = G, G_half = G_half, G_half_inverse = G_half_inverse, S_smooth = S_smooth, S_2_inverse = S_2_inverse, n = n)
   cv_result = gcv_joint_hybrid(
@@ -772,7 +784,7 @@ joint_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, cen
       temp_count <- index_end
     }
   } else {
-    pc[[j]] <- NULL
+    pc <- NULL
     }
   
   

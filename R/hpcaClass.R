@@ -77,76 +77,83 @@ mhpca <- R6::R6Class("mhpca",
                                                smooth_GCV, 
                                                penalize_nfd = FALSE,
                                                penalize_u = FALSE) {
+                           
+                           if (is.mfd(hd_obj) || is.mvmfd(hd_obj) || is.nfd(hd_obj) || is.mvnfd(hd_obj)){
+                             hd_obj <- Hd(hd_obj)
+                           }
                            if (method == "power" & alpha_orth == "FALSE") {
-                             
-                             # Adjust the vector length to match the required dimensions if they are incorrect
-                             if (is.vector(smooth_tuning) & !is.list(smooth_tuning)) {
-                               if (smooth_GCV == FALSE) {
-                                 if (length(smooth_tuning) != ncomp) {
-                                   warning("The length of 'smooth_tuning' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
-                                   smooth_tuning <- rep(smooth_tuning, length.out = ncomp)
-                                 }
-                                 smooth_tuning <- replicate(hd_obj$mf$nvar, smooth_tuning, simplify = FALSE)
-                               }
-                               else{
-                                 warning("The length of 'smooth_tuning' did not match 'hd_obj$mf$nvar' and has been adjusted accordingly.", call. = FALSE)
-                                 smooth_tuning <- replicate(hd_obj$mf$nvar, smooth_tuning, simplify = FALSE)
-                               }
-                             }
-                             
-                             # Adjust the matrix to match the required dimensions if they are incorrect
-                             else if (is.matrix(smooth_tuning)) {
-                               if (smooth_GCV == FALSE) {
-                                 if (!all(dim(smooth_tuning) == c(hd_obj$mf$nvar, ncomp))) {
-                                   smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = hd_obj$mf$nvar), rep(1:ncol(smooth_tuning), length.out = ncomp)]
-                                   # print(smooth_tuning)
-                                   smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                                   # print(smooth_tuning)
-                                   warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
-                                 } else{
-                                   smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                                 }
-                               }
-                               else{
-                                 if (dim(smooth_tuning)[1] != hd_obj$mf$nvar) {
-                                   smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = hd_obj$mf$nvar), , drop = FALSE][1:hd_obj$mf$nvar, , drop = FALSE]
-                                   smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                                   warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
+                             if (!is.null(hd_obj$mf)){
+                               # Adjust the vector length to match the required dimensions if they are incorrect
+                               if (is.vector(smooth_tuning) & !is.list(smooth_tuning)) {
+                                 if (smooth_GCV == FALSE) {
+                                   if (length(smooth_tuning) != ncomp) {
+                                     warning("The length of 'smooth_tuning' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
+                                     smooth_tuning <- rep(smooth_tuning, length.out = ncomp)
+                                   }
+                                   smooth_tuning <- replicate(hd_obj$mf$nvar, smooth_tuning, simplify = FALSE)
                                  }
                                  else{
-                                   smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
+                                   warning("The length of 'smooth_tuning' did not match 'hd_obj$mf$nvar' and has been adjusted accordingly.", call. = FALSE)
+                                   smooth_tuning <- replicate(hd_obj$mf$nvar, smooth_tuning, simplify = FALSE)
                                  }
                                }
-                             }
-                             
-                             # Adjust the list length and element sizes to match the required dimensions if they are incorrect
-                             else if (is.list(smooth_tuning)) {
-                               if (smooth_GCV == FALSE) {
-                                 if (length(smooth_tuning) != hd_obj$mf$nvar) {
-                                   warning("Adjusting 'smooth_tuning' to match 'hd_obj$mf$nvar'.", call. = FALSE)
-                                   smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)
-                                 }
-                                 smooth_tuning <- lapply(smooth_tuning, function(vec) {
-                                   if (length(vec) != ncomp) {
-                                     warning("Adjusting vector length in 'smooth_tuning' to match 'ncomp'.", call. = FALSE)
-                                     vec <- rep(vec, length.out = ncomp)
+                               
+                               # Adjust the matrix to match the required dimensions if they are incorrect
+                               else if (is.matrix(smooth_tuning)) {
+                                 if (smooth_GCV == FALSE) {
+                                   if (!all(dim(smooth_tuning) == c(hd_obj$mf$nvar, ncomp))) {
+                                     smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = hd_obj$mf$nvar), rep(1:ncol(smooth_tuning), length.out = ncomp)]
+                                     # print(smooth_tuning)
+                                     smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
+                                     # print(smooth_tuning)
+                                     warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
+                                   } else{
+                                     smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
                                    }
-                                   vec
-                                 })
-                               }
-                               else{
-                                 if (length(smooth_tuning) != hd_obj$mf$nvar) {
-                                   warning("Adjusting 'smooth_tuning' to match 'hd_obj$mf$nvar'.", call. = FALSE)
-                                   smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)
                                  }
-                                 
-                                 # smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)[1:hd_obj$mf$nvar]
+                                 else{
+                                   if (dim(smooth_tuning)[1] != hd_obj$mf$nvar) {
+                                     smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = hd_obj$mf$nvar), , drop = FALSE][1:hd_obj$mf$nvar, , drop = FALSE]
+                                     smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
+                                     warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
+                                   }
+                                   else{
+                                     smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
+                                   }
+                                 }
                                }
+                               
+                               # Adjust the list length and element sizes to match the required dimensions if they are incorrect
+                               else if (is.list(smooth_tuning)) {
+                                 if (smooth_GCV == FALSE) {
+                                   if (length(smooth_tuning) != hd_obj$mf$nvar) {
+                                     warning("Adjusting 'smooth_tuning' to match 'hd_obj$mf$nvar'.", call. = FALSE)
+                                     smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)
+                                   }
+                                   smooth_tuning <- lapply(smooth_tuning, function(vec) {
+                                     if (length(vec) != ncomp) {
+                                       warning("Adjusting vector length in 'smooth_tuning' to match 'ncomp'.", call. = FALSE)
+                                       vec <- rep(vec, length.out = ncomp)
+                                     }
+                                     vec
+                                   })
+                                 }
+                                 else{
+                                   if (length(smooth_tuning) != hd_obj$mf$nvar) {
+                                     warning("Adjusting 'smooth_tuning' to match 'hd_obj$mf$nvar'.", call. = FALSE)
+                                     smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)
+                                   }
+                                   
+                                   # smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)[1:hd_obj$mf$nvar]
+                                 }
+                               }
+                               
+                               if (!is.null(smooth_tuning)) {
+                                 names(smooth_tuning) <- paste0("var", 1:hd_obj$mf$nvar)
+                               }
+                               
                              }
                              
-                             if (!is.null(smooth_tuning)) {
-                               names(smooth_tuning) <- paste0("var", 1:hd_obj$mf$nvar)
-                             }
                              
                              # Adjust the list length and element sizes to match the required dimensions if they are incorrect
                              if (sparse_CV == FALSE & length(sparse_tuning) != ncomp & !is.null(sparse_tuning)) {
@@ -155,73 +162,67 @@ mhpca <- R6::R6Class("mhpca",
                              }
                              
                              result <- sequential_power_hybrid(hd_obj = hd_obj, n = ncomp, smooth_tuning = smooth_tuning, sparse_tuning=sparse_tuning, centerfns = centerfns, alpha_orth = alpha_orth, smooth_tuning_type = smoothing_type, sparse_tuning_type = sparse_type, K_fold = K_fold, sparse_CV, smooth_GCV)
-                           } 
-                           
-                           else if (method == "eigen" || alpha_orth == "TRUE") {
-                             # Adjust the vector to match the required lengths if they are incorrect
-                             if (is.vector(smooth_tuning) & !is.list(smooth_tuning)) {
-                               if (smooth_GCV == FALSE) {
-                                 if (length(smooth_tuning) != hd_obj$mf$nvar) {
-                                   warning("The length of 'smooth_tuning' did not match number of variables and has been adjusted accordingly.", call. = FALSE)
-                                   smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)
-                                 }
-                                 smooth_tuning <- lapply(1:hd_obj$mf$nvar, function(i) smooth_tuning[i])
-                               }
-                               else{
-                                 warning("The length of 'smooth_tuning' did not match number of variables and has been adjusted accordingly.", call. = FALSE)
-                                 smooth_tuning <- replicate(hd_obj$mf$nvar, smooth_tuning, simplify = FALSE)
-                               }
-                             }
-                             
-                             # Adjust the matrix to match the required if they are incorrect
-                             else if (is.matrix(smooth_tuning)) {
-                               if (smooth_GCV == FALSE) {
-                                 if (!all(dim(smooth_tuning) == c(hd_obj$mf$nvar, 1))) {
-                                   smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = hd_obj$mf$nvar), rep(1:ncol(smooth_tuning), length.out = 1)]
-                                   smooth_tuning <- as.list(smooth_tuning)
-                                   warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
+                           } else if (method == "eigen" || alpha_orth == "TRUE") {
+                             if (!is.null(hd_obj$mf)){
+                               # Adjust the vector to match the required lengths if they are incorrect
+                               if (is.vector(smooth_tuning) & !is.list(smooth_tuning)) {
+                                 if (smooth_GCV == FALSE) {
+                                   if (length(smooth_tuning) != hd_obj$mf$nvar) {
+                                     warning("The length of 'smooth_tuning' did not match number of variables and has been adjusted accordingly.", call. = FALSE)
+                                     smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)
+                                   }
+                                   smooth_tuning <- lapply(1:hd_obj$mf$nvar, function(i) smooth_tuning[i])
                                  } else{
-                                   smooth_tuning <- as.list(smooth_tuning)
+                                   warning("The length of 'smooth_tuning' did not match number of variables and has been adjusted accordingly.", call. = FALSE)
+                                   smooth_tuning <- replicate(hd_obj$mf$nvar, smooth_tuning, simplify = FALSE)
                                  }
-                               } 
-                               else{
-                                 if (dim(smooth_tuning)[1] != hd_obj$mf$nvar) {
-                                   smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = hd_obj$mf$nvar), , drop = FALSE][1:hd_obj$mf$nvar, , drop = FALSE]
-                                   smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                                   warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
+                               } else if (is.matrix(smooth_tuning)) { # Adjust the matrix to match the required if they are incorrect
+                                 if (smooth_GCV == FALSE) {
+                                   if (!all(dim(smooth_tuning) == c(hd_obj$mf$nvar, 1))) {
+                                     smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = hd_obj$mf$nvar), rep(1:ncol(smooth_tuning), length.out = 1)]
+                                     smooth_tuning <- as.list(smooth_tuning)
+                                     warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
+                                   } else{
+                                     smooth_tuning <- as.list(smooth_tuning)
+                                   }
+                                 } 
+                                 else{
+                                   if (dim(smooth_tuning)[1] != hd_obj$mf$nvar) {
+                                     smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = hd_obj$mf$nvar), , drop = FALSE][1:hd_obj$mf$nvar, , drop = FALSE]
+                                     smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
+                                     warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
+                                   }
+                                   else{
+                                     smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
+                                   }
+                                 }
+                               } else if (is.list(smooth_tuning)) { # Adjust the list length and element sizes to match the required dimensions if they are incorrect
+                                 if (smooth_GCV == FALSE) {
+                                   if (length(smooth_tuning) != hd_obj$mf$nvar) {
+                                     warning("Adjusting 'smooth_tuning' to match 'hd_obj$mf$nvar'.", call. = FALSE)
+                                     smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)
+                                   }
+                                   smooth_tuning <- lapply(smooth_tuning, function(vec) {
+                                     if (length(vec) != 1) {
+                                       warning("Adjusting vector length in 'smooth_tuning' to match 'ncomp'.", call. = FALSE)
+                                       vec <- rep(vec, length.out = 1)
+                                     }
+                                     vec
+                                   })
                                  }
                                  else{
-                                   smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                                 }
-                               }
-                             }
-                             
-                             # Adjust the list length and element sizes to match the required dimensions if they are incorrect
-                             else if (is.list(smooth_tuning)) {
-                               if (smooth_GCV == FALSE) {
-                                 if (length(smooth_tuning) != hd_obj$mf$nvar) {
-                                   warning("Adjusting 'smooth_tuning' to match 'hd_obj$mf$nvar'.", call. = FALSE)
-                                   smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)
-                                 }
-                                 smooth_tuning <- lapply(smooth_tuning, function(vec) {
-                                   if (length(vec) != 1) {
-                                     warning("Adjusting vector length in 'smooth_tuning' to match 'ncomp'.", call. = FALSE)
-                                     vec <- rep(vec, length.out = 1)
+                                   if (length(smooth_tuning) != hd_obj$mf$nvar) {
+                                     warning("Adjusting 'smooth_tuning' to match 'hd_obj$mf$nvar'.", call. = FALSE)
+                                     smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)[1:hd_obj$mf$nvar]
                                    }
-                                   vec
-                                 })
-                               }
-                               else{
-                                 if (length(smooth_tuning) != hd_obj$mf$nvar) {
-                                   warning("Adjusting 'smooth_tuning' to match 'hd_obj$mf$nvar'.", call. = FALSE)
-                                   smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)[1:hd_obj$mf$nvar]
                                  }
+                               }
+                               
+                               if (!is.null(smooth_tuning)) {
+                                 names(smooth_tuning) <- paste0("var", 1:hd_obj$mf$nvar)
                                }
                              }
                              
-                             if (!is.null(smooth_tuning)) {
-                               names(smooth_tuning) <- paste0("var", 1:hd_obj$mf$nvar)
-                             }
                              if (method == "power") {
                                result <- joint_power_hybrid(hd_obj = hd_obj, n = ncomp, smooth_tuning = smooth_tuning, centerfns = centerfns, alpha_orth = alpha_orth, smooth_tuning_type = smoothing_type)
                              } else{
@@ -236,22 +237,32 @@ mhpca <- R6::R6Class("mhpca",
                            
                            coef <- result$pc_fd
                            pcmfd <- list()
-                           for (i in 1:hd_obj$mf$nvar) {
-                             if (hd_obj$mf$basis$dimSupp[i] == 1) {
-                               pcmfd[[i]] <- Mfd(X = coef[[i]], mdbs = hd_obj$mf$basis$basis[[i]], method = "coefs")
-                             } else {
-                               coef_new <- array(coef[[i]], dim = c(hd_obj$mf$basis$basis[[i]]$nbasis, ncol(coef[[i]])))
-                               pcmfd[[i]] <- Mfd(X = coef_new, mdbs = hd_obj$mf$basis$basis[[i]], method = "coefs")
+                           if (!is.null(hd_obj$mf)){
+                             for (i in 1:hd_obj$mf$nvar) {
+                               if (hd_obj$mf$basis$dimSupp[i] == 1) {
+                                 pcmfd[[i]] <- Mfd(X = coef[[i]], mdbs = hd_obj$mf$basis$basis[[i]], method = "coefs")
+                               } else {
+                                 coef_new <- array(coef[[i]], dim = c(hd_obj$mf$basis$basis[[i]]$nbasis, ncol(coef[[i]])))
+                                 pcmfd[[i]] <- Mfd(X = coef_new, mdbs = hd_obj$mf$basis$basis[[i]], method = "coefs")
+                               }
                              }
+                           } else {
+                             pcmfd <- NULL
                            }
-                           pc_nfd <- result$pc_nfd
-                           pc_nfd_len <- sapply(hd_obj$nf$features,length)
-                           cumulative_indices <- c(0, cumsum(pc_nfd_len))
-                           pcnfd <- lapply(seq_along(pc_nfd_len), function(i) {
-                                  start_row <- cumulative_indices[i] + 1
-                                  end_row <- cumulative_indices[i + 1]
-                                  t(nfd(pc_nfd[start_row:end_row, 1:ncomp, drop = FALSE]))
-                                  })
+                           
+                           if (!is.null(hd_obj$nf)){
+                             pc_nfd <- result$pc_nfd
+                             pc_nfd_len <- sapply(hd_obj$nf$features,length)
+                             cumulative_indices <- c(0, cumsum(pc_nfd_len))
+                             pcnfd <- lapply(seq_along(pc_nfd_len), function(i) {
+                               start_row <- cumulative_indices[i] + 1
+                               end_row <- cumulative_indices[i + 1]
+                               t(nfd(pc_nfd[start_row:end_row, 1:ncomp, drop = FALSE]))
+                             })
+                           } else {
+                             pcnfd <- NULL
+                           }
+                           
                            if (!is.null(hd_obj$mf) && !is.null(hd_obj$nf)){
                              mfd_obj <- Mvmfd(pcmfd)
                              nfd_obj <- Mvnfd(pcnfd)
@@ -259,11 +270,11 @@ mhpca <- R6::R6Class("mhpca",
                            } else if (!is.null(hd_obj$mf) && is.null(hd_obj$nf)){
                              mfd_obj <- Mvmfd(pcmfd)
                              nfd_obj <- NULL
-                             hd_obj <- Hd(mfd_obj)
+                             hd_obj <- mfd_obj #Hd(mfd_obj)
                            } else if (is.null(hd_obj$mf) && !is.null(hd_obj$nf)){
                              mfd_obj <- NULL
                              nfd_obj <- Mvnfd(pcnfd)
-                             hd_obj <- Hd(nfd_obj)
+                             hd_obj <- nfd_obj # Hd(nfd_obj)
                            }
                            
                            private$.pc_hd <- hd_obj

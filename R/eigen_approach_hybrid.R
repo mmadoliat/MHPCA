@@ -26,6 +26,7 @@ eigen_approach_hybrid <- function(hd_obj, n, alpha, centerfns, penalty_type) {
     
     B <- c()
     B_c <- c()
+    
     if (centerfns) {
       for (i in 1:p) {
         if (is.matrix(mvmfd_obj$coefs[[i]])) {
@@ -40,6 +41,9 @@ eigen_approach_hybrid <- function(hd_obj, n, alpha, centerfns, penalty_type) {
      if (!is.null(mvnfd_obj)) { 
        mvnfd_obj <- center_mvnfd(mvnfd_obj)
        mvnfd_data <- do.call("cbind",mvnfd_obj$data)
+     } else {
+         mvnfd_obj <- NULL
+         mvnfd_data <- NULL
        }
     } else {
       for (i in 1:p) {
@@ -51,18 +55,19 @@ eigen_approach_hybrid <- function(hd_obj, n, alpha, centerfns, penalty_type) {
         }
       }
       B_c <- B
+      mvnfd_data <- if(!is.null(mvnfd_obj)) do.call("cbind",mvnfd_obj$data) else NULL
     }
     B <- t(B)
     B_c <- t(B_c)
     
   } else {
     m.rep <- mvnfd_obj$nobs
-    p <- indices <- alpha <- penalty <-  G_half <- B <- B_c <- NULL
+    p <- indices <-  penalty <-  G_half <- B <- B_c <- NULL
+    alpha <- expand.grid(1)
     G <- matrix(nrow=0,ncol=0)
     mvnfd_obj <- if (centerfns) center_mvnfd(mvnfd_obj) 
     mvnfd_data <- do.call("cbind",mvnfd_obj$data)
     }
- 
   # B_subtilde <- B_c %*% G_half
   # I_matrix <- diag(1, m.rep)
   # J <- matrix(1, m.rep, m.rep)
@@ -115,31 +120,39 @@ eigen_approach_hybrid <- function(hd_obj, n, alpha, centerfns, penalty_type) {
       b_temp <- as.matrix(b_temp[1:(nrow(b_temp) - ncol(mvnfd_data)),])
       v_temp <- B_c %*% G %*% b_temp + mvnfd_data%*%bv_temp
     } else if (!is.null(mvmfd_obj) && is.null(mvnfd_obj)){
+      b_temp <- as.matrix(b_temp)
       bv_temp <- NULL
       v_temp <- B_c %*% G %*% b_temp 
     } else if (is.null(mvmfd_obj) && !is.null(mvnfd_obj)){
-      bv_temp <- b_temp
+      bv_temp <- as.matrix(b_temp)
       b_temp <- NULL
       v_temp <- mvnfd_data%*%bv_temp
     }
-    
-    
-    
+
+    v_temp <- as.matrix(v_temp)
     v_temp <- sweep(v_temp,2,sqrt(diag(t(v_temp)%*%v_temp)),"/")
     GCV_score_temp = if (!is.null(mvmfd_obj)) gcv_local(data = B_c, mvmfd_obj = mvmfd_obj, G = G, G_half = G_half, S_smooth = s_alpha_tilde, u = v_temp, smooth_tuning = alpha[j, ]) else NULL
     GCVs <- c(GCVs, GCV_score_temp)
-    
-    if (GCV_score_temp < GCV_score) {
-      b <- b_temp
+    if (!is.null(mvmfd_obj)){
+      if (GCV_score_temp < GCV_score) {
+        b <- b_temp
+        v <- v_temp
+        GCV_score <- GCV_score_temp
+        GCV_result <- alpha[j, ]
+      }
+    } else {
+      b <- GCV_score <- GCV_result <- NULL
       v <- v_temp
-      GCV_score <- GCV_score_temp
-      GCV_result <- alpha[j, ]
     }
+    
   }
   close(pb) # Close the connection
-  if (p == 2) {
-    GCVs <- matrix(GCVs, nrow = gcv_row, ncol = gcv_column)
+  if (!is.null(mvmfd_obj)){
+    if (p == 2) {
+      GCVs <- matrix(GCVs, nrow = gcv_row, ncol = gcv_column)
+    }
   }
+  
   temp_count <- 0
   pc <- list()
   if (!is.null(mvmfd_obj)){
@@ -158,9 +171,6 @@ eigen_approach_hybrid <- function(hd_obj, n, alpha, centerfns, penalty_type) {
   variance <- (diag(t(as.matrix(rbind(b,bv))) %*% V %*% as.matrix(rbind(b,bv))))
   lsv <- scale(v, center = FALSE, scale = sqrt(colSums(as.matrix(v)^2)))
   #lsv <- (B_c %*% G %*% b) %*% solve(diag(sqrt(diag(t(B_c %*% G %*% b) %*% (B_c %*% G %*% b))),nc=ncol(b)))
-  bbbb <- c()
-  for (k in 1:p) {
-    bbbb <- rbind(bbbb, pc[[k]])
-  }
+  
   return(list(pc_fd = pc, lsv = lsv, variance = variance, GCV_result = GCV_result, GCVs = GCVs,pc_nfd = bv))
 }
