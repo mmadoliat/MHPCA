@@ -71,6 +71,7 @@ init_joint = function(data, S_smooth = NULL, S_2_inverse = NULL, G_half_inverse 
 
 #computing cv score for sparse tuning
 cv_local = function(data, G_half, K_fold, sparse_tuning_single, sparse_tuning_type, shuffled_row, group_size){
+  
   data_double_tilde = t(data%*%G_half)
   error_score_sparse = 0
   for (k in 1:K_fold) {
@@ -83,11 +84,13 @@ cv_local = function(data, G_half, K_fold, sparse_tuning_single, sparse_tuning_ty
     data_test_smooth_back = t(data_double_tilde)[, rows_to_remove]
     error_score_sparse = error_score_sparse + sum((t(data_test_smooth_back)-v_test_smooth_back%*%t(u_test))^2)
   }
+  print((error_score_sparse/ncol(data)))
   return(error_score_sparse/ncol(data))
 }
 
 #computing gcv score for smoothing tuning
 gcv_local = function(data, mvmfd_obj, G, G_half, S_smooth, u, smooth_tuning) {
+  
   p = mvmfd_obj$nvar
   indices <- sapply(1:p, function(i) prod(mvmfd_obj$basis$nbasis[[i]]))
   C_subtilde = data %*% G_half
@@ -155,6 +158,7 @@ handle_smooth_tuning <- function(data, G_half, G, S_smooth, S_2_inverse, G_half_
 
 # Function to handle sparse tuning selection
 handle_sparse_tuning <- function(data, G_half, sparse_tuning, sparse_tuning_type, K_fold, shuffled_row, group_size, CV_score_sparse, pb) {
+  
   count <- 0
   cv_scores <- c()
   sparse_tuning_selection <- NULL
@@ -183,11 +187,13 @@ cv_gcv_sequential <- function(data, mvmfd_obj, smooth_tuning, sparse_tuning, spa
   CV_score_sparse <- CV_score_smooth <- Inf
   result <- c()
   count <- 0
+  set.seed(2025)
   shuffled_row <- sample(ncol(data))
   group_size <- length(shuffled_row) / K_fold
   
   n_iter <- (if (is.null(smooth_tuning)) 1 else dim(smooth_tuning)[1]) + (if (is.null(sparse_tuning)) 1 else length(sparse_tuning))
   pb <- txtProgressBar(min = 0, max = n_iter, style = 3, width = 50, char = "=")
+  
   
   # Handle sparse tuning
   sparse_tuning_result <- handle_sparse_tuning(data, G_half, sparse_tuning, sparse_tuning_type, K_fold, shuffled_row, group_size, CV_score_sparse, pb = pb)
@@ -407,6 +413,7 @@ sequential_power <- function(mvmfd_obj, n, smooth_tuning, smooth_tuning_type, sp
     } else{
       CV_score = list()
     }
+    
     for (i in 1:n) {
       cat(sprintf("Computing the %s PC...\n", ordinal_msg(i)))
       if (i == 1) {

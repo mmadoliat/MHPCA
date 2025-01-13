@@ -12,7 +12,7 @@ init_sequential_hybrid <- function(fdata,
                                    G_half_inverse = NULL,
                                    G_half = NULL,
                                    cv_flag = FALSE,
-                                   penalize_u = FALSE,
+                                   penalize_u = T,
                                    penalize_nfd = FALSE) {
   fv_old <- if (!is.null(fdata)) svd(fdata)$v[, 1] else NULL
   nfv_old <- if (!is.null(nfdata)) svd(nfdata)$v[, 1] else NULL
@@ -230,6 +230,7 @@ cv_local_hybrid = function(fdata, nfdata, G_half, K_fold, sparse_tuning_single, 
   } else {
     1  
   }
+  
   return(error_score_sparse / normalization_factor)
 
 }
@@ -271,7 +272,7 @@ gcv_local_hybrid = function(fdata, nfdata, hd_obj, G, G_half, S_smooth, u, smoot
 handle_smooth_tuning_hybrid <- function(fdata, nfdata, G_half, G, S_smooth, S_2_inverse, G_half_inverse, 
                                         hd_obj, sparse_tuning_selection = NULL, sparse_tuning_type = NULL, smooth_tuning, 
                                         CV_score_smooth, power_type = "sequential", n = NULL, pb, 
-                                        count, penalize_nfd = F, penalize_u = FALSE) {
+                                        count, penalize_nfd = F, penalize_u = F) {
   if (!is.null(hd_obj$mf)){
     mvmfd_obj <- hd_obj$mf
     gcv_scores <- NULL
@@ -314,11 +315,11 @@ handle_smooth_tuning_hybrid <- function(fdata, nfdata, G_half, G, S_smooth, S_2_
 }
 
 # Function to handle sparse tuning selection
-handle_sparse_tuning_hybrid <- function(fdata, nfdata,G_half, sparse_tuning, sparse_tuning_type, K_fold, shuffled_row, group_size, CV_score_sparse, pb, penalize_nfd = FALSE, penalize_u = FALSE) {
+handle_sparse_tuning_hybrid <- function(fdata, nfdata,G_half, sparse_tuning, sparse_tuning_type, K_fold, shuffled_row, group_size, CV_score_sparse, pb, penalize_nfd = FALSE, penalize_u = F) {
+  
   count <- 0
   cv_scores <- c()
   sparse_tuning_selection <- NULL
-  #browser()
   if (is.null(sparse_tuning)) {
     count <- count + 1
     setTxtProgressBar(pb, count)
@@ -340,7 +341,7 @@ handle_sparse_tuning_hybrid <- function(fdata, nfdata,G_half, sparse_tuning, spa
 }
 
 # Function for cv_gcv_sequential
-cv_gcv_sequential_hybrid <- function(fdata, nfdata, hd_obj, smooth_tuning, sparse_tuning, sparse_tuning_type, K_fold, G, G_half, G_half_inverse, S_smooth, S_2_inverse, penalize_nfd = FALSE, penalize_u = FALSE) {
+cv_gcv_sequential_hybrid <- function(fdata, nfdata, hd_obj, smooth_tuning, sparse_tuning, sparse_tuning_type, K_fold, G, G_half, G_half_inverse, S_smooth, S_2_inverse, penalize_nfd = FALSE, penalize_u = F) {
   mvmfd_obj <- hd_obj$mf
   CV_score_sparse <- CV_score_smooth <- Inf
   result <- c()
@@ -348,7 +349,7 @@ cv_gcv_sequential_hybrid <- function(fdata, nfdata, hd_obj, smooth_tuning, spars
   nc <- 0 
   ncf <- if (!is.null(fdata))  ncol(fdata) else NULL
   ncnf <- if (!is.null(nfdata))  ncol(nfdata) else NULL
-  
+  set.seed(2025)
   shuffled_row_f <- sample(ncf)
   len_f <- if (!is.null(fdata)) length(shuffled_row_f) else 0
   shuffled_row_nf <- sample(ncnf)
@@ -357,6 +358,7 @@ cv_gcv_sequential_hybrid <- function(fdata, nfdata, hd_obj, smooth_tuning, spars
   group_size_nf <- len_nf / K_fold
   group_size <- list(f = group_size_f,nf = group_size_nf)
   shuffled_row <- list(f = shuffled_row_f, nf = shuffled_row_nf)
+  
   n_iter <- (if (is.null(smooth_tuning)) 1 else dim(smooth_tuning)[1]) + (if (is.null(sparse_tuning)) 1 else length(sparse_tuning))
   pb <- txtProgressBar(min = 0, max = n_iter, style = 3, width = 50, char = "=")
   
@@ -436,7 +438,7 @@ handle_variance_update_hybrid <- function(i, n, C, nf_data, G, fv_total, nfv_tot
 }
 
 # sequential power algorithm
-sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, sparse_tuning, sparse_tuning_type, centerfns, alpha_orth, K_fold, sparse_CV, smooth_GCV, penalize_nfd = FALSE, penalize_u = FALSE) {
+sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, sparse_tuning, sparse_tuning_type, centerfns, alpha_orth, K_fold, sparse_CV, smooth_GCV, penalize_nfd = FALSE, penalize_u = F) {
   #######centralize########
   if (centerfns) hd_obj <- center_hd(hd_obj)
   mvmfd_obj <- hd_obj$mf
@@ -608,6 +610,7 @@ sequential_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type
     } else{
       CV_score = list()
     }
+    
     for (i in 1:n) {
       cat(sprintf("Computing the %s PC...\n", ordinal_msg(i)))
       if (i == 1) {

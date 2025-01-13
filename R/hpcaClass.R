@@ -77,6 +77,7 @@ mhpca <- R6::R6Class("mhpca",
                                                smooth_GCV, 
                                                penalize_nfd = FALSE,
                                                penalize_u = FALSE) {
+                           
                           
                            if (is.mfd(hd_obj) || is.mvmfd(hd_obj) || is.nfd(hd_obj) || is.mvnfd(hd_obj)){
                              hd_obj <- Hd(hd_obj)
@@ -161,7 +162,19 @@ mhpca <- R6::R6Class("mhpca",
                                sparse_tuning <- rep(sparse_tuning, length.out = ncomp)
                              }
                              
-                             result <- sequential_power_hybrid(hd_obj = hd_obj, n = ncomp, smooth_tuning = smooth_tuning, sparse_tuning=sparse_tuning, centerfns = centerfns, alpha_orth = alpha_orth, smooth_tuning_type = smoothing_type, sparse_tuning_type = sparse_type, K_fold = K_fold, sparse_CV, smooth_GCV)
+                             result <- sequential_power_hybrid(hd_obj = hd_obj, 
+                                                               n = ncomp, 
+                                                               smooth_tuning = smooth_tuning, 
+                                                               sparse_tuning=sparse_tuning, 
+                                                               centerfns = centerfns, 
+                                                               alpha_orth = alpha_orth, 
+                                                               smooth_tuning_type = smoothing_type, 
+                                                               sparse_tuning_type = sparse_type, 
+                                                               K_fold = K_fold, 
+                                                               sparse_CV, 
+                                                               smooth_GCV,
+                                                               penalize_nfd = penalize_nfd,
+                                                               penalize_u = penalize_u)
                            } else if (method == "eigen" || alpha_orth == "TRUE") {
                              if (!is.null(hd_obj$mf)){
                                # Adjust the vector to match the required lengths if they are incorrect
@@ -416,6 +429,7 @@ Mhpca <- function(hd_obj,
                  K_fold=30, 
                  sparse_CV = TRUE, 
                  smooth_GCV = TRUE, penalize_nfd = FALSE, penalize_u = FALSE) {
+  
   mhpca$new(hd_obj, method, ncomp, smooth_tuning, sparse_tuning, centerfns, alpha_orth, smoothing_type, sparse_type, K_fold, sparse_CV, smooth_GCV,penalize_nfd = penalize_nfd, penalize_u = penalize_u)
 }
 #' @rdname mhpca
