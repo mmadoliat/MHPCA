@@ -207,7 +207,6 @@ cv_local_hybrid = function(fdata, nfdata, G_half, K_fold, sparse_tuning_single, 
   group_size_nf <- group_size$nf
   data_double_tilde = if (!is.null(fdata)) t(fdata%*%G_half) else NULL
   error_score_sparse = 0
-  browser()
   for (k in 1:K_fold) {
     rows_to_remove_f <- if (!is.null(fdata)) shuffled_row_f[((k-1)*group_size_f+1):((k)*group_size_f)]
     rows_to_remove_nf <- if (!is.null(nfdata)) shuffled_row_nf[((k-1)*group_size_nf+1):((k)*group_size_nf)]
@@ -347,7 +346,6 @@ cv_gcv_sequential_hybrid <- function(fdata, nfdata, hd_obj, smooth_tuning, spars
   result <- c()
   count <- 0
   nc <- 0 
-  browser()
   ncf <- if (!is.null(fdata))  ncol(fdata) else NULL
   ncnf <- if (!is.null(nfdata))  ncol(nfdata) else NULL
   
