@@ -201,19 +201,24 @@ init_joint_hybrid = function(fdata, nfdata, S_smooth = NULL, S_2_inverse = NULL,
 #computing cv score for sparse tuning
 cv_local_hybrid = function(fdata, nfdata, G_half, K_fold, sparse_tuning_single, sparse_tuning_type, shuffled_row, group_size, penalize_nfd = FALSE, penalize_u = FALSE){
   
+  shuffled_row_f <- shuffled_row$f
+  shuffled_row_nf <- shuffled_row$nf
+  group_size_f <- group_size$f
+  group_size_nf <- group_size$nf
   data_double_tilde = if (!is.null(fdata)) t(fdata%*%G_half) else NULL
   error_score_sparse = 0
   for (k in 1:K_fold) {
-    rows_to_remove = shuffled_row[((k-1)*group_size+1):((k)*group_size)]
-    fdata_train = if (!is.null(fdata)) data_double_tilde[-rows_to_remove, ,drop = FALSE] else NULL
-    fdata_test = if (!is.null(fdata)) data_double_tilde[rows_to_remove, ,drop = FALSE] else NULL
-    nfdata_train = if (!is.null(nfdata)) nfdata[,-rows_to_remove , drop = FALSE] else NULL
-    nfdata_test = if (!is.null(nfdata)) nfdata[,rows_to_remove , drop = FALSE] else NULL
+    rows_to_remove_f <- if (!is.null(fdata)) shuffled_row_f[((k-1)*group_size_f+1):((k)*group_size_f)]
+    rows_to_remove_nf <- if (!is.null(nfdata)) shuffled_row_nf[((k-1)*group_size_nf+1):((k)*group_size_nf)]
+    fdata_train = if (!is.null(fdata)) data_double_tilde[-rows_to_remove_f, ,drop = FALSE] else NULL
+    fdata_test = if (!is.null(fdata)) data_double_tilde[rows_to_remove_f, ,drop = FALSE] else NULL
+    nfdata_train = if (!is.null(nfdata)) nfdata[,-rows_to_remove_nf , drop = FALSE] else NULL
+    nfdata_test = if (!is.null(nfdata)) nfdata[,rows_to_remove_nf , drop = FALSE] else NULL
     u_test = init_sequential_hybrid(t(fdata_train), nfdata_train ,sparse_tuning_single, sparse_tuning_type, cv_flag = TRUE, penalize_nfd = penalize_nfd, penalize_u = penalize_u)
     fv_test = if (!is.null(fdata)) fdata_test%*%u_test else NULL
     nfv_test = if (!is.null(nfdata)) t(nfdata_test)%*%u_test else NULL
-    fv_test_smooth_back = if (!is.null(fdata)) (data_double_tilde%*%u_test)[rows_to_remove, , drop = FALSE] else NULL
-    fdata_test_smooth_back = if (!is.null(fdata)) t(data_double_tilde)[, rows_to_remove, drop = FALSE] else NULL
+    fv_test_smooth_back = if (!is.null(fdata)) (data_double_tilde%*%u_test)[rows_to_remove_f, , drop = FALSE] else NULL
+    fdata_test_smooth_back = if (!is.null(fdata)) t(data_double_tilde)[, rows_to_remove_f, drop = FALSE] else NULL
     fv_error <- if (!is.null(fdata)) sum((t(fdata_test_smooth_back)-fv_test_smooth_back%*%t(u_test))^2) else 0
     nfv_error <- if (!is.null(nfdata)) sum((t(nfdata_test)-nfv_test%*%t(u_test))^2) else 0
     error_score_sparse = error_score_sparse + fv_error + nfv_error
@@ -313,6 +318,7 @@ handle_sparse_tuning_hybrid <- function(fdata, nfdata,G_half, sparse_tuning, spa
   count <- 0
   cv_scores <- c()
   sparse_tuning_selection <- NULL
+  #browser()
   if (is.null(sparse_tuning)) {
     count <- count + 1
     setTxtProgressBar(pb, count)
@@ -324,7 +330,7 @@ handle_sparse_tuning_hybrid <- function(fdata, nfdata,G_half, sparse_tuning, spa
       setTxtProgressBar(pb, count)
       sparse_score <- cv_local_hybrid(fdata, nfdata, G_half, K_fold, sparse_tuning_single, sparse_tuning_type, shuffled_row, group_size, penalize_nfd = penalize_nfd, penalize_u = penalize_u)
       cv_scores <- c(cv_scores, sparse_score)
-      if (sparse_score <= CV_score_sparse) {
+      if (sparse_score < CV_score_sparse) {
         CV_score_sparse <- sparse_score
         sparse_tuning_selection <- sparse_tuning_single
       }
@@ -339,10 +345,18 @@ cv_gcv_sequential_hybrid <- function(fdata, nfdata, hd_obj, smooth_tuning, spars
   CV_score_sparse <- CV_score_smooth <- Inf
   result <- c()
   count <- 0
-  #browser()
-  shuffled_row <- sample(ncol(fdata))
-  group_size <- length(shuffled_row) / K_fold
+  nc <- 0 
+  if (!is.null(fdata)) ncf <- ncol(fdata)
+  if (!is.null(nfdata)) ncnf <- ncol(nfdata)
   
+  shuffled_row_f <- sample(ncf)
+  len_f <- if (!is.null(fdata)) length(shuffled_row_f) else 0
+  shuffled_row_nf <- sample(ncnf)
+  len_nf <- if (!is.null(nfdata)) length(shuffled_row_nf) else 0
+  group_size_f <- len_f / K_fold 
+  group_size_nf <- len_nf / K_fold
+  group_size <- list(f = group_size_f,nf = group_size_nf)
+  shuffled_row <- list(f = shuffled_row_f, nf = shuffled_row_nf)
   n_iter <- (if (is.null(smooth_tuning)) 1 else dim(smooth_tuning)[1]) + (if (is.null(sparse_tuning)) 1 else length(sparse_tuning))
   pb <- txtProgressBar(min = 0, max = n_iter, style = 3, width = 50, char = "=")
   
