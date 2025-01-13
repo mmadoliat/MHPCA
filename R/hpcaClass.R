@@ -77,7 +77,7 @@ mhpca <- R6::R6Class("mhpca",
                                                smooth_GCV, 
                                                penalize_nfd = FALSE,
                                                penalize_u = FALSE) {
-                           
+                          
                            if (is.mfd(hd_obj) || is.mvmfd(hd_obj) || is.nfd(hd_obj) || is.mvnfd(hd_obj)){
                              hd_obj <- Hd(hd_obj)
                            }
