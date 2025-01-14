@@ -71,7 +71,6 @@ init_joint = function(data, S_smooth = NULL, S_2_inverse = NULL, G_half_inverse 
 
 #computing cv score for sparse tuning
 cv_local = function(data, G_half, K_fold, sparse_tuning_single, sparse_tuning_type, shuffled_row, group_size){
-  
   data_double_tilde = t(data%*%G_half)
   error_score_sparse = 0
   for (k in 1:K_fold) {
@@ -187,7 +186,6 @@ cv_gcv_sequential <- function(data, mvmfd_obj, smooth_tuning, sparse_tuning, spa
   CV_score_sparse <- CV_score_smooth <- Inf
   result <- c()
   count <- 0
-  set.seed(2025)
   shuffled_row <- sample(ncol(data))
   group_size <- length(shuffled_row) / K_fold
   

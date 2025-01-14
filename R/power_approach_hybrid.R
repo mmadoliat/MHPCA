@@ -349,7 +349,6 @@ cv_gcv_sequential_hybrid <- function(fdata, nfdata, hd_obj, smooth_tuning, spars
   nc <- 0 
   ncf <- if (!is.null(fdata))  ncol(fdata) else NULL
   ncnf <- if (!is.null(nfdata))  ncol(nfdata) else NULL
-  set.seed(2025)
   shuffled_row_f <- sample(ncf)
   len_f <- if (!is.null(fdata)) length(shuffled_row_f) else 0
   shuffled_row_nf <- sample(ncnf)

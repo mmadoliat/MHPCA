@@ -4,26 +4,42 @@
 \alias{img}
 \title{Define a Grayscale Image Class for Multidimensional Non-Functional Data}
 \usage{
-img(image)
+img(...)
 }
 \arguments{
-\item{image}{A grayscale image object, preferably from the `imager` package (`cimg` class), or a 2D matrix/array.}
+\item{...}{A grayscale image object (from `imager` package as `cimg`, or a 2D matrix/array),
+or a single list containing such objects.}
 }
 \value{
-An object of class `img`, `nfd`, and the original class of the image.
+An object of class `img`, `nfd`, `matrix`, and `array`. If multiple images are provided,
+        the returned matrix will have multiple rows, each representing a vectorized image.
 }
 \description{
 The `img` class represents grayscale image data as a specialized form of `nfd`.
-It converts a 2D matrix or a grayscale image from the `imager` package into a
-2-dimensional matrix where each row corresponds to a pixel and the single column
-represents the intensity value.
+It converts one or multiple 2D matrices or grayscale images from the `imager` package into
+a 2-dimensional matrix where each row corresponds to a vectorized image.
 }
 \examples{
 \dontrun{
 library(imager)
-img_cimg <- load.example("lena")  # Example grayscale image from imager
-img_obj <- img(img_cimg)
-print(img_obj)
-class(img_obj)
+
+# Single image as separate argument
+img_cimg1 <- load.example("lena") \%>\% grayscale()
+img_obj1 <- img(img_cimg1)
+print(img_obj1)
+class(img_obj1)
+
+# Multiple images as separate arguments
+img_cimg2 <- load.example("boats") \%>\% grayscale()
+img_cimg3 <- load.example("peppers") \%>\% grayscale()
+img_obj2 <- img(img_cimg1, img_cimg2, img_cimg3)
+print(img_obj2)
+class(img_obj2)
+
+# Multiple images as a list
+img_list <- list(img_cimg1, img_cimg2, img_cimg3)
+img_obj3 <- img(img_list)
+print(img_obj3)
+class(img_obj3)
 }
 }
