@@ -83,7 +83,7 @@ cv_local = function(data, G_half, K_fold, sparse_tuning_single, sparse_tuning_ty
     data_test_smooth_back = t(data_double_tilde)[, rows_to_remove]
     error_score_sparse = error_score_sparse + sum((t(data_test_smooth_back)-v_test_smooth_back%*%t(u_test))^2)
   }
-  print((error_score_sparse/ncol(data)))
+  
   return(error_score_sparse/ncol(data))
 }
 

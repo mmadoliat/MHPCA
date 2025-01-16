@@ -395,6 +395,7 @@ gcv_joint_hybrid <- function(fdata, nfdata, G_half, G, S_smooth, S_2_inverse, G_
 # Function to handle variance calculation and update
 handle_variance_update_hybrid <- function(i, n, C, nf_data, G, fv_total, nfv_total,hd_obj, all_equal_check, 
                                    sparse_tuning, pc, lsv, fv, nfv, u, G_half, test_result, temp_count, fp) {
+  
   mvmfd_obj <- hd_obj$mf
   if (!is.null(mvmfd_obj)){
     for (j in 1:fp) {
@@ -413,25 +414,36 @@ handle_variance_update_hybrid <- function(i, n, C, nf_data, G, fv_total, nfv_tot
   fv_total = cbind(fv_total, fv)
   nfv_total = cbind(nfv_total, nfv)
   ### correct it later
-  if (i == 1 || all(all_equal_check) || T & (is.null(sparse_tuning) || all(unique(sparse_tuning) == 0))) {
+  if (i == 1 || all(all_equal_check)  & (is.null(sparse_tuning) || all(unique(sparse_tuning) == 0))) {
     CGfv <- if (!is.null(mvmfd_obj)) C %*% G %*% fv else NULL
     Xnfv <- if (!is.null(hd_obj$nf)) nf_data %*% nfv else NULL
     if (!is.null(CGfv) && !is.null(Xnfv)) variance <- (t(Xnfv)%*%Xnfv+2*t(Xnfv)%*% CGfv+t(CGfv)%*% CGfv)/(mvmfd_obj$nobs - 1)
     if (!is.null(CGfv) && is.null(Xnfv)) variance <- (t(CGfv)%*% CGfv)/(mvmfd_obj$nobs - 1)
     if (is.null(CGfv) && !is.null(Xnfv)) variance <- (t(Xnfv)%*%Xnfv)/(hd_obj$nf$nobs - 1)
-    #variance <- (t(Xnfv)%*%Xnfv+2*t(Xnfv)%*% CGfv+t(CGfv)%*% CGfv)/(mvmfd_obj$nobs - 1)
-    # CGv <- C %*% G %*% v
-    # variance <- t(CGv)%*%CGv / (mvmfd_obj$nobs - 1)
   } else {
-    # it is completely wrong for now, fix it later by writting its math
-    CGvfv <- if (!is.null(mvmfd_obj)) C %*% G %*% fv_total
-    G_pc = if (!is.null(mvmfd_obj)) t(fv_total)%*%G%*%fv_total 
-    coef_pc = CGv %*% solve(G_pc)
-    total_variance = sum(diag((coef_pc%*%t(fv_total)) %*% G %*% t(coef_pc%*%t(fv_total))))
-    G_pc_pre = t(v_total[, -i])%*%G%*%v_total[, -i]
-    coef_pc_pre = CGv[, -i] %*% solve(G_pc_pre)
-    total_variance_previous = sum(diag((coef_pc_pre%*%t(v_total[, -i])) %*% G %*% t(coef_pc_pre%*%t(v_total[, -i]))))
-    variance = (total_variance - total_variance_previous) / (mvmfd_obj$nobs - 1)
+    if (!is.null(mvmfd_obj)){
+      CGfv <- C %*% G %*% fv_total
+      fvTGfv <- t(fv_total) %*% G %*% fv_total
+      CGfvp <- C %*% G %*% fv_total[,-i]
+      fvTGfvp <- t(fv_total[,-i]) %*% G %*% fv_total[,-i]
+    } else {
+      CGfv <- fvTGfv <- CGfvp <-  fvTGfvp <- 0
+    }
+    if (!is.null(hd_obj$nf)){
+      Xnfv <- nf_data %*% nfv_total 
+      nfvTnfv <- t(nfv_total) %*% nfv_total
+      Xnfvp <- nf_data %*% nfv_total[,-i] 
+      nfvTnfvp <- t(nfv_total[,-i]) %*% nfv_total[,-i]
+    } else {
+      Xnfv <- nfvTnfv <- Xnfvp <- nfvTnfvp <- 0
+    }
+    
+    G_pc_inv <- solve(nfvTnfv + fvTGfv)
+    G_pc_invp <- solve(nfvTnfvp + fvTGfvp)
+    total_variance <- sum(diag((Xnfv + CGfv)%*%G_pc_inv%*%t(Xnfv + CGfv))) 
+    total_variance_p <- sum(diag((Xnfvp + CGfvp)%*%G_pc_invp%*%t(Xnfvp + CGfvp))) 
+    nn <- if(!is.null(mvmfd_obj)) (mvmfd_obj$nobs - 1) else (hd_obj$nf$nobs - 1)
+    variance = (total_variance - total_variance_p) / nn
   }
   return(list(pc = pc, lsv = lsv, fv_total = fv_total, nfv_total = nfv_total, variance = variance))
 }
