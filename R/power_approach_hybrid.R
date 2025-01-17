@@ -18,6 +18,7 @@ init_sequential_hybrid <- function(fdata,
   nfv_old <- if (!is.null(nfdata)) svd(nfdata)$v[, 1] else NULL
   errors <- 10^60
   while (errors > 0.00001) {
+    
     y <- 0
     if (!is.null(fdata)) {
       y <- y + fdata %*% fv_old
