@@ -21,6 +21,45 @@ plot_hd <- function(hd_obj, xlab = NULL, ylab = NULL, ...) {
   plot(hd_obj$mf, ...)
 }
 
+
+#' Scale a `hd` Object
+#'
+#' This function scales a `hd` object, which may consist of multivariate functional 
+#' data `mvmfd` and/or `mvnfd`. The function ensures proper scaling 
+#' for all components based on their respective types and returns a scaled `hd` object.
+#'
+#' @param hd_obj A `hd` object, which can be an `mfd`, `mvmfd`, `nfd`, `mvnfd`.
+#' @param mfd_eval_length A numeric vector specifying the number of evaluation points for functional variables.
+#' @param f_weight A numeric vector of scaling factors for functional variables. The length must match number of functional variables.
+#' @param nf_weight A numeric vector of scaling factors for non-functional variables. The length must match the number of non functional variables.
+
+#' @return A scaled high-dimensional data object of class 'Hd'.
+#' @export
+#'
+#' @examples
+#' # Example usage:
+#' # Assuming `hd_obj` is a valid high-dimensional data object:
+#' # scaled_hd <- scale_hd(hd_obj, mfd_eval_length = c(100, 200), weight = c(0.5, 0.8, 1.2))
+scale_hd <- function(hd_obj , mfd_eval_length, f_weight = NULL, nf_weight = NULL){
+  if (is.list(hd_obj)) hd_obj <- hd_obj[[1]]
+  if (is.mfd(hd_obj) || is.mvmfd(hd_obj) || is.nfd(hd_obj) || is.mvnfd(hd_obj)){
+    hd_obj <- Hd(hd_obj)
+  }
+  mf <- hd_obj$mf
+  nf <- hd_obj$nf
+  
+  if (!is.null(mf)) {
+    mvmfd_scaled <- scale_mvmfd(mf,mfd_eval_length,f_weight)
+  } 
+  if (!is.null(nf)) {
+    mvnfd_scaled <- scale_mvnfd(nf,nf_weight)
+  }
+  if (!is.null(mf) && !is.null(nf)) hd_scaled <- Hd(mvmfd_scaled,mvnfd_scaled)
+  if (!is.null(mf) && is.null(nf)) hd_scaled <- Hd(mvmfd_scaled)
+  if (is.null(mf) && !is.null(nf)) hd_scaled <- Hd(mvnfd_scaled)
+  return(hd_scaled)
+}
+
 #' @title Addition of two `hd` objects
 #'
 #' @param obj1 An `hd` object

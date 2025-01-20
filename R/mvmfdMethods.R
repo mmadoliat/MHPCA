@@ -180,3 +180,33 @@ inprod_mvmfd <- function(mvmfd_obj1, mvmfd_obj2) {
 norm_mvmfd <- function(mvmfd_obj) {
   return(as.numeric(sqrt(diag(inprod_mvmfd(mvmfd_obj, mvmfd_obj)))))
 }
+
+#' Scale a `mvmfd` Object
+#'
+#' This function scales a `mvmfd` object by scaling each functional variable independently 
+#' using either a calculated or user-provided weight. It returns a new scaled `mvmfd` object.
+#'
+#' @param mvmfd_obj An object of class `mvmfd`.
+#' @param mvmfd_eval_length A numeric vector specifying the number of evaluation points for each functional variable.
+#' @param weight An optional numeric vector of scaling factors for each functional variable. If NULL, scaling factors are calculated automatically.
+#'
+#' @return A scaled mvmfd object.
+#' @export
+#'
+#' @examples
+#' # Example usage:
+#' # Assuming `mvmfd_obj` is a valid mvmfd object:
+#' # scaled_mvmfd <- scale_mvmfd(mvmfd_obj, mvmfd_eval_length = c(100, 200))
+#' # scaled_mvmfd <- scale_mvmfd(mvmfd_obj, mvmfd_eval_length = c(100, 200), weight = c(0.5, 0.8))
+scale_mvmfd <- function(mvmfd_obj, mvmfd_eval_length,weight = NULL){
+  
+  if (!inherits(mvmfd_obj,"mvmfd")) stop("The object must be of the class 'mvmfd'.")
+  if (length(mvmfd_eval_length) != mvmfd_obj$nvar) stop("The length of mfd_eval vector must be the number of functional variables")
+  if (!is.null(weight) && length(weight) != mvmfd_obj$nvar) stop("The length of weight vector must be the number of functional variables")
+  mfd_list <- list()
+  for (i in 1:mvmfd_obj$nvar) {
+    mfd_list[[i]] <- scale_mfd(mvmfd_obj[,i],mvmfd_eval_length[i],weight[i])
+  }
+  return(Mvmfd(mfd_list))
+}
+  

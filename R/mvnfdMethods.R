@@ -162,3 +162,23 @@ center_mvnfd <- function(mvnfd_obj) {
     )
   return(Mvnfd(nfd_list))
 }
+
+
+#' Scale an `mvnfd` Object
+#'
+#' This function scales an `mvnfd` object by calculating a scaling factor based on the variance of its evaluations 
+#' or using a provided weight. It returns a new scaled `mvnfd` object.
+#'
+#' @param mvnfd_obj An object of class `mvnfd`.
+#'@param weight An optional numeric vector of scaling factors for each variable. If NULL, scaling factors are calculated automatically.
+#'
+#' @return A scaled mvnfd object.
+#' @export
+scale_mvnfd <- function(mvnfd_obj,weight = NULL){
+  if (!is.null(weight) && length(weight) != mvnfd_obj$nvar) stop("The length of weight vector must be the number of nfd variables")
+  nfd_list <- list()
+  for (i in 1:mvnfd_obj$nvar){
+    nfd_list[[i]] <- scale_nfd(mvnfd_obj[,i],weight = weight[i])
+  }
+  mvnfd_scaled <- Mvnfd(nfd_list)
+}

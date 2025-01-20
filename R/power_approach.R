@@ -1,28 +1,7 @@
 #' @importFrom expm sqrtm
 #' @importFrom utils  txtProgressBar setTxtProgressBar
 #' 
-#sparse penalty function
-sparse_pen_fun <- function(y, tuning_parameter, type, alpha = 3.7) {
-  y_sorted <- sort(abs(y))
-  lambda = y_sorted[tuning_parameter]
-  if (tuning_parameter == 0) {
-    return(y)
-  }
-  if (type == "soft") {
-    return(sign(y) * pmax(abs(y) - lambda, 0))
-  } 
-  else if (type == "hard") {
-    return(ifelse(abs(y) > lambda, y, 0))
-  } 
-  else if (type == "SCAD") {
-    res <- ifelse(abs(y) <= 2 * lambda,
-                  sign(y) * pmax(abs(y) - lambda, 0),
-                  ifelse(abs(y) <= alpha * lambda,
-                         ((alpha - 1) * y - sign(y) * alpha * lambda) / (alpha - 2),
-                         y))
-    return(res)
-  }
-}
+
 
 #sequential power algorithm 
 init_sequential = function(data, sparse_tuning_result, sparse_tuning_type, S_smooth = NULL, S_2_inverse = NULL, G_half_inverse = NULL, G_half = NULL, cv_flag = FALSE){

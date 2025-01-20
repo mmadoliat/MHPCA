@@ -65,7 +65,7 @@ mhpca <- R6::R6Class("mhpca",
                        public = list(
                          initialize = function(hd_obj, 
                                                method = "power", 
-                                               ncomp = 3, 
+                                               ncomp = 3,  
                                                smooth_tuning = NULL, 
                                                sparse_tuning = NULL, 
                                                centerfns = TRUE, 

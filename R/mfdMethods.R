@@ -28,6 +28,7 @@ plot_mfd <- function(mfd_obj, obs = 1, xlab = "", ylab = "", main = "", type = "
   }
 }
 
+
 #' @title Length of an object of classes `mfd`, `mvmfd`, `nfd` or `hd`.
 #'
 #' @description
@@ -144,6 +145,40 @@ norm_mfd <- function(mfd_obj) {
   return(as.numeric(sqrt(diag(inprod_mfd(mfd_obj, mfd_obj)))))
 }
 
+#' Scale an `mfd` Object
+#'
+#' This function scales an `mfd` object by calculating a scaling factor based on the variance of its evaluations 
+#' or using a provided weight. It returns a new scaled `mfd` object.
+#'
+#' @param mfd_obj An object of class `mfd`.
+#' @param mfd_eval_length The number of evaluation points to use for scaling.
+#' @param weight An optional numeric value to use as the scaling factor. If NULL, the scaling factor is calculated automatically.
+#'
+#' @return A scaled mfd object.
+#' @export
+#'
+#' @examples
+#' # Example usage:
+#' # Assuming `mfd_obj` is a valid mfd object:
+#' # scaled_mfd <- scale_mfd(mfd_obj, mfd_eval_length = 100)
+#' # scaled_mfd <- scale_mfd(mfd_obj, mfd_eval_length = 100, weight = 0.5)
+scale_mfd <- function(mfd_obj,mfd_eval_length,weight = NULL){
+  if (!inherits(mfd_obj,"mfd")) stop("The object must be of the class 'mfd'.")
+  v1 <- mfd_obj$eval(do.call(seq,c(as.list(mfd_obj$basis$supp),length.out = mfd_eval_length)))
+  if (is.null(weight)){
+    scaling_factor <- 1/sqrt(mean(diag(var(v1))))
+  } else {
+    scaling_factor <- weight
+  }
+  scaling_factor <- 1/sqrt(mean(diag(var(v1))))
+  v1_scaled <- scaling_factor*v1
+  t <- do.call(seq,c(as.list(mfd_obj$basis$supp),length.out = nrow(v1_scaled))) 
+  bspline_basis <- fda::create.bspline.basis(mfd_obj$basis$supp, mfd_obj$basis$nbasis)
+  mfd_basis <- basismfd$new(bspline_basis)
+  mfd_object_scaled <- mfd$new(t, v1_scaled, mfd_basis)
+  return(mfd_object_scaled)
+}
+
 #' @title Add two `mfd` objects
 #'
 #' @param obj1 An `mfd` object
@@ -156,7 +191,7 @@ norm_mfd <- function(mfd_obj) {
     return(obj1)
   }
   if (xor(is.mfd(obj1), is.mfd(obj2))) {
-    if (!xor(is.double(obj1), is.double(obj2))) stop("At least one object must be an mfd, and the other one can be a scalar")
+    if (!xor(is.double(obj1), is.double(obj2))) stop("At least one object must be a mfd, and the other one can be a scalar")
     if (is.double(obj1)) {
       temp <- obj1
       obj1 <- obj2

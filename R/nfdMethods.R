@@ -173,3 +173,29 @@ inprod_nfd <- function(nfd_obj1, nfd_obj2) {
 norm_nfd <- function(nfd_obj1) {
   return(sqrt(diag(inprod_nfd(nfd_obj1,nfd_obj1))))
 }
+
+#' Scale a `nfd` Object
+#'
+#' This function scales a `nfd` object using a provided weight or by calculating a scaling factor 
+#' based on the variance of the object. The scaled `nfd` object is returned.
+#'
+#' @param nfd_obj A `nfd` object to be scaled.
+#' @param weight An optional numeric value to use as the scaling factor. If NULL, the scaling factor is calculated automatically.
+#'
+#' @return A scaled `nfd` object.
+#' @export
+#'
+#' @examples
+#' # Example usage:
+#' # Assuming `nfd_obj` is a valid numeric functional data object:
+#' # scaled_nfd <- scale_nfd(nfd_obj)
+#' # scaled_nfd <- scale_nfd(nfd_obj, weight = 0.5)
+scale_nfd <- function(nfd_obj,weight = NULL){
+  if (is.null(weight)){
+    scaling_factor <- 1/sqrt(mean(diag(var(nfd_obj))))
+  } else {
+    scaling_factor <- weight
+  }
+  nfd_obj_scaled <- scaling_factor*nfd_obj
+  return(nfd_obj_scaled)
+}
