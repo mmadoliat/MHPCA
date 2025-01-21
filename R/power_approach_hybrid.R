@@ -38,6 +38,7 @@ init_sequential_hybrid <- function(fdata,
                                    cv_flag = FALSE,
                                    penalize_u = FALSE,
                                    penalize_nfd = FALSE) {
+  
   fv_old <- if (!is.null(fdata)) svd(fdata)$v[, 1] else NULL
   nfv_old <- if (!is.null(nfdata)) svd(nfdata)$v[, 1] else NULL
   errors <- 10^60
@@ -97,6 +98,7 @@ init_sequential_hybrid <- function(fdata,
       if (!is.null(nfdata)) nfv_old <- nfv_new
       u_old <- u_new
     } else { # incorporate power algorithm smoothing
+      
       fv_new <- if (!is.null(fdata)) S_smooth %*% t(fdata) %*% u_old else NULL
       if (!is.null(nfdata)) {
         nfv_new <- t(nfdata) %*% u_old
@@ -229,6 +231,7 @@ cv_local_hybrid = function(fdata, nfdata, G_half, K_fold,
                            sparse_tuning_type_u,sparse_tuning_type_nfd, 
                            shuffled_row_u,shuffled_row_nfd ,group_size_u,
                            group_size_nfd, penalize_nfd = FALSE, penalize_u = FALSE){
+  browser()
   shuffled_row_f <- shuffled_row_u$f
   shuffled_row_nf <- shuffled_row_u$nf
   group_size_f <- group_size_u$f
@@ -238,7 +241,7 @@ cv_local_hybrid = function(fdata, nfdata, G_half, K_fold,
   for (k in 1:K_fold) {
     rows_to_remove_f <- if (!is.null(fdata)) shuffled_row_f[((k-1)*group_size_f+1):((k)*group_size_f)]
     rows_to_remove_nf <- if (!is.null(nfdata)) shuffled_row_nf[((k-1)*group_size_nf+1):((k)*group_size_nf)]
-    rows_to_remove_nfd <- if (!penalize_nfd) shuffled_row_nfd[((k-1)*group_size_nfd+1):((k)*group_size_nfd)]  
+    rows_to_remove_nfd <- if (penalize_nfd) shuffled_row_nfd[((k-1)*group_size_nfd+1):((k)*group_size_nfd)]  
     
     if (penalize_u && penalize_nfd && !is.null(fdata) && !is.null(nfdata)){
       fdata_train <-  data_double_tilde[-rows_to_remove_f, -rows_to_remove_nfd ,drop = FALSE]
@@ -550,6 +553,7 @@ cv_gcv_sequential_hybrid <- function(fdata,
                                      S_2_inverse, 
                                      penalize_nfd = FALSE, 
                                      penalize_u = FALSE) {
+  
   
   
   mvmfd_obj <- hd_obj$mf
@@ -870,6 +874,7 @@ sequential_power_hybrid <- function(hd_obj,
   } 
   #########sequential inputs of smoothing parameters###########
   else{
+    
     if (is.null(smooth_tuning)) {
       smooth_tuning_temp = if (!is.null(mvmfd_obj)) expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1])) else expand.grid(lapply(rep(0,mvnfd_obj$nvar), function(x) x[1]))
     } else{
