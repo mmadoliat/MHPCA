@@ -10,11 +10,13 @@ Mhpca(
   method = "power",
   ncomp = 3,
   smooth_tuning = NULL,
-  sparse_tuning = NULL,
+  sparse_tuning_u = NULL,
+  sparse_tuning_nfd = NULL,
   centerfns = TRUE,
   alpha_orth = FALSE,
   smoothing_type = "basispen",
-  sparse_type = "soft",
+  sparse_type_u = "soft",
+  sparse_type_nfd = "soft",
   K_fold = 30,
   sparse_CV = TRUE,
   smooth_GCV = TRUE,
@@ -34,8 +36,11 @@ which uses the eigen decomposition approach.}
 \item{smooth_tuning}{A list or vector specifying the smoothing regularization parameter(s) for each variable. 
 If NULL, non-smoothing MFPCA is estimated.}
 
-\item{sparse_tuning}{A list or vector specifying the sparsity regularization parameter(s) for each variable. 
-If NULL, non-sparse MFPCA is estimated.}
+\item{sparse_tuning_u}{A list or vector specifying the sparsity regularization parameter(s) for each variable. 
+If NULL, non-sparse MHPCA is estimated.}
+
+\item{sparse_tuning_nfd}{A list or vector specifying the sparsity regularization parameter(s) for each non functional variable. 
+If NULL, non-sparse MHPCA is estimated.}
 
 \item{centerfns}{Logical indicating whether to center the functional data before analysis. Default is TRUE.}
 
@@ -45,7 +50,9 @@ while setting `alpha_orth = TRUE` uses the joint power approach.}
 
 \item{smoothing_type}{The type of smoothing penalty to be applied on the coefficients. The types "coefpen" and "basispen" is supported. Default is "coefpen".}
 
-\item{sparse_type}{The type of sparse penalty to be applied on the coefficients. The types "soft-threshold", "hard-threshold" and "SCAD" is supported. Default is "soft-threshold".}
+\item{sparse_type_u}{The type of sparse penalty to be applied on the coefficients. The types "soft", "hard" and "SCAD" is supported. Default is "soft".}
+
+\item{sparse_type_nfd}{The type of sparse penalty to be applied on the nfd right singular vectors. The types "soft", "hard" and "SCAD" is supported. Default is "soft".}
 
 \item{K_fold}{An integer specifying the number of folds in the sparse cross-validation process. Default is 30.}
 
@@ -62,7 +69,9 @@ tuning parameters should be provided as a list with length equal to the number o
 If `method` is "power" and `alpha_orth = TRUE` (joint power), tuning parameters should be provided as a vector with length equal to the number of variables.
 If the dimensions of input tuning parameters are incorrect, it will be converted to a list internally, and a warning will be issued.}
 
-\item{penalize_nfd}{@param penalize_u Logical indicating whether penalize non functional object or left singular vector or not.}
+\item{penalize_nfd}{}
+
+\item{penalize_u}{Logical indicating whether penalize non functional object or left singular vector or not.}
 }
 \description{
 The `mhpca` class represents hybrid principal components components.
@@ -138,7 +147,7 @@ represents harmonics and  second indices represents variables}
 
 \item{\code{smooth_tuning}}{= The list of smoothing penalties parameters}
 
-\item{\code{sparse_tuning}}{= The list of sparse penalties parameters}
+\item{\code{sparse_tuning_u}}{= The list of sparse penalties parameters}
 
 \item{\code{GCVs}}{= Generalized cross validations scores of smoothing penalties parameters.
 If both smoothing and sparse tuning penalties are used in the MHPCA method, 
@@ -170,11 +179,13 @@ means it is computed based on the optimal sparse tuning parameter selected via c
   method = "power",
   ncomp = 3,
   smooth_tuning = NULL,
-  sparse_tuning = NULL,
+  sparse_tuning_u = NULL,
+  sparse_tuning_nfd = NULL,
   centerfns = TRUE,
   alpha_orth = FALSE,
   smoothing_type = "coefpen",
-  sparse_type = "soft",
+  sparse_type_u = "soft",
+  sparse_type_nfd = "soft",
   K_fold = 30,
   sparse_CV,
   smooth_GCV,
