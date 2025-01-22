@@ -40,20 +40,34 @@ plot_hd <- function(hd_obj, xlab = NULL, ylab = NULL, ...) {
 #' # Example usage:
 #' # Assuming `hd_obj` is a valid high-dimensional data object:
 #' # scaled_hd <- scale_hd(hd_obj, mfd_eval_length = c(100, 200), weight = c(0.5, 0.8, 1.2))
-scale_hd <- function(hd_obj , mfd_eval_length, f_weight = NULL, nf_weight = NULL){
-  if (is.list(hd_obj)) hd_obj <- hd_obj[[1]]
-  if (is.mfd(hd_obj) || is.mvmfd(hd_obj) || is.nfd(hd_obj) || is.mvnfd(hd_obj)){
-    hd_obj <- Hd(hd_obj)
+scale_hd <- function(..., mf_eval_length = NULL, w = NULL, f_weight = NULL, nf_weight = NULL){
+  obj <- list(...)
+  if (is.hd(obj[[1]])){
+    hd_obj <- obj[[1]]
+  } else {
+    hd_obj <- Hd(obj)
   }
+  
   mf <- hd_obj$mf
   nf <- hd_obj$nf
-  
-  if (!is.null(mf)) {
-    mvmfd_scaled <- scale_mvmfd(mf,mfd_eval_length,f_weight)
-  } 
-  if (!is.null(nf)) {
-    mvnfd_scaled <- scale_mvnfd(nf,nf_weight)
+  if (is.null(w)){
+    if (!is.null(mf)) {
+      mf_eval_length <-  if (is.null(mf_eval_length)) rep(100,mf$nvar)
+      mvmfd_scaled <- scale_mvmfd(mf,mf_eval_length,f_weight)
+    } 
+    if (!is.null(nf)) {
+      mvnfd_scaled <- scale_mvnfd(nf,nf_weight)
+    }
+  } else {
+    if (!is.numeric(w) || w < 0 || w > 1) stop("w must be a number between 0 and 1")
+    if (!is.null(mf)) {
+      mvmfd_scaled <- w*mf
+    } 
+    if (!is.null(nf)) {
+      mvnfd_scaled <- (1-w)*nf
+    }
   }
+  
   if (!is.null(mf) && !is.null(nf)) hd_scaled <- Hd(mvmfd_scaled,mvnfd_scaled)
   if (!is.null(mf) && is.null(nf)) hd_scaled <- Hd(mvmfd_scaled)
   if (is.null(mf) && !is.null(nf)) hd_scaled <- Hd(mvnfd_scaled)

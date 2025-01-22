@@ -162,7 +162,7 @@ norm_mfd <- function(mfd_obj) {
 #' # Assuming `mfd_obj` is a valid mfd object:
 #' # scaled_mfd <- scale_mfd(mfd_obj, mfd_eval_length = 100)
 #' # scaled_mfd <- scale_mfd(mfd_obj, mfd_eval_length = 100, weight = 0.5)
-scale_mfd <- function(mfd_obj,mfd_eval_length,weight = NULL){
+scale_mfd <- function(mfd_obj,mfd_eval_length = 100,weight = NULL){
   if (!inherits(mfd_obj,"mfd")) stop("The object must be of the class 'mfd'.")
   v1 <- mfd_obj$eval(do.call(seq,c(as.list(mfd_obj$basis$supp),length.out = mfd_eval_length)))
   if (is.null(weight)){
@@ -170,7 +170,6 @@ scale_mfd <- function(mfd_obj,mfd_eval_length,weight = NULL){
   } else {
     scaling_factor <- weight
   }
-  scaling_factor <- 1/sqrt(mean(diag(var(v1))))
   v1_scaled <- scaling_factor*v1
   t <- do.call(seq,c(as.list(mfd_obj$basis$supp),length.out = nrow(v1_scaled))) 
   bspline_basis <- fda::create.bspline.basis(mfd_obj$basis$supp, mfd_obj$basis$nbasis)

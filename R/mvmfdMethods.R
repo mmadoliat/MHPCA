@@ -198,7 +198,7 @@ norm_mvmfd <- function(mvmfd_obj) {
 #' # Assuming `mvmfd_obj` is a valid mvmfd object:
 #' # scaled_mvmfd <- scale_mvmfd(mvmfd_obj, mvmfd_eval_length = c(100, 200))
 #' # scaled_mvmfd <- scale_mvmfd(mvmfd_obj, mvmfd_eval_length = c(100, 200), weight = c(0.5, 0.8))
-scale_mvmfd <- function(mvmfd_obj, mvmfd_eval_length,weight = NULL){
+scale_mvmfd <- function(mvmfd_obj, mvmfd_eval_length = rep(100,mvmfd_obj$nvar),weight = NULL){
   
   if (!inherits(mvmfd_obj,"mvmfd")) stop("The object must be of the class 'mvmfd'.")
   if (length(mvmfd_eval_length) != mvmfd_obj$nvar) stop("The length of mfd_eval vector must be the number of functional variables")
