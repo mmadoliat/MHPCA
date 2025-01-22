@@ -16,7 +16,8 @@
 #'               If both smoothing and sparse tuning penalties are used in the MHPCA method, 
 #'               this represents the conditional generalized cross-validation scores, which 
 #'               means it is computed based on the optimal sparse tuning parameter selected via cross validation.
-#' @field CVs = Cross validations scores of sparse penalties parameters
+#' @field CVs_u = Cross validations scores of sparse penalties on u parameters
+#' @field CVs_nfd = Cross validations scores of sparse penalties on nfd parameters
 #' @field mean_mfd A multivariate functional data object giving the mean function
 #' @field mean_nfd A data object giving the mean of non functional objects
 
@@ -74,7 +75,8 @@ mhpca <- R6::R6Class("mhpca",
                                                smoothing_type = "coefpen", 
                                                sparse_type_u = "soft",
                                                sparse_type_nfd = "soft",
-                                               K_fold = 30, 
+                                               K_fold_u = 30, 
+                                               K_fold_nfd = K_fold_u,
                                                sparse_CV, 
                                                smooth_GCV, 
                                                penalize_nfd = FALSE,
@@ -178,7 +180,8 @@ mhpca <- R6::R6Class("mhpca",
                                                                smooth_tuning_type = smoothing_type, 
                                                                sparse_tuning_type_u = sparse_type_u, 
                                                                sparse_tuning_type_nfd = sparse_type_nfd,
-                                                               K_fold = K_fold, 
+                                                               K_fold_u = K_fold_u,
+                                                               K_fold_nfd = K_fold_nfd,
                                                                sparse_CV, 
                                                                smooth_GCV,
                                                                penalize_nfd = penalize_nfd,
@@ -308,7 +311,8 @@ mhpca <- R6::R6Class("mhpca",
                            if (alpha_orth == "FALSE" && method == "power") {
                              private$.sparse_tuning_u <- result$sparse_tuning_result_u
                              private$.sparse_tuning_nfd <- result$sparse_tuning_result_nfd
-                             private$.CVs <- result$CV_score
+                             private$.CVs_u <- result$CV_score_u
+                             private$.CVs_nfd <- result$CV_score_nfd
                              private$.GCVs <- result$GCV_score
                            } else{
                              private$.GCVs <- result$GCV_score
@@ -369,11 +373,18 @@ mhpca <- R6::R6Class("mhpca",
                              stop("`$GCVs` is read only", call. = FALSE)
                            }
                          },
-                         CVs = function(value) {
+                         CVs_u = function(value) {
                            if (missing(value)) {
-                             private$.CVs
+                             private$.CVs_u
                            } else {
-                             stop("`$CVs` is read only", call. = FALSE)
+                             stop("`$CVs_u` is read only", call. = FALSE)
+                           }
+                         },
+                         CVs_nfd = function(value) {
+                           if (missing(value)) {
+                             private$.CVs_nfd
+                           } else {
+                             stop("`$CVs_nfd` is read only", call. = FALSE)
                            }
                          },
                          mean_hd = function(value) {
@@ -392,7 +403,8 @@ mhpca <- R6::R6Class("mhpca",
                          .sparse_tuning_u = NULL,
                          .sparse_tuning_nfd = NULL,
                          .GCVs = NULL,
-                         .CVs = NULL,
+                         .CVs_u = NULL,
+                         .CVs_nfd = NULL,
                          .mean_hd = NULL
                        )
 )
@@ -424,7 +436,8 @@ mhpca <- R6::R6Class("mhpca",
 #' @param smoothing_type The type of smoothing penalty to be applied on the coefficients. The types "coefpen" and "basispen" is supported. Default is "coefpen".
 #' @param sparse_type_u The type of sparse penalty to be applied on the coefficients. The types "soft", "hard" and "SCAD" is supported. Default is "soft".
 #' @param sparse_type_nfd The type of sparse penalty to be applied on the nfd right singular vectors. The types "soft", "hard" and "SCAD" is supported. Default is "soft".
-#' @param K_fold  An integer specifying the number of folds in the sparse cross-validation process. Default is 30. 
+#' @param K_fold_u  An integer specifying the number of folds in the sparse cross-validation process for u. Default is 30. 
+#' @param K_fold_nfd  An integer specifying the number of folds in the sparse cross-validation process for nfd. Default is 30.
 #' @param sparse_CV @param sparse_CV Logical indicating whether cross-validation should be applied to select the optimal sparse tuning parameter in sequential power approach. 
 #'                                        If `sparse_CV = TRUE`, a series of tuning parameters should be provided as a vector with positive number with max equals to number of subjects. 
 #'                                        If `sparse_CV = FALSE`, specific tuning parameters are given directly to each principal components. Tuning parameters should be provided as a vector with length equal to `ncomp`.
@@ -450,7 +463,8 @@ Mhpca <- function(hd_obj,
                  smoothing_type = "basispen", 
                  sparse_type_u = "soft", 
                  sparse_type_nfd = "soft",
-                 K_fold=30, 
+                 K_fold_u=30,
+                 K_fold_nfd=K_fold_nfd,
                  sparse_CV = TRUE, 
                  smooth_GCV = TRUE, 
                  penalize_nfd = FALSE, 
