@@ -231,8 +231,8 @@ cv_local_hybrid = function(fdata, nfdata, G_half, K_fold_u, K_fold_nfd,
                            sparse_tuning_type_u,sparse_tuning_type_nfd, 
                            shuffled_row_u,shuffled_row_nfd ,group_size_u,
                            group_size_nfd, penalize_nfd = FALSE, penalize_u = FALSE){
-  browser()
   shuffled_row_f <- shuffled_row_u$f
+  browser()
   shuffled_row_nf <- shuffled_row_u$nf
   group_size_f <- group_size_u$f
   group_size_nf <- group_size_u$nf
@@ -327,7 +327,8 @@ cv_local_hybrid = function(fdata, nfdata, G_half, K_fold_u, K_fold_nfd,
     err_nfd <- (error_score_sparse_nfd / normalization_factor)
     
   }
-  
+  if (!exists("err_u")) err_u <- NULL
+  if (!exists("err_nfd")) err_nfd <- NULL
   return(list(err_u = err_u, err_nfd = err_nfd))
 
 }
@@ -609,14 +610,14 @@ cv_gcv_sequential_hybrid <- function(fdata,
   len_f <- if (!is.null(fdata)) length(shuffled_row_f) else 0
   shuffled_row_nf <- sample(ncnf)
   len_nf <- if (!is.null(nfdata)) length(shuffled_row_nf) else 0
-  group_size_f <- len_f / K_fold 
-  group_size_nf <- len_nf / K_fold
+  group_size_f <- len_f / K_fold_u 
+  group_size_nf <- len_nf / K_fold_u
   group_size_u <- list(f = group_size_f,nf = group_size_nf)
   shuffled_row_u <- list(f = shuffled_row_f, nf = shuffled_row_nf)
   
   nrf <- if (!is.null(fdata))  nrow(fdata) else nrow(nfdata)
   shuffled_row_nfd <- sample(nrf)
-  group_size_nfd <- length(shuffled_row_nfd)/K_fold
+  group_size_nfd <- length(shuffled_row_nfd)/K_fold_nfd
   
   n_iter <- (if (is.null(smooth_tuning)) 1 else dim(smooth_tuning)[1]) + 
     (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) + 
@@ -638,7 +639,8 @@ cv_gcv_sequential_hybrid <- function(fdata,
                                                       shuffled_row_nfd = shuffled_row_nfd,
                                                       group_size_u = group_size_u, 
                                                       group_size_nfd = group_size_nfd,
-                                                      CV_score_sparse = CV_score_sparse, 
+                                                      CV_score_sparse_u = CV_score_sparse_u,
+                                                      CV_score_sparse_nfd = CV_score_sparse_nfd, 
                                                       pb = pb, 
                                                       penalize_nfd = penalize_nfd, 
                                                       penalize_u = penalize_u)

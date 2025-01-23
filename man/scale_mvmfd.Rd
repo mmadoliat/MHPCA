@@ -4,7 +4,11 @@
 \alias{scale_mvmfd}
 \title{Scale a `mvmfd` Object}
 \usage{
-scale_mvmfd(mvmfd_obj, mvmfd_eval_length, weight = NULL)
+scale_mvmfd(
+  mvmfd_obj,
+  mvmfd_eval_length = rep(100, mvmfd_obj$nvar),
+  weight = NULL
+)
 }
 \arguments{
 \item{mvmfd_obj}{An object of class `mvmfd`.}

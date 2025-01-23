@@ -17,7 +17,8 @@ Mhpca(
   smoothing_type = "basispen",
   sparse_type_u = "soft",
   sparse_type_nfd = "soft",
-  K_fold = 30,
+  K_fold_u = 30,
+  K_fold_nfd = K_fold_u,
   sparse_CV = TRUE,
   smooth_GCV = TRUE,
   penalize_nfd = FALSE,
@@ -54,7 +55,9 @@ while setting `alpha_orth = TRUE` uses the joint power approach.}
 
 \item{sparse_type_nfd}{The type of sparse penalty to be applied on the nfd right singular vectors. The types "soft", "hard" and "SCAD" is supported. Default is "soft".}
 
-\item{K_fold}{An integer specifying the number of folds in the sparse cross-validation process. Default is 30.}
+\item{K_fold_u}{An integer specifying the number of folds in the sparse cross-validation process for u. Default is 30.}
+
+\item{K_fold_nfd}{An integer specifying the number of folds in the sparse cross-validation process for nfd. Default is 30.}
 
 \item{sparse_CV}{@param sparse_CV Logical indicating whether cross-validation should be applied to select the optimal sparse tuning parameter in sequential power approach. 
 If `sparse_CV = TRUE`, a series of tuning parameters should be provided as a vector with positive number with max equals to number of subjects. 
@@ -154,7 +157,9 @@ If both smoothing and sparse tuning penalties are used in the MHPCA method,
 this represents the conditional generalized cross-validation scores, which 
 means it is computed based on the optimal sparse tuning parameter selected via cross validation.}
 
-\item{\code{CVs}}{= Cross validations scores of sparse penalties parameters}
+\item{\code{CVs_u}}{= Cross validations scores of sparse penalties on u parameters}
+
+\item{\code{CVs_nfd}}{= Cross validations scores of sparse penalties on nfd parameters}
 
 \item{\code{mean_mfd}}{A multivariate functional data object giving the mean function}
 
@@ -186,7 +191,8 @@ means it is computed based on the optimal sparse tuning parameter selected via c
   smoothing_type = "coefpen",
   sparse_type_u = "soft",
   sparse_type_nfd = "soft",
-  K_fold = 30,
+  K_fold_u = 30,
+  K_fold_nfd = K_fold_u,
   sparse_CV,
   smooth_GCV,
   penalize_nfd = FALSE,

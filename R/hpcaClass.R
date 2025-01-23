@@ -82,7 +82,6 @@ mhpca <- R6::R6Class("mhpca",
                                                penalize_nfd = FALSE,
                                                penalize_u = FALSE) {
                            
-                          
                            if (is.mfd(hd_obj) || is.mvmfd(hd_obj) || is.nfd(hd_obj) || is.mvnfd(hd_obj)){
                              hd_obj <- Hd(hd_obj)
                            }
@@ -169,7 +168,7 @@ mhpca <- R6::R6Class("mhpca",
                                warning("The length of 'sparse_tuning_nfd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
                                sparse_tuning_nfd <- rep(sparse_tuning_nfd, length.out = ncomp)
                              }
-                             
+                             browser()
                              result <- sequential_power_hybrid(hd_obj = hd_obj, 
                                                                n = ncomp, 
                                                                smooth_tuning = smooth_tuning, 
@@ -464,12 +463,28 @@ Mhpca <- function(hd_obj,
                  sparse_type_u = "soft", 
                  sparse_type_nfd = "soft",
                  K_fold_u=30,
-                 K_fold_nfd=K_fold_nfd,
+                 K_fold_nfd=K_fold_u,
                  sparse_CV = TRUE, 
                  smooth_GCV = TRUE, 
                  penalize_nfd = FALSE, 
                  penalize_u = FALSE) {
   
-  mhpca$new(hd_obj, method, ncomp, smooth_tuning, sparse_tuning_u,sparse_tuning_nfd, centerfns, alpha_orth, smoothing_type, sparse_type_u,sparse_type_nfd, K_fold, sparse_CV, smooth_GCV,penalize_nfd = penalize_nfd, penalize_u = penalize_u)
+  mhpca$new(hd_obj = hd_obj, 
+            method = method, 
+            ncomp = ncomp, 
+            smooth_tuning = smooth_tuning, 
+            sparse_tuning_u = sparse_tuning_u,
+            sparse_tuning_nfd = sparse_tuning_nfd, 
+            centerfns = centerfns, 
+            alpha_orth = alpha_orth, 
+            smoothing_type = smoothing_type, 
+            sparse_type_u = sparse_type_u,
+            sparse_type_nfd = sparse_type_nfd, 
+            K_fold_u = K_fold_u, 
+            K_fold_nfd = K_fold_nfd,
+            sparse_CV = sparse_CV,
+            smooth_GCV = smooth_GCV,
+            penalize_nfd = penalize_nfd, 
+            penalize_u = penalize_u)
 }
 #' @rdname mhpca

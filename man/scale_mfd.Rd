@@ -4,7 +4,7 @@
 \alias{scale_mfd}
 \title{Scale an `mfd` Object}
 \usage{
-scale_mfd(mfd_obj, mfd_eval_length, weight = NULL)
+scale_mfd(mfd_obj, mfd_eval_length = 100, weight = NULL)
 }
 \arguments{
 \item{mfd_obj}{An object of class `mfd`.}

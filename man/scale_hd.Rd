@@ -4,16 +4,22 @@
 \alias{scale_hd}
 \title{Scale a `hd` Object}
 \usage{
-scale_hd(hd_obj, mfd_eval_length, f_weight = NULL, nf_weight = NULL)
+scale_hd(
+  ...,
+  mf_eval_length = NULL,
+  w = NULL,
+  f_weight = NULL,
+  nf_weight = NULL
+)
 }
 \arguments{
-\item{hd_obj}{A `hd` object, which can be an `mfd`, `mvmfd`, `nfd`, `mvnfd`.}
-
-\item{mfd_eval_length}{A numeric vector specifying the number of evaluation points for functional variables.}
-
 \item{f_weight}{A numeric vector of scaling factors for functional variables. The length must match number of functional variables.}
 
 \item{nf_weight}{A numeric vector of scaling factors for non-functional variables. The length must match the number of non functional variables.}
+
+\item{hd_obj}{A `hd` object, which can be an `mfd`, `mvmfd`, `nfd`, `mvnfd`.}
+
+\item{mfd_eval_length}{A numeric vector specifying the number of evaluation points for functional variables.}
 }
 \value{
 A scaled high-dimensional data object of class 'Hd'.
