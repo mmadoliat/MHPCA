@@ -173,7 +173,6 @@ center_mvnfd <- function(mvnfd_obj) {
 #'@param weight An optional numeric vector of scaling factors for each variable. If NULL, scaling factors are calculated automatically.
 #'
 #' @return A scaled mvnfd object.
-#' @export
 scale_mvnfd <- function(mvnfd_obj,weight = NULL){
   if (!is.null(weight) && length(weight) != mvnfd_obj$nvar) stop("The length of weight vector must be the number of nfd variables")
   nfd_list <- list()
@@ -181,4 +180,5 @@ scale_mvnfd <- function(mvnfd_obj,weight = NULL){
     nfd_list[[i]] <- scale_nfd(mvnfd_obj[,i],weight = weight[i])
   }
   mvnfd_scaled <- Mvnfd(nfd_list)
+  return(mvnfd_scaled)
 }

@@ -34,23 +34,17 @@ plot_hd <- function(hd_obj, xlab = NULL, ylab = NULL, ...) {
 #' @param nf_weight A numeric vector of scaling factors for non-functional variables. The length must match the number of non functional variables.
 
 #' @return A scaled high-dimensional data object of class 'Hd'.
-#' @export
 #'
 #' @examples
 #' # Example usage:
 #' # Assuming `hd_obj` is a valid high-dimensional data object:
 #' # scaled_hd <- scale_hd(hd_obj, mfd_eval_length = c(100, 200), weight = c(0.5, 0.8, 1.2))
-scale_hd <- function(..., mf_eval_length = NULL, w = NULL, f_weight = NULL, nf_weight = NULL){
-  obj <- list(...)
-  if (is.hd(obj[[1]])){
-    hd_obj <- obj[[1]]
-  } else {
-    hd_obj <- Hd(obj)
-  }
+scale_hd <- function(hd_obj, f_weight = NULL, nf_weight = NULL, mf_eval_length = NULL,scale_components = FALSE){
+  
   
   mf <- hd_obj$mf
   nf <- hd_obj$nf
-  if (is.null(w)){
+  if (!scale_components){
     if (!is.null(mf)) {
       mf_eval_length <-  if (is.null(mf_eval_length)) rep(100,mf$nvar)
       mvmfd_scaled <- scale_mvmfd(mf,mf_eval_length,f_weight)
@@ -59,12 +53,17 @@ scale_hd <- function(..., mf_eval_length = NULL, w = NULL, f_weight = NULL, nf_w
       mvnfd_scaled <- scale_mvnfd(nf,nf_weight)
     }
   } else {
-    if (!is.numeric(w) || w < 0 || w > 1) stop("w must be a number between 0 and 1")
+    if (!is.null(f_weight) && is.null(nf_weight)) nf_weight <- 1 - f_weight 
+    if (is.null(f_weight) && !is.null(nf_weight)) f_weight <- 1 - nf_weight
+    if (!is.null(f_weight) && !is.null(nf_weight) && (f_weight+nf_weight != 1)){
+      f_weight <- f_weight/(f_weight + nf_weight)
+      nf_weight <- nf_weight/(f_weight + nf_weight)
+    }
     if (!is.null(mf)) {
-      mvmfd_scaled <- w*mf
+      mvmfd_scaled <- f_weight*mf
     } 
     if (!is.null(nf)) {
-      mvnfd_scaled <- (1-w)*nf
+      mvnfd_scaled <- nf_weight*nf
     }
   }
   

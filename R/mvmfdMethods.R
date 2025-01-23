@@ -191,7 +191,6 @@ norm_mvmfd <- function(mvmfd_obj) {
 #' @param weight An optional numeric vector of scaling factors for each functional variable. If NULL, scaling factors are calculated automatically.
 #'
 #' @return A scaled mvmfd object.
-#' @export
 #'
 #' @examples
 #' # Example usage:

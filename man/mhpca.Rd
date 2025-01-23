@@ -192,7 +192,7 @@ means it is computed based on the optimal sparse tuning parameter selected via c
   sparse_type_u = "soft",
   sparse_type_nfd = "soft",
   K_fold_u = 30,
-  K_fold_nfd = K_fold_u,
+  K_fold_nfd = 30,
   sparse_CV,
   smooth_GCV,
   penalize_nfd = FALSE,

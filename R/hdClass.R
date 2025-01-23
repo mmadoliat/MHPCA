@@ -114,8 +114,7 @@ hd <- R6::R6Class("hd",
                       cat("\n")
                       if (!is.null(private$.nf)) print(private$.nf)
                       invisible(self)
-                    }
-                  ),
+                    }),
                   active = list(
                     # basis field
                     nf = function(value) {

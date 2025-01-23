@@ -155,7 +155,6 @@ norm_mfd <- function(mfd_obj) {
 #' @param weight An optional numeric value to use as the scaling factor. If NULL, the scaling factor is calculated automatically.
 #'
 #' @return A scaled mfd object.
-#' @export
 #'
 #' @examples
 #' # Example usage:
@@ -291,4 +290,28 @@ scale_mfd <- function(mfd_obj,mfd_eval_length = 100,weight = NULL){
     coef <- mfd_obj$coefs[, , i]
   }
   return(mfd$new(X = coef, mdbs = bs, method = "coefs"))
+}
+
+#' @title scale of an object of class `mfd`, `mvmfd`, `nfd`, `mvnfd` or `hd`..
+#'
+#' @description
+#' Standard deviation an object of class `mfd`, `mvmfd`, `nfd`, `mvnfd` or `hd`..
+#' @param x An object of class `mfd`, `mvmfd`, `nfd`, `mvnfd` or `hd`.
+#' @param ... all `scale` function arguments.
+#' @return An object of class `mfd`, `mvmfd`, `nfd`, `mvnfd` or `hd`.
+#' @export
+scale <- function(x, ...) {
+  if (inherits(x, "mfd")) {
+    return(scale_mfd(x, ...))
+  } else if (inherits(x, "mvmfd")){
+    return(scale_mvmfd(x, ...))
+  } else if (inherits(x, "hd")) {
+    return(scale_hd(x, ...))
+  } else if (inherits(x,"nfd")){
+    return(scale_nfd(x, ...))
+  } else if (inherits(x,"mvnfd")) {
+    return(scale_mvnfd(x, ...))
+  } else {
+    return(base::scale(x, ...))
+  }
 }
