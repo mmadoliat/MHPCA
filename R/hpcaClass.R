@@ -76,7 +76,7 @@ mhpca <- R6::R6Class("mhpca",
                                                sparse_type_u = "soft",
                                                sparse_type_nfd = "soft",
                                                K_fold_u = 30, 
-                                               K_fold_nfd = K_fold_u,
+                                               K_fold_nfd = 30,
                                                sparse_CV, 
                                                smooth_GCV, 
                                                penalize_nfd = FALSE,
@@ -168,7 +168,7 @@ mhpca <- R6::R6Class("mhpca",
                                warning("The length of 'sparse_tuning_nfd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
                                sparse_tuning_nfd <- rep(sparse_tuning_nfd, length.out = ncomp)
                              }
-                             browser()
+                             #browser()
                              result <- sequential_power_hybrid(hd_obj = hd_obj, 
                                                                n = ncomp, 
                                                                smooth_tuning = smooth_tuning, 
@@ -181,8 +181,8 @@ mhpca <- R6::R6Class("mhpca",
                                                                sparse_tuning_type_nfd = sparse_type_nfd,
                                                                K_fold_u = K_fold_u,
                                                                K_fold_nfd = K_fold_nfd,
-                                                               sparse_CV, 
-                                                               smooth_GCV,
+                                                               sparse_CV = sparse_CV, 
+                                                               smooth_GCV = smooth_GCV,
                                                                penalize_nfd = penalize_nfd,
                                                                penalize_u = penalize_u)
                            } else if (method == "eigen" || alpha_orth == "TRUE") {
