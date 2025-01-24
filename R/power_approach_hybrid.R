@@ -265,7 +265,7 @@ cv_local_hybrid = function(fdata, nfdata, G_half, K_fold_u, K_fold_nfd,
                            sparse_tuning_type_u,sparse_tuning_type_nfd, 
                            shuffled_row_u,shuffled_row_nfd ,group_size_u,
                            group_size_nfd, penalize_nfd = FALSE, penalize_u = FALSE){
-  #browser()
+  
   shuffled_row_f <- shuffled_row_u$f
   
   shuffled_row_nf <- shuffled_row_u$nf
@@ -505,7 +505,7 @@ handle_sparse_tuning_hybrid <- function(fdata,
                                         penalize_nfd = FALSE, 
                                         penalize_u = FALSE) {
   
-  #browser()
+  
   count <- 0
   cv_scores_u <- cv_scores_nfd <- c()
   sparse_tuning_selection_u <- NULL
@@ -575,7 +575,7 @@ handle_sparse_tuning_hybrid <- function(fdata,
     
   } else if (!is.null(sparse_tuning_u) && !is.null(sparse_tuning_nfd)){
     
-    #browser()
+    
     
     for (sparse_tuning_single_nfd in sparse_tuning_nfd) {
       for (sparse_tuning_single_u in sparse_tuning_u){
@@ -611,7 +611,7 @@ handle_sparse_tuning_hybrid <- function(fdata,
       }
     }
     
-    #browser()
+    
     
   }
   return(list(
@@ -1254,5 +1254,6 @@ joint_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, cen
       variance[k] <- (t(Xnfv)%*%Xnfv)/(nf_obj$nobs - 1)
     } 
   }
+  
   return(list(pc_fd = pc, pc_nfd = nfv_total,lsv = lsv, variance = variance, smooth_tuning_result = smooth_tuning_result, GCV_score = GCV_score))
 } 
