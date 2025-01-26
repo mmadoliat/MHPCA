@@ -1,8 +1,9 @@
 plot_mhpca <- function(mhpca_obj, comp_index = NULL, var_index = NULL, ask = TRUE, expand = NULL, nx = 100, xlab = NULL, ylab = NULL, ...) {
+  
   if (!(inherits(mhpca_obj, "mhpca"))) stop("Argument 'mhpca_obj' is not a mhpca object.")
   percentvar <- round(100 * (mhpca_obj$values) / sum(mhpca_obj$values), 1)
-  mean_mfd <- mhpca_obj$mean_mfd
-  pc_mfd <- mhpca_obj$pc_mfd
+  mean_mfd <- mhpca_obj$mean_hd$mf
+  pc_mfd <- mhpca_obj$pc_hd$mf
   n <- pc_mfd$nobs
   p <- pc_mfd$nvar
   if (is.null(var_index)) var_index <- 1:p
