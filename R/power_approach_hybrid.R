@@ -282,129 +282,329 @@ init_joint_hybrid = function(fdata, nfdata, S_smooth = NULL, S_2_inverse = NULL,
 }
 
 #computing cv score for sparse tuning u 
-cv_local_hybrid = function(fdata, nfdata, G_half, K_fold_u, K_fold_nfd,K_fold_fd,
-                           sparse_tuning_single_u,sparse_tuning_single_nfd, sparse_tuning_single_fd,
-                           sparse_tuning_type_u,sparse_tuning_type_nfd,sparse_tuning_type_fd, 
-                           shuffled_row_u,shuffled_row_nfd ,shuffled_row_fd,
-                           group_size_u,group_size_nfd,group_size_fd, penalize_nfd = FALSE,penalize_fd = FALSE, penalize_u = FALSE){
+# cv_local_hybrid = function(fdata, nfdata, G_half, K_fold_u, K_fold_nfd,K_fold_fd,
+#                            sparse_tuning_single_u,sparse_tuning_single_nfd, sparse_tuning_single_fd,
+#                            sparse_tuning_type_u,sparse_tuning_type_nfd,sparse_tuning_type_fd, 
+#                            shuffled_row_u,shuffled_row_nfd ,shuffled_row_fd,
+#                            group_size_u,group_size_nfd,group_size_fd, penalize_nfd = FALSE,penalize_fd = FALSE, penalize_u = FALSE){
+#   
+#   shuffled_row_f <- shuffled_row_u$f
+#   
+#   shuffled_row_nf <- shuffled_row_u$nf
+#   group_size_f <- group_size_u$f
+#   group_size_nf <- group_size_u$nf
+#   data_double_tilde = if (!is.null(fdata)) t(fdata%*%G_half) else NULL
+#   error_score_sparse_u <- error_score_sparse_nfd <- 0
+#   ################# k_fold of u
+#   if (penalize_u){
+#     for(k in seq_len(K_fold_u)){
+#       rows_to_remove_f <- if (!is.null(fdata)) shuffled_row_f[((k-1)*group_size_f+1):((k)*group_size_f)]
+#       rows_to_remove_nf <- if (!is.null(nfdata)) shuffled_row_nf[((k-1)*group_size_nf+1):((k)*group_size_nf)]
+#       if (!is.null(fdata)) {
+#         fdata_train <- data_double_tilde[-rows_to_remove_f, , drop = FALSE]
+#         fdata_test  <- data_double_tilde[rows_to_remove_f,  ,  drop = FALSE]
+#       } else {
+#         fdata_train <- NULL
+#         fdata_test  <- NULL
+#       }
+#       # And slice nfdata if not NULL
+#       if (!is.null(nfdata)) {
+#         nfdata_train <- nfdata[, -rows_to_remove_nf, drop = FALSE]
+#         nfdata_test  <- nfdata[,  rows_to_remove_nf,  drop = FALSE]
+#       } else {
+#         nfdata_train <- NULL
+#         nfdata_test  <- NULL
+#       }
+#       u_test = init_sequential_hybrid(fdata = t(fdata_train),
+#                                       nfdata =  nfdata_train ,
+#                                       sparse_tuning_result_u = sparse_tuning_single_u,
+#                                       sparse_tuning_type_u = sparse_tuning_type_u, 
+#                                       cv_flag = TRUE, 
+#                                       penalize_nfd = FALSE, 
+#                                       penalize_u = penalize_u)
+#       #fv_test = if (!is.null(fdata)) fdata_test%*%u_test else NULL
+#       nfv_test = if (!is.null(nfdata)) t(nfdata_test)%*%u_test else NULL
+#       fv_test_smooth_back = if (!is.null(fdata)) (data_double_tilde%*%u_test)[rows_to_remove_f, , drop = FALSE] else NULL
+#       fdata_test_smooth_back = if (!is.null(fdata)) t(data_double_tilde)[, rows_to_remove_f, drop = FALSE] else NULL
+#       fv_error <- if (!is.null(fdata)) sum((t(fdata_test_smooth_back)-fv_test_smooth_back%*%t(u_test))^2) else 0
+#       nfv_error <- if (!is.null(nfdata)) sum((t(nfdata_test)-nfv_test%*%t(u_test))^2) else 0
+#       error_score_sparse_u = error_score_sparse_u + fv_error + nfv_error
+#     }
+#     normalization_factor <- if (!is.null(fdata)) {
+#       ncol(fdata)
+#     } else if (!is.null(nfdata)) {
+#       nrow(nfdata)
+#     } else {
+#       1  
+#     }
+#     
+#     err_u <- (error_score_sparse_u / normalization_factor)
+#   } 
+#   if(penalize_nfd || penalize_fd){ ################# k_fold of nfd or fd
+#     
+#     for(k in seq_len(K_fold_nfd)){
+#       rows_to_remove_nfd <- if (penalize_nfd) shuffled_row_nfd[((k-1)*group_size_nfd+1):((k)*group_size_nfd)]
+#       if (!is.null(fdata)) {
+#         fdata_train <- data_double_tilde[, -rows_to_remove_nfd, drop = FALSE]
+#         fdata_test  <- data_double_tilde[, rows_to_remove_nfd,  drop = FALSE]
+#       } else {
+#         fdata_train <- NULL
+#         fdata_test  <- NULL
+#       }
+#       # And slice nfdata if not NULL
+#       if (!is.null(nfdata)) {
+#         nfdata_train <- nfdata[-rows_to_remove_nfd, , drop = FALSE]
+#         nfdata_test  <- nfdata[rows_to_remove_nfd,  ,  drop = FALSE]
+#       } else {
+#         nfdata_train <- NULL
+#         nfdata_test  <- NULL
+#       }
+#       v_test = init_sequential_hybrid(fdata = t(fdata_train),
+#                                       nfdata =  nfdata_train ,
+#                                       sparse_tuning_result_nfd = sparse_tuning_single_nfd,
+#                                       sparse_tuning_result_fd = sparse_tuning_single_fd,
+#                                       sparse_tuning_type_nfd = sparse_tuning_type_nfd,
+#                                       sparse_tuning_type_fd = sparse_tuning_type_fd,
+#                                       cv_flag = TRUE, 
+#                                       penalize_nfd = penalize_nfd, 
+#                                       penalize_fd = penalize_fd,
+#                                       penalize_u = FALSE)
+#       
+#       nfv_test <- v_test$nfv
+#       fv_test_smooth_back <- v_test$fv # this fv_tilde
+#       u_test <- 0
+#       if (!is.null(nfdata)){
+#         u_test <- u_test + nfdata_test%*%nfv_test
+#       }
+#       if (!is.null(fdata)){
+#         u_test <- u_test + t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]%*%fv_test_smooth_back
+#       } 
+#       #nfv_test = if (!is.null(nfdata)) t(nfdata_test)%*%u_test else NULL
+#       #fv_test_smooth_back = if (!is.null(fdata)) (data_double_tilde%*%u_test)[,rows_to_remove_nfd , drop = FALSE] else NULL
+#       fdata_test_smooth_back = if (!is.null(fdata)) t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE] else NULL
+#       fv_error <- if (!is.null(fdata)) sum((t(fdata_test_smooth_back)-fv_test_smooth_back%*%t(u_test))^2) else 0
+#       nfv_error <- if (!is.null(nfdata)) sum((t(nfdata_test)-nfv_test%*%t(u_test))^2) else 0
+#     
+#       error_score_sparse_nfd = error_score_sparse_nfd + fv_error + nfv_error
+#     }
+#     normalization_factor <- if (!is.null(fdata)) {
+#       ncol(fdata)
+#     } else if (!is.null(nfdata)) {
+#       nrow(nfdata)
+#     } else {
+#       1  
+#     }
+#     
+#     err_nfd <- (error_score_sparse_nfd / normalization_factor)
+#     
+#   }
+#   if (!exists("err_u")) err_u <- NULL
+#   if (!exists("err_nfd")) err_nfd <- NULL
+#   return(list(err_u = err_u, err_nfd = err_nfd))
+# 
+# }
+
+
+cv_local_hybrid <- function(
+    fdata,
+    nfdata, 
+    G_half,
+    K_fold_u, 
+    K_fold_nfd,
+    K_fold_fd,
+    sparse_tuning_single_u,
+    sparse_tuning_single_nfd,
+    sparse_tuning_single_fd,
+    sparse_tuning_type_u,
+    sparse_tuning_type_nfd,
+    sparse_tuning_type_fd, 
+    shuffled_row_u,
+    shuffled_row_nfd,
+    shuffled_row_fd,
+    group_size_u,
+    group_size_nfd,
+    group_size_fd,
+    penalize_nfd = FALSE,
+    penalize_fd  = FALSE,
+    penalize_u   = FALSE
+) {
+  # Precompute fdata in transformed form (if fdata is not NULL)
+  data_double_tilde <- if (!is.null(fdata)) t(fdata %*% G_half) else NULL
   
-  shuffled_row_f <- shuffled_row_u$f
-  
+  # Extract row indices from shuffled_row_u (for u-penalty CV)
+  shuffled_row_f  <- shuffled_row_u$f
   shuffled_row_nf <- shuffled_row_u$nf
-  group_size_f <- group_size_u$f
+  
+  # Extract group sizes from group_size_u (for u-penalty CV)
+  group_size_f  <- group_size_u$f
   group_size_nf <- group_size_u$nf
-  data_double_tilde = if (!is.null(fdata)) t(fdata%*%G_half) else NULL
-  error_score_sparse_u <- error_score_sparse_nfd <- 0
-  ################# k_fold of u
-  if (penalize_u){
-    for(k in seq_len(K_fold_u)){
-      rows_to_remove_f <- if (!is.null(fdata)) shuffled_row_f[((k-1)*group_size_f+1):((k)*group_size_f)]
-      rows_to_remove_nf <- if (!is.null(nfdata)) shuffled_row_nf[((k-1)*group_size_nf+1):((k)*group_size_nf)]
+  
+  # Initialize accumulators for CV errors
+  error_score_sparse_u   <- 0
+  error_score_sparse_nfd <- 0
+  
+  #-------------------------------
+  # 1) Cross-validation over 'u'
+  #-------------------------------
+  err_u <- NULL
+  if (penalize_u) {
+    for (k in seq_len(K_fold_u)) {
+      rows_to_remove_f <- if (!is.null(fdata)) {
+        shuffled_row_f[((k-1)*group_size_f + 1) : (k * group_size_f)]
+      } else NULL
+      
+      rows_to_remove_nf <- if (!is.null(nfdata)) {
+        shuffled_row_nf[((k-1)*group_size_nf + 1) : (k * group_size_nf)]
+      } else NULL
+      
+      # Training/testing splits
       if (!is.null(fdata)) {
         fdata_train <- data_double_tilde[-rows_to_remove_f, , drop = FALSE]
-        fdata_test  <- data_double_tilde[rows_to_remove_f,  ,  drop = FALSE]
+        fdata_test  <- data_double_tilde[ rows_to_remove_f, , drop = FALSE]
       } else {
         fdata_train <- NULL
         fdata_test  <- NULL
       }
-      # And slice nfdata if not NULL
+      
       if (!is.null(nfdata)) {
         nfdata_train <- nfdata[, -rows_to_remove_nf, drop = FALSE]
-        nfdata_test  <- nfdata[,  rows_to_remove_nf,  drop = FALSE]
+        nfdata_test  <- nfdata[,  rows_to_remove_nf, drop = FALSE]
       } else {
         nfdata_train <- NULL
         nfdata_test  <- NULL
       }
-      u_test = init_sequential_hybrid(fdata = t(fdata_train),
-                                      nfdata =  nfdata_train ,
-                                      sparse_tuning_result_u = sparse_tuning_single_u,
-                                      sparse_tuning_type_u = sparse_tuning_type_u,, 
-                                      cv_flag = TRUE, 
-                                      penalize_nfd = FALSE, 
-                                      penalize_u = penalize_u)
-      #fv_test = if (!is.null(fdata)) fdata_test%*%u_test else NULL
-      nfv_test = if (!is.null(nfdata)) t(nfdata_test)%*%u_test else NULL
-      fv_test_smooth_back = if (!is.null(fdata)) (data_double_tilde%*%u_test)[rows_to_remove_f, , drop = FALSE] else NULL
-      fdata_test_smooth_back = if (!is.null(fdata)) t(data_double_tilde)[, rows_to_remove_f, drop = FALSE] else NULL
-      fv_error <- if (!is.null(fdata)) sum((t(fdata_test_smooth_back)-fv_test_smooth_back%*%t(u_test))^2) else 0
-      nfv_error <- if (!is.null(nfdata)) sum((t(nfdata_test)-nfv_test%*%t(u_test))^2) else 0
-      error_score_sparse_u = error_score_sparse_u + fv_error + nfv_error
+      
+      # Fit model with current penalty
+      # (Note the double comma in original code after sparse_tuning_type_u is removed.)
+      u_test <- init_sequential_hybrid(
+        fdata                 = t(fdata_train),
+        nfdata                = nfdata_train,
+        sparse_tuning_result_u= sparse_tuning_single_u,
+        sparse_tuning_type_u  = sparse_tuning_type_u,
+        cv_flag               = TRUE, 
+        penalize_nfd          = FALSE, 
+        penalize_u            = penalize_u
+      )
+      
+      # Compute error on the held-out fold
+      if (!is.null(fdata)) {
+        fv_test_smooth_back    <- (data_double_tilde %*% u_test)[rows_to_remove_f, , drop = FALSE]
+        fdata_test_smooth_back <- t(data_double_tilde)[, rows_to_remove_f, drop = FALSE]
+        fv_error <- sum((t(fdata_test_smooth_back) - fv_test_smooth_back %*% t(u_test))^2)
+      } else {
+        fv_error <- 0
+      }
+      
+      if (!is.null(nfdata)) {
+        nfv_test  <- t(nfdata_test) %*% u_test
+        nfv_error <- sum((t(nfdata_test) - nfv_test %*% t(u_test))^2)
+      } else {
+        nfv_error <- 0
+      }
+      
+      error_score_sparse_u <- error_score_sparse_u + (fv_error + nfv_error)
     }
+    
+    # Normalization
     normalization_factor <- if (!is.null(fdata)) {
       ncol(fdata)
     } else if (!is.null(nfdata)) {
       nrow(nfdata)
     } else {
-      1  
+      1
     }
-    
-    err_u <- (error_score_sparse_u / normalization_factor)
-  } 
-  if(penalize_nfd || penalize_fd){ ################# k_fold of nfd or fd
-    
-    for(k in seq_len(K_fold_nfd)){
-      rows_to_remove_nfd <- if (penalize_nfd) shuffled_row_nfd[((k-1)*group_size_nfd+1):((k)*group_size_nfd)]
+    err_u <- error_score_sparse_u / normalization_factor
+  }
+  
+  #----------------------------------------------
+  # 2) Cross-validation over 'nfd' or 'fd' terms
+  #----------------------------------------------
+  err_nfd <- NULL
+  if (penalize_nfd || penalize_fd) {
+    for (k in seq_len(K_fold_nfd)) {
+      rows_to_remove_nfd <- if (penalize_nfd) {
+        shuffled_row_nfd[((k-1)*group_size_nfd + 1) : (k * group_size_nfd)]
+      } else NULL
+      
+      # Training/testing splits
       if (!is.null(fdata)) {
         fdata_train <- data_double_tilde[, -rows_to_remove_nfd, drop = FALSE]
-        fdata_test  <- data_double_tilde[, rows_to_remove_nfd,  drop = FALSE]
+        fdata_test  <- data_double_tilde[,  rows_to_remove_nfd, drop = FALSE]
       } else {
         fdata_train <- NULL
         fdata_test  <- NULL
       }
-      # And slice nfdata if not NULL
+      
       if (!is.null(nfdata)) {
         nfdata_train <- nfdata[-rows_to_remove_nfd, , drop = FALSE]
-        nfdata_test  <- nfdata[rows_to_remove_nfd,  ,  drop = FALSE]
+        nfdata_test  <- nfdata[ rows_to_remove_nfd, , drop = FALSE]
       } else {
         nfdata_train <- NULL
         nfdata_test  <- NULL
       }
-      v_test = init_sequential_hybrid(fdata = t(fdata_train),
-                                      nfdata =  nfdata_train ,
-                                      sparse_tuning_result_nfd = sparse_tuning_single_nfd,
-                                      sparse_tuning_result_fd = sparse_tuning_single_fd,
-                                      sparse_tuning_type_nfd = sparse_tuning_type_nfd,
-                                      sparse_tuning_type_fd = sparse_tuning_type_fd,
-                                      cv_flag = TRUE, 
-                                      penalize_nfd = penalize_nfd, 
-                                      penalize_fd = penalize_fd,
-                                      penalize_u = FALSE)
+      
+      # Fit model with current penalty
+      v_test <- init_sequential_hybrid(
+        fdata                 = t(fdata_train),
+        nfdata                = nfdata_train,
+        sparse_tuning_result_nfd = sparse_tuning_single_nfd,
+        sparse_tuning_result_fd  = sparse_tuning_single_fd,
+        sparse_tuning_type_nfd   = sparse_tuning_type_nfd,
+        sparse_tuning_type_fd    = sparse_tuning_type_fd,
+        cv_flag               = TRUE, 
+        penalize_nfd          = penalize_nfd, 
+        penalize_fd           = penalize_fd,
+        penalize_u            = FALSE
+      )
       
       nfv_test <- v_test$nfv
-      fv_test_smooth_back <- v_test$fv # this fv_tilde
+      fv_test_smooth_back <- v_test$fv
+      
+      # Combine contributions into u_test
       u_test <- 0
-      if (!is.null(nfdata)){
-        u_test <- u_test + nfdata_test%*%nfv_test
+      if (!is.null(nfdata_test)) {
+        u_test <- u_test + nfdata_test %*% nfv_test
       }
-      if (!is.null(fdata)){
-        u_test <- u_test + t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]%*%fv_test_smooth_back
-      } 
-      #nfv_test = if (!is.null(nfdata)) t(nfdata_test)%*%u_test else NULL
-      #fv_test_smooth_back = if (!is.null(fdata)) (data_double_tilde%*%u_test)[,rows_to_remove_nfd , drop = FALSE] else NULL
-      fdata_test_smooth_back = if (!is.null(fdata)) t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE] else NULL
-      fv_error <- if (!is.null(fdata)) sum((t(fdata_test_smooth_back)-fv_test_smooth_back%*%t(u_test))^2) else 0
-      nfv_error <- if (!is.null(nfdata)) sum((t(nfdata_test)-nfv_test%*%t(u_test))^2) else 0
-    
-      error_score_sparse_nfd = error_score_sparse_nfd + fv_error + nfv_error
+      if (!is.null(fdata_test)) {
+        # fdata_test is "data_double_tilde[, rows_to_remove_nfd]", so we take its transpose
+        # to align with v_test$fv dimension
+        u_test <- u_test + t(fdata_test) %*% fv_test_smooth_back
+      }
+      
+      # Compute errors for this fold
+      if (!is.null(fdata)) {
+        # "fdata_test_smooth_back" matches the original variable naming
+        fdata_test_smooth_back <- t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]
+        fv_error <- sum((t(fdata_test_smooth_back) - fv_test_smooth_back %*% t(u_test))^2)
+      } else {
+        fv_error <- 0
+      }
+      
+      if (!is.null(nfdata)) {
+        nfv_error <- sum((t(nfdata_test) - nfv_test %*% t(u_test))^2)
+      } else {
+        nfv_error <- 0
+      }
+      
+      error_score_sparse_nfd <- error_score_sparse_nfd + (fv_error + nfv_error)
     }
+    
+    # Normalization
     normalization_factor <- if (!is.null(fdata)) {
       ncol(fdata)
     } else if (!is.null(nfdata)) {
       nrow(nfdata)
     } else {
-      1  
+      1
     }
-    
-    err_nfd <- (error_score_sparse_nfd / normalization_factor)
-    
+    err_nfd <- error_score_sparse_nfd / normalization_factor
   }
-  if (!exists("err_u")) err_u <- NULL
-  if (!exists("err_nfd")) err_nfd <- NULL
-  return(list(err_u = err_u, err_nfd = err_nfd))
-
+  
+  #--------------------------------
+  # Return the same output structure
+  #--------------------------------
+  list(err_u = err_u, err_nfd = err_nfd)
 }
-
-
 
 
 

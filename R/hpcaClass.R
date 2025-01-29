@@ -79,12 +79,13 @@ mhpca <- R6::R6Class("mhpca",
                           sparse_type_fd = "soft",
                           K_fold_u = 30,
                           K_fold_nfd = 30,
-                          K_fold_fd = K_fold_nfd,
+                          K_fold_fd = 30,
                           sparse_CV,
                           smooth_GCV,
                           penalize_nfd = FALSE,
                           penalize_fd = FALSE,
                           penalize_u = FALSE) {
+      browser()
       if (is.null(K_fold_nfd) && !is.null(K_fold_fd) && penalize_nfd == TRUE) {
         K_fold_nfd <- K_fold_fd
         warning("`K_fold_nfd` was not provided. It has been set to match `K_fold_fd`.")
@@ -496,16 +497,20 @@ Mhpca <- function(hd_obj,
                   smooth_tuning = NULL,
                   sparse_tuning_u = NULL,
                   sparse_tuning_nfd = NULL,
+                  sparse_tuning_fd = NULL,
                   centerfns = TRUE,
                   alpha_orth = FALSE,
                   smoothing_type = "basispen",
                   sparse_type_u = "soft",
                   sparse_type_nfd = "soft",
+                  sparse_type_fd = "soft",
                   K_fold_u = 30,
-                  K_fold_nfd = K_fold_u,
+                  K_fold_nfd = 30,
+                  K_fold_fd = 30,
                   sparse_CV = TRUE,
                   smooth_GCV = TRUE,
                   penalize_nfd = FALSE,
+                  penalize_fd = FALSE,
                   penalize_u = FALSE) {
   mhpca$new(
     hd_obj = hd_obj,
