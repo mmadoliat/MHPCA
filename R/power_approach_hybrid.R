@@ -45,6 +45,7 @@ init_sequential_hybrid <- function(fdata,
   fv_old <- if (!is.null(fdata)) svd(fdata)$v[, 1] else NULL
   nfv_old <- if (!is.null(nfdata)) svd(nfdata)$v[, 1] else NULL
   errors <- 10^60
+  
   while (errors > 0.00001) {
     
     u_old <- 0
@@ -60,6 +61,7 @@ init_sequential_hybrid <- function(fdata,
     } 
     u_old <- u_old / norm(u_old, type = "2")
     if (cv_flag == TRUE && penalize_u == TRUE) { # incorporate power algorithm in CV sparse tuning selection for u
+      
 
       fv_new <- if (!is.null(fdata)) t(fdata) %*% u_old else NULL
 
@@ -99,6 +101,7 @@ init_sequential_hybrid <- function(fdata,
     } else if(cv_flag == TRUE && (penalize_nfd == TRUE || penalize_fd == TRUE)){ # incorporate power algorithm in CV sparse tuning selection for nfd or fd
       if (!is.null(fdata)){
         fv_new <-  t(fdata) %*% u_old 
+        
         fv_new <- if(penalize_fd==TRUE) G_half%*%sparse_pen_fun(y = G_half_inverse%*%fv_new, tuning_parameter = sparse_tuning_result_fd, type = sparse_tuning_type_fd) 
         fv_new_back <- G_half_inverse %*% fv_new
         fv_weight <- norm(fv_new_back,"2")
@@ -149,7 +152,7 @@ init_sequential_hybrid <- function(fdata,
       
       if (!is.null(fdata)) {
         fv_new <- S_smooth %*% t(fdata) %*% u_old
-        fv_new <- if (penalize_fd) G_half%*%sparse_pen_fun(y = G_half_inverse%*%fv_new, tuning_parameter = sparse_tuning_result_fd, type = sparse_tuning_type_fd)
+        fv_new <- if (penalize_fd) G_half%*%sparse_pen_fun(y = G_half_inverse%*%fv_new, tuning_parameter = sparse_tuning_result_fd, type = sparse_tuning_type_fd) else fv_new
       } else {
         fv_new <- NULL
       }
@@ -204,6 +207,7 @@ init_sequential_hybrid <- function(fdata,
     if (is.null(fdata))  fv_new <- NULL # output is fv_tilde
     return(list(fv = fv_new,nfv = nfv_new))
   } else if (cv_flag == FALSE){
+    
     if (is.null(nfdata)) nfv_new <- NULL
     if (!is.null(fdata)) fv_new <- G_half_inverse %*% fv_new else fv_new <- NULL
     return(list(fv = fv_new, nfv = nfv_new, u = u_new))
@@ -696,7 +700,7 @@ handle_smooth_tuning_hybrid <- function(fdata,
                                               G_half_inverse =  G_half_inverse,
                                               G_half = G_half,
                                               penalize_nfd = penalize_nfd,
-                                              penalize_nfd = penalize_fd,
+                                              penalize_fd = penalize_fd,
                                               penalize_u = penalize_u)
         } else {
           test_temp <- init_joint_hybrid(fdata %*% G_half, nfdata ,S_smooth[[smooth_index]], S_2_inverse[[smooth_index]], G_half_inverse, G_half, n = n)
@@ -1088,7 +1092,7 @@ handle_sparse_tuning_hybrid <- function(
     penalize_u = FALSE) {
   # progress counter
   count <- 0
-
+  
   # If all three tuning-parameter sets are NULL, handle trivially:
   if (is.null(sparse_tuning_u) &&
     is.null(sparse_tuning_nfd) &&
@@ -1278,7 +1282,7 @@ cv_gcv_sequential_hybrid <- function(fdata,
   
   
   mvmfd_obj <- hd_obj$mf
-  CV_score_sparse_u <- CV_score_sparse_nfd <- CV_score_smooth <- Inf
+  CV_score_sparse_u <- CV_score_sparse_nfd <- CV_score_sparse_fd <- CV_score_smooth <- Inf
   result <- c()
   count <- 0
   nc <- 0 
@@ -1472,6 +1476,7 @@ sequential_power_hybrid <- function(hd_obj,
                                     penalize_nfd = FALSE,
                                     penalize_fd = FALSE,
                                     penalize_u = FALSE) {
+  
   
   #######centralize########
   if (centerfns) hd_obj <- center_hd(hd_obj)

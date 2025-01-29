@@ -85,7 +85,7 @@ mhpca <- R6::R6Class("mhpca",
                           penalize_nfd = FALSE,
                           penalize_fd = FALSE,
                           penalize_u = FALSE) {
-      browser()
+      
       if (is.null(K_fold_nfd) && !is.null(K_fold_fd) && penalize_nfd == TRUE) {
         K_fold_nfd <- K_fold_fd
         warning("`K_fold_nfd` was not provided. It has been set to match `K_fold_fd`.")
@@ -182,7 +182,7 @@ mhpca <- R6::R6Class("mhpca",
           warning("The length of 'sparse_tuning_nfd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
           sparse_tuning_fd <- rep(sparse_tuning_fd, length.out = ncomp)
         }
-        # browser()
+         
         result <- sequential_power_hybrid(
           hd_obj = hd_obj,
           n = ncomp,
