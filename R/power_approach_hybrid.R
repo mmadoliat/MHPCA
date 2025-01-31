@@ -3,6 +3,7 @@
 
 #sparse penalty function
 sparse_pen_fun <- function(y, tuning_parameter, type, alpha = 3.7) {
+  if (length(y) < tuning_parameter) stop("tuning parameter should be less than number of instances.")
   y_sorted <- sort(abs(y))
   lambda = y_sorted[tuning_parameter]
   if (tuning_parameter == 0) {
@@ -56,7 +57,7 @@ init_sequential_hybrid <- function(fdata,
       u_old <- u_old + nfdata %*% nfv_old
     }
 
-    if (penalize_u) {
+    if (penalize_u==TRUE) {
        u_old <- sparse_pen_fun(y = u_old, tuning_parameter = sparse_tuning_result_u, sparse_tuning_type_u)
     } 
     u_old <- u_old / norm(u_old, type = "2")
@@ -90,7 +91,7 @@ init_sequential_hybrid <- function(fdata,
         u_new <- u_new + nfdata %*% nfv_new
       }
 
-      if (penalize_u) {
+      if (penalize_u==TRUE) {
         u_new <-  sparse_pen_fun(y = u_new, tuning_parameter = sparse_tuning_result_u, sparse_tuning_type_u)
       } 
       u_new <- u_new / norm(u_new, type = "2")
@@ -102,7 +103,7 @@ init_sequential_hybrid <- function(fdata,
       if (!is.null(fdata)){
         fv_new <-  t(fdata) %*% u_old 
         
-        fv_new <- if(penalize_fd==TRUE) G_half%*%sparse_pen_fun(y = G_half_inverse%*%fv_new, tuning_parameter = sparse_tuning_result_fd, type = sparse_tuning_type_fd) 
+        fv_new <- if(penalize_fd==TRUE) G_half%*%sparse_pen_fun(y = G_half_inverse%*%fv_new, tuning_parameter = sparse_tuning_result_fd, type = sparse_tuning_type_fd) else fv_new
         fv_new_back <- G_half_inverse %*% fv_new
         fv_weight <- norm(fv_new_back,"2")
       } else {
@@ -113,7 +114,8 @@ init_sequential_hybrid <- function(fdata,
       
       if (!is.null(nfdata)) {
         nfv_new <- t(nfdata) %*% u_old
-        nfv_new <- if(penalize_nfd==TRUE) sparse_pen_fun(y = nfv_new, tuning_parameter = sparse_tuning_result_nfd, type = sparse_tuning_type_nfd) 
+        
+        nfv_new <- if(penalize_nfd==TRUE) sparse_pen_fun(y = nfv_new, tuning_parameter = sparse_tuning_result_nfd, type = sparse_tuning_type_nfd) else nfv_new
         nfv_weight <- norm(nfv_new,"2")
       } else {
         nfv_weight <- 0
@@ -152,14 +154,14 @@ init_sequential_hybrid <- function(fdata,
       
       if (!is.null(fdata)) {
         fv_new <- S_smooth %*% t(fdata) %*% u_old
-        fv_new <- if (penalize_fd) G_half%*%sparse_pen_fun(y = G_half_inverse%*%fv_new, tuning_parameter = sparse_tuning_result_fd, type = sparse_tuning_type_fd) else fv_new
+        fv_new <- if (penalize_fd==TRUE) G_half%*%sparse_pen_fun(y = G_half_inverse%*%fv_new, tuning_parameter = sparse_tuning_result_fd, type = sparse_tuning_type_fd) else fv_new
       } else {
         fv_new <- NULL
       }
       
       if (!is.null(nfdata)) {
         nfv_new <- t(nfdata) %*% u_old
-        nfv_new <- if (penalize_nfd) sparse_pen_fun(y = nfv_new, tuning_parameter = sparse_tuning_result_nfd, type = sparse_tuning_type_nfd) 
+        nfv_new <- if (penalize_nfd==TRUE) sparse_pen_fun(y = nfv_new, tuning_parameter = sparse_tuning_result_nfd, type = sparse_tuning_type_nfd) else nfv_new
       } else {
         nfv_new <- NULL
       }
@@ -190,7 +192,7 @@ init_sequential_hybrid <- function(fdata,
         u_new <- u_new + nfdata %*% nfv_new
       }
 
-      if (penalize_u) {
+      if (penalize_u ==TRUE) {
         u_new <-  sparse_pen_fun(y = u_new, tuning_parameter = sparse_tuning_result_u, sparse_tuning_type_u)
       } 
       u_new <- u_new / norm(u_new, type = "2")
@@ -202,7 +204,7 @@ init_sequential_hybrid <- function(fdata,
   }
   if (cv_flag == TRUE && penalize_u==TRUE) {
     return(u_new)
-  } else if (cv_flag == TRUE && penalize_nfd==TRUE){
+  } else if (cv_flag == TRUE && (penalize_nfd==TRUE || penalize_fd==TRUE)){
     if (is.null(nfdata)) nfv_new <- NULL
     if (is.null(fdata))  fv_new <- NULL # output is fv_tilde
     return(list(fv = fv_new,nfv = nfv_new))
@@ -413,6 +415,7 @@ cv_local_hybrid <- function(
     fdata,
     nfdata, 
     G_half,
+    G_half_inverse,
     K_fold_u, 
     K_fold_nfd,
     K_fold_fd,
@@ -523,12 +526,16 @@ cv_local_hybrid <- function(
   #----------------------------------------------
   # 2) Cross-validation over 'nfd' or 'fd' terms
   #----------------------------------------------
+  
   err_nfd <- NULL
   if (penalize_nfd || penalize_fd) {
     for (k in seq_len(K_fold_nfd)) {
-      rows_to_remove_nfd <- if (penalize_nfd) {
-        shuffled_row_nfd[((k-1)*group_size_nfd + 1) : (k * group_size_nfd)]
-      } else NULL
+      if (penalize_nfd || penalize_fd){
+        rows_to_remove_nfd <- shuffled_row_nfd[((k-1)*group_size_nfd + 1) : (k * group_size_nfd)]
+      } else {
+        rows_to_remove_nfd <- NULL
+      } 
+      
       
       # Training/testing splits
       if (!is.null(fdata)) {
@@ -554,7 +561,9 @@ cv_local_hybrid <- function(
         sparse_tuning_result_nfd = sparse_tuning_single_nfd,
         sparse_tuning_result_fd  = sparse_tuning_single_fd,
         sparse_tuning_type_nfd   = sparse_tuning_type_nfd,
-        sparse_tuning_type_fd    = sparse_tuning_type_fd,
+        sparse_tuning_type_fd    = sparse_tuning_type_fd, 
+        G_half_inverse = G_half_inverse, 
+        G_half = G_half,
         cv_flag               = TRUE, 
         penalize_nfd          = penalize_nfd, 
         penalize_fd           = penalize_fd,
@@ -1068,6 +1077,7 @@ handle_sparse_tuning_hybrid <- function(
     fdata,
     nfdata,
     G_half,
+    G_half_inverse,
     sparse_tuning_u,
     sparse_tuning_nfd,
     sparse_tuning_fd,
@@ -1137,10 +1147,10 @@ handle_sparse_tuning_hybrid <- function(
   # ----------------------------------------------------------
   # Loop through each combination, call cv_local_hybrid once
   # ----------------------------------------------------------
+  
   for (i in seq_len(nrow(combos))) {
     count <- count + 1
     setTxtProgressBar(pb, count)
-
     # Extract parameters from combos row
     param_fd <- combos$fd[i]
     param_nfd <- combos$nfd[i]
@@ -1156,6 +1166,7 @@ handle_sparse_tuning_hybrid <- function(
       fdata = fdata,
       nfdata = nfdata,
       G_half = G_half,
+      G_half_inverse = G_half_inverse,
       K_fold_u = K_fold_u,
       K_fold_nfd = K_fold_nfd,
       K_fold_fd = K_fold_fd,
@@ -1189,7 +1200,32 @@ handle_sparse_tuning_hybrid <- function(
       combos$score_fd[i] <- sparse_score[[2]]
     }
   }
-
+  
+  normalize <- function(x) {
+    min_x <- min(x, na.rm = TRUE)
+    max_x <- max(x, na.rm = TRUE)
+    if (max_x == min_x) {
+      # Avoid division by zero; return 0 for all non-NA entries
+      return(ifelse(!is.na(x), 0, NA))
+    } else {
+      return( (x - min_x) / (max_x - min_x) )
+    }
+  }
+  
+  # Normalize scores
+  combos$score_u_norm <-  ifelse(!is.na(combos$score_u),normalize(combos$score_u),combos$score_u)
+  combos$score_nfd_norm <- ifelse(!is.na(combos$score_nfd),normalize(combos$score_nfd),combos$score_nfd)
+  combos$score_fd_norm <- ifelse(!is.na(combos$score_fd),normalize(combos$score_fd),combos$score_fd)
+  combos$score_combined_norm <- 0
+  combos$score_combined_norm <- combos$score_combined_norm + ifelse(!is.na(combos$score_u_norm),combos$score_u_norm,0)
+  if (!is.na(combos$score_nfd_norm[1]) && !is.na(combos$score_fd_norm[1])){
+    combos$score_combined_norm <- combos$score_combined_norm + combos$score_nfd_norm
+  } else if (!is.na(combos$score_fd_norm[1]) && is.na(combos$score_nfd_norm[1])){
+    combos$score_combined_norm <- combos$score_combined_norm + combos$score_fd_norm
+  } else if (is.na(combos$score_fd_norm[1]) && !is.na(combos$score_nfd_norm[1])){
+    combos$score_combined_norm <- combos$score_combined_norm + combos$score_nfd_norm
+  }
+  
 
   sparse_tuning_selection_u <- NULL
   sparse_tuning_selection_nfd <- NULL
@@ -1199,11 +1235,11 @@ handle_sparse_tuning_hybrid <- function(
     # Subset only rows in combos where score_u isn't NA
     valid_rows_u <- which(!is.na(combos$score_u))
     if (length(valid_rows_u)) {
-      best_idx_u <- valid_rows_u[which.min(combos$score_u[valid_rows_u])]
+      best_idx_u <- valid_rows_u[which.min(combos$score_combined_norm[valid_rows_u])]
       CV_score_sparse_u <- combos$score_u[best_idx_u]
       sparse_tuning_selection_u <- combos$u[best_idx_u]
       # store final cv_scores vector for u
-      cv_scores_u <- combos$score_u[valid_rows_u]
+      cv_scores_u <- unique(combos$score_u[valid_rows_u])
     }
   } else {
     cv_scores_u <- NULL
@@ -1214,11 +1250,11 @@ handle_sparse_tuning_hybrid <- function(
     # Subset only rows in combos where score_nfd isn't NA
     valid_rows_nfd <- which(!is.na(combos$score_nfd))
     if (length(valid_rows_nfd)) {
-      best_idx_nfd <- valid_rows_nfd[which.min(combos$score_nfd[valid_rows_nfd])]
+      best_idx_nfd <- valid_rows_nfd[which.min(combos$score_combined_norm[valid_rows_nfd])]
       CV_score_sparse_nfd <- combos$score_nfd[best_idx_nfd]
       sparse_tuning_selection_nfd <- combos$nfd[best_idx_nfd]
       # store final cv_scores vector for nfd
-      cv_scores_nfd <- combos$score_nfd[valid_rows_nfd]
+      cv_scores_nfd <- unique(combos$score_nfd[valid_rows_nfd])
     }
   } else {
     cv_scores_nfd <- NULL
@@ -1229,11 +1265,11 @@ handle_sparse_tuning_hybrid <- function(
     # Subset only rows in combos where score_fd isn't NA
     valid_rows_fd <- which(!is.na(combos$score_fd))
     if (length(valid_rows_fd)) {
-      best_idx_fd <- valid_rows_fd[which.min(combos$score_fd[valid_rows_fd])]
+      best_idx_fd <- valid_rows_fd[which.min(combos$score_combined_norm[valid_rows_fd])]
       CV_score_sparse_fd <- combos$score_fd[best_idx_fd]
       sparse_tuning_selection_fd <- combos$fd[best_idx_fd]
       # store final cv_scores vector for fd
-      cv_scores_fd <- combos$score_fd[valid_rows_fd]
+      cv_scores_fd <- unique(combos$score_fd[valid_rows_fd])
     }
   } else {
     cv_scores_fd <- NULL
@@ -1301,17 +1337,19 @@ cv_gcv_sequential_hybrid <- function(fdata,
   shuffled_row_nfd <- shuffled_row_fd <- sample(nrf)
   group_size_nfd <- group_size_fd <- length(shuffled_row_nfd)/K_fold_nfd
   
-  n_iter <- (if (is.null(smooth_tuning)) 1 else dim(smooth_tuning)[1]) + 
-    (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) + 
-    (if (is.null(sparse_tuning_nfd)) 1 else length(sparse_tuning_nfd)) + 
-    (if (is.null(sparse_tuning_fd)) 1 else length(sparse_tuning_fd))
+  n_iter <- (if (is.null(smooth_tuning)) 1 else dim(smooth_tuning)[1]) +( 
+    (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) * 
+    (if (is.null(sparse_tuning_nfd)) 1 else length(sparse_tuning_nfd)) * 
+    (if (is.null(sparse_tuning_fd)) 1 else length(sparse_tuning_fd)))
   
   pb <- txtProgressBar(min = 0, max = n_iter, style = 3, width = 50, char = "=")
   
   # Handle sparse tuning
+  
   sparse_tuning_result <- handle_sparse_tuning_hybrid(fdata = fdata, 
                                                       nfdata = nfdata, 
                                                       G_half = G_half, 
+                                                      G_half_inverse = G_half_inverse,
                                                       sparse_tuning_u = sparse_tuning_u, 
                                                       sparse_tuning_nfd = sparse_tuning_nfd,
                                                       sparse_tuning_fd = sparse_tuning_fd,
@@ -1759,6 +1797,7 @@ sequential_power_hybrid <- function(hd_obj,
       }
       GCV_score[[i]] = cv_result$gcv_scores
       CG_temp <- if(!is.null(mvmfd_obj)) C_temp%*%G_half else NULL
+      
       test_result = init_sequential_hybrid(fdata = CG_temp, 
                                            nfdata =nf_data_temp,
                                            sparse_tuning_result_u = sparse_result_u, 
