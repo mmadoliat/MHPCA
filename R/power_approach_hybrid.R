@@ -406,6 +406,7 @@ cv_local_hybrid <- function(
   
   err_nfd <- NULL
   if (penalize_nfd || penalize_fd) {
+    browser()
     for (k in seq_len(K_fold_nfd)) {
       if (penalize_nfd || penalize_fd){
         rows_to_remove_nfd <- shuffled_row_nfd[((k-1)*group_size_nfd + 1) : (k * group_size_nfd)]
@@ -722,7 +723,6 @@ handle_sparse_tuning_hybrid <- function(
   # -------------------------------------------
   best_nfd <- NULL
   cv_scores_nfd <- NULL
-  
   if (!is.null(sparse_tuning_nfd)) {
     best_cv_nfd <- Inf
     cv_scores_nfd <- numeric(length(sparse_tuning_nfd))
