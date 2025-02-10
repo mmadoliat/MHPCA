@@ -406,7 +406,7 @@ cv_local_hybrid <- function(
   
   err_nfd <- NULL
   if (penalize_nfd || penalize_fd) {
-    browser()
+    #browser()
     for (k in seq_len(K_fold_nfd)) {
       if (penalize_nfd || penalize_fd){
         rows_to_remove_nfd <- shuffled_row_nfd[((k-1)*group_size_nfd + 1) : (k * group_size_nfd)]
