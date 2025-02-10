@@ -312,6 +312,7 @@ cv_local_hybrid <- function(
     penalize_fd  = FALSE,
     penalize_u   = FALSE
 ) {
+  
   # Precompute fdata in transformed form (if fdata is not NULL)
   data_double_tilde <- if (!is.null(fdata)) t(fdata %*% G_half) else NULL
   
@@ -406,7 +407,6 @@ cv_local_hybrid <- function(
   
   err_nfd <- NULL
   if (penalize_nfd || penalize_fd) {
-    #browser()
     for (k in seq_len(K_fold_nfd)) {
       if (penalize_nfd || penalize_fd){
         rows_to_remove_nfd <- shuffled_row_nfd[((k-1)*group_size_nfd + 1) : (k * group_size_nfd)]
@@ -459,7 +459,8 @@ cv_local_hybrid <- function(
       if (!is.null(fdata_test)) {
         # fdata_test is "data_double_tilde[, rows_to_remove_nfd]", so we take its transpose
         # to align with v_test$fv dimension
-        u_test <- u_test + t(fdata_test) %*% fv_test_smooth_back
+        #u_test <- u_test + t(fdata_test) %*% fv_test_smooth_back
+        u_test <- u_test + t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]%*%fv_test_smooth_back
       }
       
       # Compute errors for this fold
@@ -639,6 +640,7 @@ handle_sparse_tuning_hybrid <- function(
     penalize_nfd = FALSE,
     penalize_fd = FALSE,
     penalize_u = FALSE) {
+  
   
   # Initialize a counter for the progress bar
   count <- 0
@@ -866,7 +868,6 @@ cv_gcv_sequential_hybrid <- function(fdata,
                                      penalize_nfd = FALSE,
                                      penalize_fd = FALSE,
                                      penalize_u = FALSE) {
-  
   
   
   mvmfd_obj <- hd_obj$mf
