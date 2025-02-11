@@ -100,11 +100,12 @@ init_sequential_hybrid <- function(fdata,
       u_old <- u_new
     } else if(cv_flag == TRUE && (penalize_nfd == TRUE || penalize_fd == TRUE)){ # incorporate power algorithm in CV sparse tuning selection for nfd or fd
       if (!is.null(fdata)){
-        fv_new <-  t(fdata) %*% u_old 
+        fv_new <- t(fdata) %*% u_old # v_tilde
         
-        fv_new <- if(penalize_fd==TRUE) G_half%*%sparse_pen_fun(y = G_half_inverse%*%fv_new, tuning_parameter = sparse_tuning_result_fd, type = sparse_tuning_type_fd) else fv_new
-        fv_new_back <- G_half_inverse %*% fv_new
-        fv_weight <- norm(fv_new_back,"2")
+        # v_tilde
+        fv_new <- if(penalize_fd==TRUE) G_half%*%sparse_pen_fun(y = G_half_inverse%*%fv_new, tuning_parameter = sparse_tuning_result_fd, type = sparse_tuning_type_fd) else fv_new 
+        #fv_new_back <- G_half_inverse %*% fv_new # real v 
+        fv_weight <- norm(fv_new,"2") #fv_weight <- norm(fv_new_back,"2") 
       } else {
         fv_weight <- 0
         fv_new <- NULL
@@ -123,11 +124,13 @@ init_sequential_hybrid <- function(fdata,
       
       if (!is.null(fdata) && !is.null(nfdata)) {
         coef_norm <- sqrt(fv_weight^2 + nfv_weight^2)
-        fv_new <- G_half %*%(fv_new_back / coef_norm)
+        #fv_new <- G_half %*%(fv_new_back / coef_norm)
+        fv_new <- (fv_new / coef_norm)
         nfv_new <- nfv_new / coef_norm
       } else if (!is.null(fdata) && is.null(nfdata)) {
         coef_norm <- fv_weight
-        fv_new <- G_half %*%(fv_new_back / coef_norm)
+        #fv_new <- G_half %*%(fv_new_back / coef_norm)
+        fv_new <- (fv_new / coef_norm)
       } else if (is.null(fdata) && !is.null(nfdata)) {
         coef_norm <- nfv_weight
         nfv_new <- nfv_new / coef_norm
@@ -168,16 +171,18 @@ init_sequential_hybrid <- function(fdata,
       # normalizing fv and nfv
       ##########################################
       if (!is.null(fdata)) {
-        fv_new_back <- G_half_inverse %*% fv_new
-        fv_weight <- as.numeric(sqrt(t(fv_new_back) %*% S_2_inverse %*% fv_new_back))^2
+        #fv_new_back <- G_half_inverse %*% fv_new
+        #fv_weight <- as.numeric(sqrt(t(fv_new_back) %*% S_2_inverse %*% fv_new_back))^2
+        fv_weight <- norm(fv_new,"2")
       } else {
         fv_weight <- 0
       }
       nfv_weight <- if (!is.null(nfdata)) norm(nfv_new, "2")^2 else 0
       coef_norm <- sqrt(fv_weight + nfv_weight)
       if (!is.null(fdata)) {
-        fv_new_back <- fv_new_back / coef_norm
-        fv_new <- G_half %*% fv_new_back
+        #fv_new_back <- fv_new_back / coef_norm
+        #fv_new <- G_half %*% fv_new_back
+        fv_new <- fv_new/coef_norm
       }
       if (!is.null(nfdata)) {
         nfv_new <- nfv_new / coef_norm
@@ -201,16 +206,48 @@ init_sequential_hybrid <- function(fdata,
       if (!is.null(nfdata)) nfv_old <- nfv_new
     }
   }
+  browser()
   if (cv_flag == TRUE && penalize_u==TRUE) {
     return(u_new)
   } else if (cv_flag == TRUE && (penalize_nfd==TRUE || penalize_fd==TRUE)){
-    if (is.null(nfdata)) nfv_new <- NULL
-    if (is.null(fdata))  fv_new <- NULL # output is fv_tilde
+    coef_norm <- 0
+    if (is.null(nfdata)){
+      nfv_new <- NULL
+      nf_weight <- 0
+    } else {
+      coef_norm <- coef_norm + norm(nfv_new,"2")
+    }
+    if (is.null(fdata)){
+      fv_new <- NULL 
+      f_weight <- 0
+    }  else {
+      fv_new <- G_half_inverse%*%fv_new # output is read fv not tilde
+      coef_norm <- coef_norm + norm(fv_new,"2")
+      fv_new <- fv_new/coef_norm
+    }
+    if (!is.null(nfdata)){
+      nfv_new <- nfv_new/coef_norm
+    }
     return(list(fv = fv_new,nfv = nfv_new))
   } else if (cv_flag == FALSE){
+    coef_norm <- 0
     
-    if (is.null(nfdata)) nfv_new <- NULL
-    if (!is.null(fdata)) fv_new <- G_half_inverse %*% fv_new else fv_new <- NULL
+    if (is.null(nfdata)){
+      nfv_new <- NULL
+    } else {
+      coef_norm <- coef_norm + norm(nfv_new,"2")
+    }
+    if (!is.null(fdata)){
+      fv_new <- G_half_inverse %*% fv_new
+      coef_norm <- coef_norm + as.numeric(sqrt(t(fv_new) %*% S_2_inverse %*% fv_new))
+     
+      fv_new <- fv_new / coef_norm
+    }  else {
+      fv_new <- NULL
+    } 
+    if (!is.null(nfdata)){
+      nfv_new <- nfv_new/coef_norm
+    }
     return(list(fv = fv_new, nfv = nfv_new, u = u_new))
   }
 }
@@ -312,7 +349,7 @@ cv_local_hybrid <- function(
     penalize_fd  = FALSE,
     penalize_u   = FALSE
 ) {
-  
+  #browser()
   # Precompute fdata in transformed form (if fdata is not NULL)
   data_double_tilde <- if (!is.null(fdata)) t(fdata %*% G_half) else NULL
   
@@ -459,8 +496,8 @@ cv_local_hybrid <- function(
       if (!is.null(fdata_test)) {
         # fdata_test is "data_double_tilde[, rows_to_remove_nfd]", so we take its transpose
         # to align with v_test$fv dimension
-        #u_test <- u_test + t(fdata_test) %*% fv_test_smooth_back
-        u_test <- u_test + t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]%*%fv_test_smooth_back
+        u_test <- u_test + t(fdata_test) %*% fv_test_smooth_back
+        #u_test <- u_test + t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]%*%fv_test_smooth_back
       }
       
       # Compute errors for this fold
@@ -723,6 +760,7 @@ handle_sparse_tuning_hybrid <- function(
   # -------------------------------------------
   # 2. Tune the "nfd" parameter (if provided)
   # -------------------------------------------
+  
   best_nfd <- NULL
   cv_scores_nfd <- NULL
   if (!is.null(sparse_tuning_nfd)) {
@@ -869,7 +907,7 @@ cv_gcv_sequential_hybrid <- function(fdata,
                                      penalize_fd = FALSE,
                                      penalize_u = FALSE) {
   
-  
+  set.seed(123)
   mvmfd_obj <- hd_obj$mf
   CV_score_sparse_u <- CV_score_sparse_nfd <- CV_score_sparse_fd <- CV_score_smooth <- Inf
   result <- c()
