@@ -166,6 +166,44 @@ mhpca <- R6::R6Class("mhpca",
           if (!is.null(smooth_tuning)) {
             names(smooth_tuning) <- paste0("var", 1:hd_obj$mf$nvar)
           }
+          
+          if (is.vector(sparse_tuning_fd) & !is.list(sparse_tuning_fd)) {
+            if (sparse_CV == FALSE) {
+              if (length(sparse_tuning_fd) != ncomp) {
+                warning("The length of 'sparse_tuning_fd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
+                sparse_tuning_fd <- rep(sparse_tuning_fd, length.out = ncomp)
+              }
+              sparse_tuning_fd <- replicate(hd_obj$mf$nvar, sparse_tuning_fd, simplify = FALSE)
+            } else {
+              warning("The length of 'sparse_tuning_fd' did not match 'hd_obj$mf$nvar' and has been adjusted accordingly.", call. = FALSE)
+              sparse_tuning_fd <- replicate(hd_obj$mf$nvar, sparse_tuning_fd, simplify = FALSE)
+            }
+          } 
+          else if (is.list(sparse_tuning_fd)) {
+            if (sparse_CV == FALSE) {
+              if (length(sparse_tuning_fd) != hd_obj$mf$nvar) {
+                warning("Adjusting 'sparse_tuning_fd' to match 'hd_obj$mf$nvar'.", call. = FALSE)
+                sparse_tuning_fd <- rep(sparse_tuning_fd, length.out = hd_obj$mf$nvar)
+              }
+              sparse_tuning_fd <- lapply(sparse_tuning_fd, function(vec) {
+                if (length(vec) != ncomp) {
+                  warning("Adjusting vector length in 'sparse_tuning_fd' to match 'ncomp'.", call. = FALSE)
+                  vec <- rep(vec, length.out = ncomp)
+                }
+                vec
+              })
+            } else {
+              if (length(sparse_tuning_fd) != hd_obj$mf$nvar) {
+                warning("Adjusting 'sparse_tuning_fd' to match 'hd_obj$mf$nvar'.", call. = FALSE)
+                sparse_tuning_fd <- rep(sparse_tuning_fd, length.out = hd_obj$mf$nvar)
+              }
+              
+              
+            }
+          }
+          if (!is.null(sparse_tuning_fd)) {
+            names(sparse_tuning_fd) <- paste0("var", 1:hd_obj$mf$nvar)
+          }
         }
 
 

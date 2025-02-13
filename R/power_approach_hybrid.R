@@ -1282,6 +1282,7 @@ sequential_power_hybrid <- function(hd_obj,
       smooth_tuning_temp <- expand.grid(smooth_tuning)
     }
     
+    
     S_smooth <- S_2_inverse <- list()
     cat("Preprocessing...\n")
     n_iter1 <- dim(smooth_tuning_temp)[1]
