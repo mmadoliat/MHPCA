@@ -1197,7 +1197,7 @@ sequential_power_hybrid <- function(hd_obj,
     for (i in 1:n) {
       cat(sprintf("Computing the %s PC...\n", ordinal_msg(i)))
       if (is.null(smooth_tuning)) {
-        smooth_tuning_temp = if (!is.null(mvmfd_obj)) expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1])) else expand.grid(lapply(rep(0,mvnfd_obj$nvar), function(x) x[1]))
+        smooth_tuning_temp = if (!is.null(mvmfd_obj)) expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1])) else expand.grid(lapply(rep(0,nf_obj$nvar), function(x) x[1]))
       } else{
         smooth_tuning_temp = expand.grid(lapply(smooth_tuning, function(x) x[i]))
       }
@@ -1312,13 +1312,13 @@ sequential_power_hybrid <- function(hd_obj,
   else{
     
     if (is.null(smooth_tuning)) {
-      smooth_tuning_temp = if (!is.null(mvmfd_obj)) expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1])) else expand.grid(lapply(rep(0,mvnfd_obj$nvar), function(x) x[1]))
+      smooth_tuning_temp = if (!is.null(mvmfd_obj)) expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1])) else expand.grid(lapply(rep(0,nf_obj$nvar), function(x) x[1]))
     } else{
       smooth_tuning_temp <- expand.grid(smooth_tuning)
     }
     
     if (is.null(sparse_tuning_fd)) {
-      sparse_tuning_temp_fd = if (!is.null(mvmfd_obj)) as.matrix(expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1]))) else as.matrix(expand.grid(lapply(rep(0,mvnfd_obj$nvar), function(x) x[1])))
+      sparse_tuning_temp_fd = if (!is.null(mvmfd_obj)) as.matrix(expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1]))) else as.matrix(expand.grid(lapply(rep(0,nf_obj$nvar), function(x) x[1])))
     } else{
       sparse_tuning_temp_fd <- as.matrix(expand.grid(sparse_tuning_fd))
     }

@@ -175,6 +175,7 @@ mhpca <- R6::R6Class("mhpca",
               }
               sparse_tuning_fd <- replicate(hd_obj$mf$nvar, sparse_tuning_fd, simplify = FALSE)
             } else {
+              
               warning("The length of 'sparse_tuning_fd' did not match 'hd_obj$mf$nvar' and has been adjusted accordingly.", call. = FALSE)
               sparse_tuning_fd <- replicate(hd_obj$mf$nvar, sparse_tuning_fd, simplify = FALSE)
             }
