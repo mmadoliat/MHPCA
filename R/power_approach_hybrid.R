@@ -415,9 +415,11 @@ cv_local_hybrid <- function(
       if (!is.null(fdata)) {
         fdata_train <- data_double_tilde[-rows_to_remove_f, , drop = FALSE]
         fdata_test  <- data_double_tilde[ rows_to_remove_f, , drop = FALSE]
+        
       } else {
         fdata_train <- NULL
         fdata_test  <- NULL
+        
       }
       
       if (!is.null(nfdata)) {
@@ -431,7 +433,7 @@ cv_local_hybrid <- function(
       # Fit model with current penalty
       # (Note the double comma in original code after sparse_tuning_type_u is removed.)
       u_test <- init_sequential_hybrid(
-        fdata                 = t(fdata_train),
+        fdata                 = if (!is.null(fdata_train)) t(fdata_train) else NULL,
         nfdata                = nfdata_train,
         sparse_tuning_result_u= sparse_tuning_single_u,
         sparse_tuning_type_u  = sparse_tuning_type_u,
@@ -503,7 +505,7 @@ cv_local_hybrid <- function(
       
       # Fit model with current penalty
       v_test <- init_sequential_hybrid(
-        fdata                 = t(fdata_train),
+        fdata                 = if (!is.null(fdata_train)) t(fdata_train) else NULL,
         nfdata                = nfdata_train,
         sparse_tuning_result_nfd = sparse_tuning_single_nfd,
         sparse_tuning_result_fd  = sparse_tuning_single_fd,
