@@ -963,8 +963,8 @@ cv_gcv_sequential_hybrid <- function(fdata,
   group_size_nfd <- group_size_fd <- length(shuffled_row_nfd)/K_fold_nfd
   
   n_iter <- (if (is.null(smooth_tuning)) 1 else dim(smooth_tuning)[1]) +( 
-    (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) * 
-    (if (is.null(sparse_tuning_nfd)) 1 else length(sparse_tuning_nfd)) * 
+    (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) + 
+    (if (is.null(sparse_tuning_nfd)) 1 else length(sparse_tuning_nfd)) + 
     (if (is.null(sparse_tuning_fd)) 1 else length(sparse_tuning_fd)))
   
   pb <- txtProgressBar(min = 0, max = n_iter, style = 3, width = 50, char = "=")
@@ -1326,6 +1326,7 @@ sequential_power_hybrid <- function(hd_obj,
     }
     S_smooth <- S_2_inverse <- list()
     cat("Preprocessing...\n")
+    
     n_iter1 <- dim(smooth_tuning_temp)[1]
     pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
                          max = n_iter1, # Maximum value of the progress bar
@@ -1341,7 +1342,7 @@ sequential_power_hybrid <- function(hd_obj,
         S_2 <- solve(G + D)
         S_2_inverse[[smooth_index]] = solve(S_2)
         S_smooth[[smooth_index]] <- G_half %*% (S_2) %*% G_half
-        close(pb)
+        
       }
     } else {
       D <- NULL
@@ -1349,7 +1350,7 @@ sequential_power_hybrid <- function(hd_obj,
       S_2_inverse = NULL
       S_smooth <- NULL
     }
-   
+    close(pb)
     
     fv_total = c()
     nfv_total = c()
