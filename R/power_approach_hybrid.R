@@ -720,7 +720,7 @@ handle_sparse_tuning_hybrid <- function(
   if (is.null(sparse_tuning_u) &&
       is.null(sparse_tuning_nfd) &&
       is.null(sparse_tuning_fd)) {
-    count <- count + 1
+    count <- count + 4
     setTxtProgressBar(pb, count)
     return(list(
       sparse_tuning_selection_u   = 0,
@@ -787,6 +787,7 @@ handle_sparse_tuning_hybrid <- function(
     }
     CV_score_sparse_u <- best_cv_u
   } else {
+    count <- count + 1
     best_u <- 0
     cv_scores_u <- NULL
   }
@@ -844,6 +845,7 @@ handle_sparse_tuning_hybrid <- function(
     }
     CV_score_sparse_nfd <- best_cv_nfd
   } else {
+    count <- count + 1
     best_nfd <- 0
     cv_scores_nfd <- NULL
   }
@@ -900,10 +902,11 @@ handle_sparse_tuning_hybrid <- function(
     }
     CV_score_sparse_fd <- best_cv_fd
   } else {
+    count <- count + 1
     best_fd <- NULL
     cv_scores_fd <- NULL
   }
-  
+  setTxtProgressBar(pb, count)
   # Return a list with the selected tuning parameters and CV scores
   list(
     sparse_tuning_selection_u   = best_u,
@@ -968,7 +971,6 @@ cv_gcv_sequential_hybrid <- function(fdata,
     (if (is.null(sparse_tuning_fd)) 1 else length(sparse_tuning_fd)))
   
   pb <- txtProgressBar(min = 0, max = n_iter, style = 3, width = 50, char = "=")
-  
   # Handle sparse tuning
   
   sparse_tuning_result <- handle_sparse_tuning_hybrid(fdata = fdata, 
@@ -1345,6 +1347,7 @@ sequential_power_hybrid <- function(hd_obj,
         
       }
     } else {
+      setTxtProgressBar(pb, 1)
       D <- NULL
       S_2 <- NULL
       S_2_inverse = NULL
