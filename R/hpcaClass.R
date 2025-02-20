@@ -217,11 +217,11 @@ mhpca <- R6::R6Class("mhpca",
           warning("The length of 'sparse_tuning_nfd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
           sparse_tuning_nfd <- rep(sparse_tuning_nfd, length.out = ncomp)
         }
-        if (sparse_CV == FALSE & length(sparse_tuning_fd) != ncomp & !is.null(sparse_tuning_fd)) {
-          warning("The length of 'sparse_tuning_nfd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
-          sparse_tuning_fd <- rep(sparse_tuning_fd, length.out = ncomp)
-        }
-         
+        # if (sparse_CV == FALSE & length(sparse_tuning_fd) != ncomp & !is.null(sparse_tuning_fd)) {
+        #   warning("The length of 'sparse_tuning_nfd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
+        #   sparse_tuning_fd <- rep(sparse_tuning_fd, length.out = ncomp)
+        # }
+        browser()
         result <- sequential_power_hybrid(
           hd_obj = hd_obj,
           n = ncomp,
