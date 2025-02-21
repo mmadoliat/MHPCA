@@ -12,41 +12,48 @@ Mhpca(
   smooth_tuning = NULL,
   sparse_tuning_u = NULL,
   sparse_tuning_nfd = NULL,
+  sparse_tuning_fd = NULL,
   centerfns = TRUE,
   alpha_orth = FALSE,
   smoothing_type = "basispen",
   sparse_type_u = "soft",
   sparse_type_nfd = "soft",
+  sparse_type_fd = "soft",
   K_fold_u = 30,
-  K_fold_nfd = K_fold_u,
+  K_fold_nfd = 30,
+  K_fold_fd = 30,
   sparse_CV = TRUE,
   smooth_GCV = TRUE,
   penalize_nfd = FALSE,
+  penalize_fd = FALSE,
   penalize_u = FALSE
 )
 }
 \arguments{
 \item{hd_obj}{An `hd` object representing the multivariate functional data.}
 
-\item{method}{A character string specifying the approach to be used for MFPCA computation. 
-Options are "power" (the default), which uses the power algorithm, or "eigen", 
+\item{method}{A character string specifying the approach to be used for MFPCA computation.
+Options are "power" (the default), which uses the power algorithm, or "eigen",
 which uses the eigen decomposition approach.}
 
 \item{ncomp}{The number of functional principal components to retain.}
 
-\item{smooth_tuning}{A list or vector specifying the smoothing regularization parameter(s) for each variable. 
+\item{smooth_tuning}{A list or vector specifying the smoothing regularization parameter(s) for each variable.
 If NULL, non-smoothing MFPCA is estimated.}
 
-\item{sparse_tuning_u}{A list or vector specifying the sparsity regularization parameter(s) for each variable. 
+\item{sparse_tuning_u}{A list or vector specifying the sparsity regularization parameter(s) for each variable.
 If NULL, non-sparse MHPCA is estimated.}
 
-\item{sparse_tuning_nfd}{A list or vector specifying the sparsity regularization parameter(s) for each non functional variable. 
+\item{sparse_tuning_nfd}{A list or vector specifying the sparsity regularization parameter(s) for each non functional variable.
+If NULL, non-sparse MHPCA is estimated.}
+
+\item{sparse_tuning_fd}{A list or vector specifying the sparsity regularization parameter(s) for each functional variable.
 If NULL, non-sparse MHPCA is estimated.}
 
 \item{centerfns}{Logical indicating whether to center the functional data before analysis. Default is TRUE.}
 
-\item{alpha_orth}{Logical indicating whether to perform orthogonalization of the regularization parameters. 
-If `method` is "power", setting `alpha_orth = FALSE` (default) uses the sequential power approach, 
+\item{alpha_orth}{Logical indicating whether to perform orthogonalization of the regularization parameters.
+If `method` is "power", setting `alpha_orth = FALSE` (default) uses the sequential power approach,
 while setting `alpha_orth = TRUE` uses the joint power approach.}
 
 \item{smoothing_type}{The type of smoothing penalty to be applied on the coefficients. The types "coefpen" and "basispen" is supported. Default is "coefpen".}
@@ -55,24 +62,30 @@ while setting `alpha_orth = TRUE` uses the joint power approach.}
 
 \item{sparse_type_nfd}{The type of sparse penalty to be applied on the nfd right singular vectors. The types "soft", "hard" and "SCAD" is supported. Default is "soft".}
 
+\item{sparse_type_fd}{The type of sparse penalty to be applied on the fd right singular vectors. The types "soft", "hard" and "SCAD" is supported. Default is "soft".}
+
 \item{K_fold_u}{An integer specifying the number of folds in the sparse cross-validation process for u. Default is 30.}
 
 \item{K_fold_nfd}{An integer specifying the number of folds in the sparse cross-validation process for nfd. Default is 30.}
 
-\item{sparse_CV}{@param sparse_CV Logical indicating whether cross-validation should be applied to select the optimal sparse tuning parameter in sequential power approach. 
-If `sparse_CV = TRUE`, a series of tuning parameters should be provided as a vector with positive number with max equals to number of subjects. 
+\item{K_fold_fd}{An integer specifying the number of folds in the sparse cross-validation process for fd. Default is 30.}
+
+\item{sparse_CV}{Logical indicating whether cross-validation should be applied to select the optimal sparse tuning parameter in sequential power approach.
+If `sparse_CV = TRUE`, a series of tuning parameters should be provided as a vector with positive number with max equals to number of subjects.
 If `sparse_CV = FALSE`, specific tuning parameters are given directly to each principal components. Tuning parameters should be provided as a vector with length equal to `ncomp`.
 If the dimensions of input tuning parameters are incorrect, it will be converted to a list internally, and a warning will be issued.}
 
-\item{smooth_GCV}{@param smooth_GCV Logical indicating whether generalized cross-validation should be applied to select the optimal smooth tuning parameter. 
-If `smooth_GCV = TRUE`, a series of tuning parameters should be provided as a list with length equal to the number of variables. 
-If a list with incorrect dimensions is provided, it will be converted to a correct list internally, and a warning will be issued. 
-If `smooth_GCV = FALSE`, specific tuning parameters are given directly. If `method` is "power" and `alpha_orth = FALSE` (sequential power), 
-tuning parameters should be provided as a list with length equal to the number of variables, where each element is a vector of length `ncomp`. 
+\item{smooth_GCV}{Logical indicating whether generalized cross-validation should be applied to select the optimal smooth tuning parameter.
+If `smooth_GCV = TRUE`, a series of tuning parameters should be provided as a list with length equal to the number of variables.
+If a list with incorrect dimensions is provided, it will be converted to a correct list internally, and a warning will be issued.
+If `smooth_GCV = FALSE`, specific tuning parameters are given directly. If `method` is "power" and `alpha_orth = FALSE` (sequential power),
+tuning parameters should be provided as a list with length equal to the number of variables, where each element is a vector of length `ncomp`.
 If `method` is "power" and `alpha_orth = TRUE` (joint power), tuning parameters should be provided as a vector with length equal to the number of variables.
 If the dimensions of input tuning parameters are incorrect, it will be converted to a list internally, and a warning will be issued.}
 
-\item{penalize_nfd}{}
+\item{penalize_nfd}{Logical indicating whether sparsity penalty in sequential power approach should be applied on nfd right singular vector.}
+
+\item{penalize_fd}{Logical indicating whether sparsity penalty in sequential power approach should be applied on fd right singular vector.}
 
 \item{penalize_u}{Logical indicating whether penalize non functional object or left singular vector or not.}
 }
@@ -153,8 +166,8 @@ represents harmonics and  second indices represents variables}
 \item{\code{sparse_tuning_u}}{= The list of sparse penalties parameters}
 
 \item{\code{GCVs}}{= Generalized cross validations scores of smoothing penalties parameters.
-If both smoothing and sparse tuning penalties are used in the MHPCA method, 
-this represents the conditional generalized cross-validation scores, which 
+If both smoothing and sparse tuning penalties are used in the MHPCA method,
+this represents the conditional generalized cross-validation scores, which
 means it is computed based on the optimal sparse tuning parameter selected via cross validation.}
 
 \item{\code{CVs_u}}{= Cross validations scores of sparse penalties on u parameters}
@@ -186,16 +199,20 @@ means it is computed based on the optimal sparse tuning parameter selected via c
   smooth_tuning = NULL,
   sparse_tuning_u = NULL,
   sparse_tuning_nfd = NULL,
+  sparse_tuning_fd = NULL,
   centerfns = TRUE,
   alpha_orth = FALSE,
   smoothing_type = "coefpen",
   sparse_type_u = "soft",
   sparse_type_nfd = "soft",
+  sparse_type_fd = "soft",
   K_fold_u = 30,
   K_fold_nfd = 30,
+  K_fold_fd = 30,
   sparse_CV,
   smooth_GCV,
   penalize_nfd = FALSE,
+  penalize_fd = FALSE,
   penalize_u = FALSE
 )}\if{html}{\out{</div>}}
 }
