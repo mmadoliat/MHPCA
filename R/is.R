@@ -1,6 +1,5 @@
 #' Check if an object is of class 'basismfd'
 #'
-#'
 #' @param fdobj The object to check.
 #' @return TRUE if the object is of class 'basismfd', FALSE otherwise.
 #' @seealso \code{\link{is.mvbasismfd}}, \code{\link{is.mfd}}, \code{\link{is.mvmfd}}
