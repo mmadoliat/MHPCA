@@ -831,7 +831,7 @@ handle_sparse_tuning_hybrid <- function(
         group_size_fd = group_size_fd,
         penalize_nfd = penalize_nfd,
         penalize_fd = FALSE,
-        penalize_u = FALSE
+        penalize_u = penalize_u
       )
       
       # Here we assume the second element corresponds to nfd.
@@ -886,9 +886,9 @@ handle_sparse_tuning_hybrid <- function(
         group_size_u = group_size_u,
         group_size_nfd = group_size_nfd,
         group_size_fd = group_size_fd,
-        penalize_nfd = FALSE,
+        penalize_nfd = penalize_nfd,
         penalize_fd = penalize_fd,
-        penalize_u = FALSE
+        penalize_u = penalize_u
       )
       
       # Note: In your original code the "fd" score also came from res[[2]].
