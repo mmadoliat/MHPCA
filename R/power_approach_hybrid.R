@@ -944,7 +944,6 @@ cv_gcv_sequential_hybrid <- function(fdata,
                                      penalize_fd = FALSE,
                                      penalize_u = FALSE) {
   
-  set.seed(123)
   mvmfd_obj <- hd_obj$mf
   CV_score_sparse_u <- CV_score_sparse_nfd <- CV_score_sparse_fd <- CV_score_smooth <- Inf
   result <- c()
