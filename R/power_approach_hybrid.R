@@ -795,7 +795,7 @@ handle_sparse_tuning_hybrid <- function(
   # -------------------------------------------
   # 2. Tune the "nfd" parameter (if provided)
   # -------------------------------------------
-  
+  #browser()
   best_nfd <- NULL
   cv_scores_nfd <- NULL
   if (!is.null(sparse_tuning_nfd)) {
@@ -1142,7 +1142,7 @@ sequential_power_hybrid <- function(hd_obj,
                                     penalize_nfd = FALSE,
                                     penalize_fd = FALSE,
                                     penalize_u = FALSE) {
-  
+
   
   #######centralize########
   if (centerfns) hd_obj <- center_hd(hd_obj)
@@ -1185,7 +1185,6 @@ sequential_power_hybrid <- function(hd_obj,
     G_half_inverse = NULL
     all_equal_check <- NULL
   }
-  
   #########matrix input of smoothing parameters###########
   if (smooth_GCV == FALSE) {
     fv_total = c()
