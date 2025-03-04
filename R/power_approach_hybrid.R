@@ -477,15 +477,11 @@ cv_local_hybrid <- function(
   #----------------------------------------------
   
   err_nfd <- NULL
+   
   if (penalize_nfd || penalize_fd) {
+    
     for (k in seq_len(K_fold_nfd)) {
-      if (penalize_nfd || penalize_fd){
-        rows_to_remove_nfd <- shuffled_row_nfd[((k-1)*group_size_nfd + 1) : (k * group_size_nfd)]
-      } else {
-        rows_to_remove_nfd <- NULL
-      } 
-      
-      
+      rows_to_remove_nfd <- shuffled_row_nfd[((k-1)*group_size_nfd + 1) : (k * group_size_nfd)]
       # Training/testing splits
       if (!is.null(fdata)) {
         fdata_train <- data_double_tilde[, -rows_to_remove_nfd, drop = FALSE]
@@ -550,6 +546,7 @@ cv_local_hybrid <- function(
       }
       
       error_score_sparse_nfd <- error_score_sparse_nfd + (fv_error + nfv_error)
+      
     }
     
     # Normalization
@@ -561,6 +558,7 @@ cv_local_hybrid <- function(
       1
     }
     err_nfd <- error_score_sparse_nfd / normalization_factor
+     
   }
   
   #--------------------------------
@@ -835,7 +833,7 @@ handle_sparse_tuning_hybrid <- function(
       )
       
       # Here we assume the second element corresponds to nfd.
-      cv_score_nfd <- res[[2]]
+      cv_score_nfd <- res$err_nfd
       cv_scores_nfd[i] <- cv_score_nfd
       
       if (cv_score_nfd < best_cv_nfd) {
@@ -859,7 +857,6 @@ handle_sparse_tuning_hybrid <- function(
   if (!is.null(sparse_tuning_fd)) {
     best_cv_fd <- Inf
     cv_scores_fd <- numeric(nrow(sparse_tuning_fd))
-    
     for (i in seq_len(dim(sparse_tuning_fd)[1])) {
       candidate_fd <- sparse_tuning_fd[i,,drop = TRUE]
       count <- count + 1
@@ -892,8 +889,9 @@ handle_sparse_tuning_hybrid <- function(
       )
       
       # Note: In your original code the "fd" score also came from res[[2]].
-      cv_score_fd <- res[[2]]
+      cv_score_fd <- res$err_nfd # same value as res$err_fd
       cv_scores_fd[i] <- cv_score_fd
+      
       
       if (cv_score_fd < best_cv_fd) {
         best_cv_fd <- cv_score_fd
@@ -901,6 +899,7 @@ handle_sparse_tuning_hybrid <- function(
       }
     }
     CV_score_sparse_fd <- best_cv_fd
+    
   } else {
     count <- count + 1
     best_fd <- NULL
