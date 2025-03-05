@@ -1,7 +1,7 @@
 #' @importFrom expm sqrtm
 #' @importFrom utils  txtProgressBar setTxtProgressBar
 
-sparse_pen_fun <- function(y, tuning_parameter, type, alpha = 3.7, group_sizes = NULL) {
+sparse_pen_fun <- function(y, tuning_parameter, type, alpha = 3.7, group_sizes = NULL, gamma = 2) {
   if (length(tuning_parameter) > 1) {
     n_groups <- length(tuning_parameter)
     
@@ -53,6 +53,11 @@ sparse_pen_fun <- function(y, tuning_parameter, type, alpha = 3.7, group_sizes =
                          ((alpha - 1) * y - sign(y) * alpha * lambda) / (alpha - 2),
                          y))
     return(res)
+  } else if (type == "adaptive") {
+    weights <- 1 / (abs(y)^gamma + 10^(-6))
+    thr <- lambda * weights
+    return(sign(y) * pmax(abs(y) - thr, 0))
+    
   } else {
     stop("Unknown penalty type.")
   }
