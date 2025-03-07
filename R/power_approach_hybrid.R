@@ -1,7 +1,7 @@
 #' @importFrom expm sqrtm
 #' @importFrom utils  txtProgressBar setTxtProgressBar
 
-sparse_pen_fun <- function(y, tuning_parameter, type, alpha = 3.7, group_sizes = NULL, gamma = 2) {
+sparse_pen_fun <- function(y, tuning_parameter, type, alpha = 3.7, group_sizes = NULL, gamma = 2.5) {
   if (length(tuning_parameter) > 1) {
     n_groups <- length(tuning_parameter)
     
@@ -1209,7 +1209,8 @@ sequential_power_hybrid <- function(hd_obj,
       }
       if (i == 1) {
         if (!is.null(mvmfd_obj)) C_temp = C
-        if (!is.null(nf_obj)) nf_data_temp <- nf_data
+        #if (!is.null(nf_obj)) nf_data_temp <- nf_data
+        nf_data_temp <- nf_data
       } 
       else{
         if (!is.null(mvmfd_obj)) {
@@ -1294,6 +1295,7 @@ sequential_power_hybrid <- function(hd_obj,
       }
       GCV_score = c(GCV_score, cv_result$gcv_scores)
       CG_temp <- if(!is.null(mvmfd_obj)) C_temp%*%G_half else NULL
+      
       test_result = init_sequential_hybrid(fdata = CG_temp, 
                                            nfdata = nf_data_temp,
                                            sparse_tuning_result_u = sparse_result_u, 
