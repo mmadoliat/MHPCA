@@ -86,16 +86,16 @@ mhpca <- R6::R6Class("mhpca",
                           penalize_fd = FALSE,
                           penalize_u = FALSE) {
       
-      if (is.null(K_fold_nfd) && !is.null(K_fold_fd) && penalize_nfd == TRUE) {
-        K_fold_nfd <- K_fold_fd
-        warning("`K_fold_nfd` was not provided. It has been set to match `K_fold_fd`.")
-      } else if (!is.null(K_fold_nfd) && is.null(K_fold_fd) && penalize_fd == TRUE) {
-        K_fold_fd <- K_fold_nfd
-        warning("`K_fold_fd` was not provided. It has been set to match `K_fold_nfd`.")
-      } else if (!is.null(K_fold_nfd) && !is.null(K_fold_fd) && K_fold_fd != K_fold_nfd) {
-        K_fold_fd <- K_fold_nfd
-        warning("`K_fold_fd` and `K_fold_nfd` were not equal. `K_fold_fd` has been updated to match `K_fold_nfd`.")
-      }
+      # if (is.null(K_fold_nfd) && !is.null(K_fold_fd) && penalize_nfd == TRUE) {
+      #   K_fold_nfd <- K_fold_fd
+      #   warning("`K_fold_nfd` was not provided. It has been set to match `K_fold_fd`.")
+      # } else if (!is.null(K_fold_nfd) && is.null(K_fold_fd) && penalize_fd == TRUE) {
+      #   K_fold_fd <- K_fold_nfd
+      #   warning("`K_fold_fd` was not provided. It has been set to match `K_fold_nfd`.")
+      # } else if (!is.null(K_fold_nfd) && !is.null(K_fold_fd) && K_fold_fd != K_fold_nfd) {
+      #   K_fold_fd <- K_fold_nfd
+      #   warning("`K_fold_fd` and `K_fold_nfd` were not equal. `K_fold_fd` has been updated to match `K_fold_nfd`.")
+      # }
       
       if (is.mfd(hd_obj) || is.mvmfd(hd_obj) || is.nfd(hd_obj) || is.mvnfd(hd_obj)) {
         hd_obj <- Hd(hd_obj)

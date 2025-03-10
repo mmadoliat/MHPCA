@@ -401,6 +401,7 @@ cv_local_hybrid <- function(
   # Initialize accumulators for CV errors
   error_score_sparse_u   <- 0
   error_score_sparse_nfd <- 0
+  error_score_sparse_fd <- 0
   
   #-------------------------------
   # 1) Cross-validation over 'u'
@@ -478,16 +479,17 @@ cv_local_hybrid <- function(
   }
   
   #----------------------------------------------
-  # 2) Cross-validation over 'nfd' or 'fd' terms
+  # 2) Cross-validation over 'nfd' terms
   #----------------------------------------------
   
   err_nfd <- NULL
    
-  if (penalize_nfd || penalize_fd) {
+  if (penalize_nfd) {
     
     for (k in seq_len(K_fold_nfd)) {
       rows_to_remove_nfd <- shuffled_row_nfd[((k-1)*group_size_nfd + 1) : (k * group_size_nfd)]
-      # Training/testing splits
+      nfdata_train <- nfdata[-rows_to_remove_nfd, , drop = FALSE]
+      nfdata_test  <- nfdata[ rows_to_remove_nfd, , drop = FALSE]
       if (!is.null(fdata)) {
         fdata_train <- data_double_tilde[, -rows_to_remove_nfd, drop = FALSE]
         fdata_test  <- data_double_tilde[,  rows_to_remove_nfd, drop = FALSE]
@@ -496,27 +498,18 @@ cv_local_hybrid <- function(
         fdata_test  <- NULL
       }
       
-      if (!is.null(nfdata)) {
-        nfdata_train <- nfdata[-rows_to_remove_nfd, , drop = FALSE]
-        nfdata_test  <- nfdata[ rows_to_remove_nfd, , drop = FALSE]
-      } else {
-        nfdata_train <- NULL
-        nfdata_test  <- NULL
-      }
       
       # Fit model with current penalty
       v_test <- init_sequential_hybrid(
         fdata                 = if (!is.null(fdata_train)) t(fdata_train) else NULL,
         nfdata                = nfdata_train,
         sparse_tuning_result_nfd = sparse_tuning_single_nfd,
-        sparse_tuning_result_fd  = sparse_tuning_single_fd,
         sparse_tuning_type_nfd   = sparse_tuning_type_nfd,
-        sparse_tuning_type_fd    = sparse_tuning_type_fd, 
         G_half_inverse = G_half_inverse, 
         G_half = G_half,
         cv_flag               = TRUE, 
         penalize_nfd          = penalize_nfd, 
-        penalize_fd           = penalize_fd,
+        penalize_fd           = FALSE,
         penalize_u            = FALSE
       )
       
@@ -544,32 +537,99 @@ cv_local_hybrid <- function(
         fv_error <- 0
       }
       
-      if (!is.null(nfdata)) {
-        nfv_error <- sum((t(nfdata_test) - nfv_test %*% t(u_test))^2)
-      } else {
-        nfv_error <- 0
-      }
+      
+      nfv_error <- sum((t(nfdata_test) - nfv_test %*% t(u_test))^2)
+      
       
       error_score_sparse_nfd <- error_score_sparse_nfd + (fv_error + nfv_error)
       
     }
     
     # Normalization
-    normalization_factor <- if (!is.null(fdata)) {
-      ncol(fdata)
-    } else if (!is.null(nfdata)) {
-      nrow(nfdata)
-    } else {
-      1
-    }
+    normalization_factor <- nrow(nfdata) 
     err_nfd <- error_score_sparse_nfd / normalization_factor
      
+  }
+  
+  #----------------------------------------------
+  # 3) Cross-validation over 'fd' terms
+  #----------------------------------------------
+  
+  err_fd <- NULL
+  
+  if (penalize_fd) {
+    
+    for (k in seq_len(K_fold_fd)) {
+      rows_to_remove_fd <- shuffled_row_fd[((k-1)*group_size_fd + 1) : (k * group_size_fd)]
+      # Training/testing splits
+      fdata_train <- data_double_tilde[, -rows_to_remove_fd, drop = FALSE]
+      fdata_test  <- data_double_tilde[,  rows_to_remove_fd, drop = FALSE]
+      
+      
+      if (!is.null(nfdata)) {
+        nfdata_train <- nfdata[-rows_to_remove_fd, , drop = FALSE]
+        nfdata_test  <- nfdata[ rows_to_remove_fd, , drop = FALSE]
+      } else {
+        nfdata_train <- NULL
+        nfdata_test  <- NULL
+      }
+      
+      # Fit model with current penalty
+      v_test <- init_sequential_hybrid(
+        fdata                 = if (!is.null(fdata_train)) t(fdata_train) else NULL,
+        nfdata                = nfdata_train,
+        sparse_tuning_result_fd  = sparse_tuning_single_fd,
+        sparse_tuning_type_fd    = sparse_tuning_type_fd, 
+        G_half_inverse = G_half_inverse, 
+        G_half = G_half,
+        cv_flag               = TRUE, 
+        penalize_nfd          = FALSE, 
+        penalize_fd           = penalize_fd,
+        penalize_u            = FALSE
+      )
+      
+      nfv_test <- v_test$nfv
+      fv_test_smooth_back <- v_test$fv
+      
+      # Combine contributions into u_test
+      u_test <- 0
+      if (!is.null(nfdata_test)) {
+        u_test <- u_test + nfdata_test %*% nfv_test
+      }
+      
+        # fdata_test is "data_double_tilde[, rows_to_remove_nfd]", so we take its transpose
+        # to align with v_test$fv dimension
+      u_test <- u_test + t(fdata_test) %*% fv_test_smooth_back
+        #u_test <- u_test + t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]%*%fv_test_smooth_back
+      
+      
+      # Compute errors for this fold
+     
+        # "fdata_test_smooth_back" matches the original variable naming
+      fdata_test_smooth_back <- t(data_double_tilde)[rows_to_remove_fd, , drop = FALSE]
+      fv_error <- sum((t(fdata_test_smooth_back) - fv_test_smooth_back %*% t(u_test))^2)
+      
+      if (!is.null(nfdata)) {
+        nfv_error <- sum((t(nfdata_test) - nfv_test %*% t(u_test))^2)
+      } else {
+        nfv_error <- 0
+      }
+     
+      
+      error_score_sparse_fd <- error_score_sparse_fd + (fv_error + nfv_error)
+      
+    }
+    
+    # Normalization
+    normalization_factor <- ncol(fdata)
+    err_fd <- error_score_sparse_fd / normalization_factor
+    
   }
   
   #--------------------------------
   # Return the same output structure
   #--------------------------------
-  list(err_u = err_u, err_nfd = err_nfd)
+  list(err_u = err_u, err_nfd = err_nfd,err_fd = err_fd)
 }
 
 
@@ -894,7 +954,7 @@ handle_sparse_tuning_hybrid <- function(
       )
       
       # Note: In your original code the "fd" score also came from res[[2]].
-      cv_score_fd <- res$err_nfd # same value as res$err_fd
+      cv_score_fd <- res$err_fd # same value as res$err_fd
       cv_scores_fd[i] <- cv_score_fd
       
       
@@ -967,6 +1027,7 @@ cv_gcv_sequential_hybrid <- function(fdata,
   nrf <- if (!is.null(fdata))  nrow(fdata) else nrow(nfdata)
   shuffled_row_nfd <- shuffled_row_fd <- sample(nrf)
   group_size_nfd <- group_size_fd <- length(shuffled_row_nfd)/K_fold_nfd
+  group_size_fd <- length(shuffled_row_nfd)/K_fold_fd
   
   n_iter <- (if (is.null(smooth_tuning)) 1 else dim(smooth_tuning)[1]) +( 
     (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) + 
