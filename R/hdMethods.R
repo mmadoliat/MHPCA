@@ -46,7 +46,7 @@ scale_hd <- function(hd_obj, f_weight = NULL, nf_weight = NULL, mf_eval_length =
   nf <- hd_obj$nf
   if (scale_components == TRUE){
     if (!is.null(mf)) {
-      mf_eval_length <-  if (is.null(mf_eval_length)) rep(100,mf$nvar)
+      mf_eval_length <-  if (is.null(mf_eval_length)) rep(100,mf$nvar) else mf_eval_length
       mvmfd_scaled <- scale_mvmfd(mf,mf_eval_length,f_weight)
     } 
     if (!is.null(nf)) {
