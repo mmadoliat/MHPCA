@@ -513,6 +513,7 @@ cv_local_hybrid <- function(
         penalize_u            = FALSE
       )
       
+      
       nfv_test <- v_test$nfv
       fv_test_smooth_back <- v_test$fv
       
