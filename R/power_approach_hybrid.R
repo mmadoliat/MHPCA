@@ -490,18 +490,18 @@ cv_local_hybrid <- function(
       rows_to_remove_nfd <- shuffled_row_nfd[((k-1)*group_size_nfd + 1) : (k * group_size_nfd)]
       nfdata_train <- nfdata[-rows_to_remove_nfd, , drop = FALSE]
       nfdata_test  <- nfdata[ rows_to_remove_nfd, , drop = FALSE]
-      if (!is.null(fdata)) {
-        fdata_train <- data_double_tilde[, -rows_to_remove_nfd, drop = FALSE]
-        fdata_test  <- data_double_tilde[,  rows_to_remove_nfd, drop = FALSE]
-      } else {
-        fdata_train <- NULL
-        fdata_test  <- NULL
-      }
+      # if (!is.null(fdata)) {
+      #   fdata_train <- data_double_tilde[, -rows_to_remove_nfd, drop = FALSE]
+      #   fdata_test  <- data_double_tilde[,  rows_to_remove_nfd, drop = FALSE]
+      # } else {
+      #   fdata_train <- NULL
+      #   fdata_test  <- NULL
+      # }
       
       
       # Fit model with current penalty
       v_test <- init_sequential_hybrid(
-        fdata                 = if (!is.null(fdata_train)) t(fdata_train) else NULL,
+        fdata                 = NULL, #if (!is.null(fdata_train)) t(fdata_train) else NULL,
         nfdata                = nfdata_train,
         sparse_tuning_result_nfd = sparse_tuning_single_nfd,
         sparse_tuning_type_nfd   = sparse_tuning_type_nfd,
@@ -515,34 +515,35 @@ cv_local_hybrid <- function(
       
       
       nfv_test <- v_test$nfv
-      fv_test_smooth_back <- v_test$fv
+      #fv_test_smooth_back <- v_test$fv
       
       # Combine contributions into u_test
       u_test <- 0
-      if (!is.null(nfdata_test)) {
+      #if (!is.null(nfdata_test)) {
         u_test <- u_test + nfdata_test %*% nfv_test
-      }
-      if (!is.null(fdata_test)) {
-        # fdata_test is "data_double_tilde[, rows_to_remove_nfd]", so we take its transpose
-        # to align with v_test$fv dimension
-        u_test <- u_test + t(fdata_test) %*% fv_test_smooth_back
-        #u_test <- u_test + t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]%*%fv_test_smooth_back
-      }
+      #}
+        
+      # if (!is.null(fdata_test)) {
+      #   # fdata_test is "data_double_tilde[, rows_to_remove_nfd]", so we take its transpose
+      #   # to align with v_test$fv dimension
+      #   u_test <- u_test + t(fdata_test) %*% fv_test_smooth_back
+      #   #u_test <- u_test + t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]%*%fv_test_smooth_back
+      # }
       
       # Compute errors for this fold
-      if (!is.null(fdata)) {
-        # "fdata_test_smooth_back" matches the original variable naming
-        fdata_test_smooth_back <- t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]
-        fv_error <- sum((t(fdata_test_smooth_back) - fv_test_smooth_back %*% t(u_test))^2)
-      } else {
-        fv_error <- 0
-      }
+      # if (!is.null(fdata)) {
+      #   # "fdata_test_smooth_back" matches the original variable naming
+      #   fdata_test_smooth_back <- t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]
+      #   fv_error <- sum((t(fdata_test_smooth_back) - fv_test_smooth_back %*% t(u_test))^2)
+      # } else {
+      #   fv_error <- 0
+      # }
       
       
       nfv_error <- sum((t(nfdata_test) - nfv_test %*% t(u_test))^2)
       
       
-      error_score_sparse_nfd <- error_score_sparse_nfd + (fv_error + nfv_error)
+      error_score_sparse_nfd <- error_score_sparse_nfd + nfv_error # (fv_error + nfv_error)
       
     }
     
@@ -567,18 +568,18 @@ cv_local_hybrid <- function(
       fdata_test  <- data_double_tilde[,  rows_to_remove_fd, drop = FALSE]
       
       
-      if (!is.null(nfdata)) {
-        nfdata_train <- nfdata[-rows_to_remove_fd, , drop = FALSE]
-        nfdata_test  <- nfdata[ rows_to_remove_fd, , drop = FALSE]
-      } else {
-        nfdata_train <- NULL
-        nfdata_test  <- NULL
-      }
+      # if (!is.null(nfdata)) {
+      #   nfdata_train <- nfdata[-rows_to_remove_fd, , drop = FALSE]
+      #   nfdata_test  <- nfdata[ rows_to_remove_fd, , drop = FALSE]
+      # } else {
+      #   nfdata_train <- NULL
+      #   nfdata_test  <- NULL
+      # }
       
       # Fit model with current penalty
       v_test <- init_sequential_hybrid(
-        fdata                 = if (!is.null(fdata_train)) t(fdata_train) else NULL,
-        nfdata                = nfdata_train,
+        fdata                 = t(fdata_train), #if (!is.null(fdata_train)) t(fdata_train) else NULL,
+        nfdata                = NULL, #nfdata_train,
         sparse_tuning_result_fd  = sparse_tuning_single_fd,
         sparse_tuning_type_fd    = sparse_tuning_type_fd, 
         G_half_inverse = G_half_inverse, 
@@ -589,14 +590,14 @@ cv_local_hybrid <- function(
         penalize_u            = FALSE
       )
       
-      nfv_test <- v_test$nfv
+      #nfv_test <- v_test$nfv
       fv_test_smooth_back <- v_test$fv
       
       # Combine contributions into u_test
       u_test <- 0
-      if (!is.null(nfdata_test)) {
-        u_test <- u_test + nfdata_test %*% nfv_test
-      }
+      # if (!is.null(nfdata_test)) {
+      #   u_test <- u_test + nfdata_test %*% nfv_test
+      # }
       
         # fdata_test is "data_double_tilde[, rows_to_remove_nfd]", so we take its transpose
         # to align with v_test$fv dimension
@@ -610,14 +611,14 @@ cv_local_hybrid <- function(
       fdata_test_smooth_back <- t(data_double_tilde)[rows_to_remove_fd, , drop = FALSE]
       fv_error <- sum((t(fdata_test_smooth_back) - fv_test_smooth_back %*% t(u_test))^2)
       
-      if (!is.null(nfdata)) {
-        nfv_error <- sum((t(nfdata_test) - nfv_test %*% t(u_test))^2)
-      } else {
-        nfv_error <- 0
-      }
+      # if (!is.null(nfdata)) {
+      #   nfv_error <- sum((t(nfdata_test) - nfv_test %*% t(u_test))^2)
+      # } else {
+      #   nfv_error <- 0
+      # }
      
       
-      error_score_sparse_fd <- error_score_sparse_fd + (fv_error + nfv_error)
+      error_score_sparse_fd <- error_score_sparse_fd + fv_error #(fv_error + nfv_error)
       
     }
     
