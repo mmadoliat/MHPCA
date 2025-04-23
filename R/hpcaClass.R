@@ -80,6 +80,7 @@ mhpca <- R6::R6Class("mhpca",
                           K_fold_u = 30,
                           K_fold_nfd = 30,
                           K_fold_fd = 30,
+                          n_cores = 1,
                           sparse_CV,
                           smooth_GCV,
                           penalize_nfd = FALSE,
@@ -242,7 +243,8 @@ mhpca <- R6::R6Class("mhpca",
           smooth_GCV = smooth_GCV,
           penalize_nfd = penalize_nfd,
           penalize_fd = penalize_fd,
-          penalize_u = penalize_u
+          penalize_u = penalize_u,
+          n_cores = n_cores
         )
       } else if (method == "eigen" || alpha_orth == "TRUE") {
         if (!is.null(hd_obj$mf)) {
@@ -515,6 +517,7 @@ mhpca <- R6::R6Class("mhpca",
 #' @param K_fold_u  An integer specifying the number of folds in the sparse cross-validation process for u. Default is 30.
 #' @param K_fold_nfd  An integer specifying the number of folds in the sparse cross-validation process for nfd. Default is 30.
 #' @param K_fold_fd  An integer specifying the number of folds in the sparse cross-validation process for fd. Default is 30.
+#' @param n_cores parallel computing of Cross Validation. 
 #' @param sparse_CV Logical indicating whether cross-validation should be applied to select the optimal sparse tuning parameter in sequential power approach.
 #'                                        If `sparse_CV = TRUE`, a series of tuning parameters should be provided as a vector with positive number with max equals to number of subjects.
 #'                                        If `sparse_CV = FALSE`, specific tuning parameters are given directly to each principal components. Tuning parameters should be provided as a vector with length equal to `ncomp`.
@@ -546,6 +549,7 @@ Mhpca <- function(hd_obj,
                   K_fold_u = 30,
                   K_fold_nfd = 30,
                   K_fold_fd = 30,
+                  n_cores = 1,
                   sparse_CV = TRUE,
                   smooth_GCV = TRUE,
                   penalize_nfd = FALSE,
@@ -568,6 +572,7 @@ Mhpca <- function(hd_obj,
     K_fold_u = K_fold_u,
     K_fold_nfd = K_fold_nfd,
     K_fold_fd = K_fold_fd,
+    n_cores = n_cores,
     sparse_CV = sparse_CV,
     smooth_GCV = smooth_GCV,
     penalize_nfd = penalize_nfd,
