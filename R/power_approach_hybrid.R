@@ -1021,10 +1021,16 @@ handle_sparse_tuning_hybrid <- function(
   # ----------------------------------------------------------------------------
   # Ensure your package is loaded on each worker (so your functions are visible)
   # ----------------------------------------------------------------------------
-  cl <- parallel::makeCluster(n_cores,outfile = "")
+  cl <- parallel::makeCluster(
+    n_cores,
+    outfile = if (.Platform$OS.type == "windows") "NUL" else "/dev/null"
+  )
   parallel::clusterEvalQ(cl, {
-    library(MHPCA)  # replace with your actual package name
+    suppressPackageStartupMessages(
+      library(MHPCA, quietly = TRUE, warn.conflicts = FALSE)
+    )
   })
+  
   
   # We'll collect these for export (they live in the function scope)
   data_vars <- c(
