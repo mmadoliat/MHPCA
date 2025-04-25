@@ -6,6 +6,7 @@ sparse_pen_fun <- function(y, tuning_parameter, type, alpha = 3.7, group_sizes =
   if (length(tuning_parameter) > 1) {
     n_groups <- length(tuning_parameter)
     
+    
     # If group_sizes is not provided, assume equal-sized groups.
     if (is.null(group_sizes)) {
       if (length(y) %% n_groups != 0) {
