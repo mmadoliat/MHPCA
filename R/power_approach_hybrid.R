@@ -437,7 +437,7 @@ cv_local_hybrid <- function(
       }
 
       # Fit model with current penalty
-      # (Note the double comma in original code after sparse_tuning_type_u is removed.)
+      
       u_test <- init_sequential_hybrid(
         fdata                 = if (!is.null(fdata_train)) t(fdata_train) else NULL,
         nfdata                = nfdata_train,
@@ -490,18 +490,12 @@ cv_local_hybrid <- function(
       rows_to_remove_nfd <- shuffled_row_nfd[((k-1)*group_size_nfd + 1) : (k * group_size_nfd)]
       nfdata_train <- nfdata[-rows_to_remove_nfd, , drop = FALSE]
       nfdata_test  <- nfdata[ rows_to_remove_nfd, , drop = FALSE]
-      # if (!is.null(fdata)) {
-      #   fdata_train <- data_double_tilde[, -rows_to_remove_nfd, drop = FALSE]
-      #   fdata_test  <- data_double_tilde[,  rows_to_remove_nfd, drop = FALSE]
-      # } else {
-      #   fdata_train <- NULL
-      #   fdata_test  <- NULL
-      # }
+      
 
 
       # Fit model with current penalty
       v_test <- init_sequential_hybrid(
-        fdata                 = NULL, #if (!is.null(fdata_train)) t(fdata_train) else NULL,
+        fdata                 = NULL, 
         nfdata                = nfdata_train,
         sparse_tuning_result_nfd = sparse_tuning_single_nfd,
         sparse_tuning_type_nfd   = sparse_tuning_type_nfd,
@@ -515,29 +509,11 @@ cv_local_hybrid <- function(
 
 
       nfv_test <- v_test$nfv
-      #fv_test_smooth_back <- v_test$fv
 
       # Combine contributions into u_test
       u_test <- 0
-      #if (!is.null(nfdata_test)) {
-        u_test <- u_test + nfdata_test %*% nfv_test
-      #}
-
-      # if (!is.null(fdata_test)) {
-      #   # fdata_test is "data_double_tilde[, rows_to_remove_nfd]", so we take its transpose
-      #   # to align with v_test$fv dimension
-      #   u_test <- u_test + t(fdata_test) %*% fv_test_smooth_back
-      #   #u_test <- u_test + t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]%*%fv_test_smooth_back
-      # }
-
-      # Compute errors for this fold
-      # if (!is.null(fdata)) {
-      #   # "fdata_test_smooth_back" matches the original variable naming
-      #   fdata_test_smooth_back <- t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]
-      #   fv_error <- sum((t(fdata_test_smooth_back) - fv_test_smooth_back %*% t(u_test))^2)
-      # } else {
-      #   fv_error <- 0
-      # }
+      
+      u_test <- u_test + nfdata_test %*% nfv_test
 
 
       nfv_error <- sum((t(nfdata_test) - nfv_test %*% t(u_test))^2)
@@ -567,18 +543,9 @@ cv_local_hybrid <- function(
       fdata_train <- data_double_tilde[, -rows_to_remove_fd, drop = FALSE]
       fdata_test  <- data_double_tilde[,  rows_to_remove_fd, drop = FALSE]
 
-
-      # if (!is.null(nfdata)) {
-      #   nfdata_train <- nfdata[-rows_to_remove_fd, , drop = FALSE]
-      #   nfdata_test  <- nfdata[ rows_to_remove_fd, , drop = FALSE]
-      # } else {
-      #   nfdata_train <- NULL
-      #   nfdata_test  <- NULL
-      # }
-
       # Fit model with current penalty
       v_test <- init_sequential_hybrid(
-        fdata                 = t(fdata_train), #if (!is.null(fdata_train)) t(fdata_train) else NULL,
+        fdata                 = t(fdata_train), 
         nfdata                = NULL, #nfdata_train,
         sparse_tuning_result_fd  = sparse_tuning_single_fd,
         sparse_tuning_type_fd    = sparse_tuning_type_fd,
@@ -590,35 +557,18 @@ cv_local_hybrid <- function(
         penalize_u            = FALSE
       )
 
-      #nfv_test <- v_test$nfv
       fv_test_smooth_back <- v_test$fv
 
       # Combine contributions into u_test
       u_test <- 0
-      # if (!is.null(nfdata_test)) {
-      #   u_test <- u_test + nfdata_test %*% nfv_test
-      # }
-
-        # fdata_test is "data_double_tilde[, rows_to_remove_nfd]", so we take its transpose
-        # to align with v_test$fv dimension
       u_test <- u_test + t(fdata_test) %*% fv_test_smooth_back
-        #u_test <- u_test + t(data_double_tilde)[rows_to_remove_nfd, , drop = FALSE]%*%fv_test_smooth_back
-
 
       # Compute errors for this fold
 
-        # "fdata_test_smooth_back" matches the original variable naming
       fdata_test_smooth_back <- t(data_double_tilde)[rows_to_remove_fd, , drop = FALSE]
       fv_error <- sum((t(fdata_test_smooth_back) - fv_test_smooth_back %*% t(u_test))^2)
 
-      # if (!is.null(nfdata)) {
-      #   nfv_error <- sum((t(nfdata_test) - nfv_test %*% t(u_test))^2)
-      # } else {
-      #   nfv_error <- 0
-      # }
-
-
-      error_score_sparse_fd <- error_score_sparse_fd + fv_error #(fv_error + nfv_error)
+      error_score_sparse_fd <- error_score_sparse_fd + fv_error 
 
     }
 
@@ -1497,12 +1447,6 @@ sequential_power_hybrid <- function(hd_obj,
     } else{
       smooth_tuning_temp <- expand.grid(smooth_tuning)
     }
-    
-    # if (is.null(sparse_tuning_fd)) {
-    #   sparse_tuning_temp_fd = if (!is.null(mvmfd_obj)) as.matrix(expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1]))) else as.matrix(expand.grid(lapply(rep(0,nf_obj$nvar), function(x) x[1])))
-    # } else{
-    #   sparse_tuning_temp_fd <- as.matrix(expand.grid(sparse_tuning_fd))
-    # }
     S_smooth <- S_2_inverse <- list()
     cat("Preprocessing...\n")
     
@@ -1566,15 +1510,10 @@ sequential_power_hybrid <- function(hd_obj,
       if (!is.null(sparse_tuning_nfd)) {
         sparse_tuning_temp_nfd <- if (sparse_CV == FALSE) sparse_tuning_nfd[i] else sparse_tuning_nfd
       }
-      # if (!is.null(sparse_tuning_fd)) {
-      #   sparse_tuning_temp_fd <- if (sparse_CV == FALSE) sparse_tuning_temp_fd[i,,drop = FALSE] else sparse_tuning_temp_fd
-      # }
       if (!is.null(sparse_tuning_fd)) {
         if (sparse_CV == FALSE) {
           # Convert the list/vector into a matrix and extract the i-th row as a 1-row matrix.
-          #smooth_tuning_temp = expand.grid(lapply(smooth_tuning, function(x) x[i]))
           sparse_tuning_temp_fd <- as.matrix(expand.grid(lapply(sparse_tuning_fd,function(x) x[i])))
-          #sparse_tuning_temp_fd <- as.matrix(expand.grid(sparse_tuning_fd))[i, , drop = FALSE]
         } else {
           sparse_tuning_temp_fd <- as.matrix(expand.grid(sparse_tuning_fd))
         }
@@ -1676,88 +1615,7 @@ sequential_power_hybrid <- function(hd_obj,
     ))
 } 
 
-# sequential_power_hybrid_wrong <- function(
-#     hd_obj,
-#     n,
-#     smooth_tuning,
-#     smooth_tuning_type,
-#     sparse_tuning_u,
-#     sparse_tuning_nfd,
-#     sparse_tuning_fd,
-#     sparse_tuning_type_u,
-#     sparse_tuning_type_nfd,
-#     sparse_tuning_type_fd,
-#     centerfns,
-#     alpha_orth,
-#     K_fold_u,
-#     K_fold_nfd,
-#     K_fold_fd,
-#     sparse_CV,
-#     smooth_GCV,
-#     penalize_nfd = FALSE,
-#     penalize_fd  = FALSE,
-#     penalize_u   = FALSE,
-#     n_cores
-# ) {
-#   # -- 1) Create the cluster once --
-#   cl <- parallel::makeCluster(
-#     n_cores,
-#     outfile = if (.Platform$OS.type == "windows") "NUL" else "/dev/null"
-#   )
-#   on.exit({
-#     parallel::stopCluster(cl)
-#     closeAllConnections()
-#   }, add = TRUE)
-#   
-#   # -- 2) Load your package on each worker --
-#   parallel::clusterEvalQ(cl, {
-#     suppressPackageStartupMessages(
-#       library(MHPCA, quietly = TRUE, warn.conflicts = FALSE)
-#     )
-#   })
-#   
-#   # -- 3) Precompute C, nf_data, G, G_half, etc. (same as before) --
-#   if (centerfns) hd_obj <- center_hd(hd_obj)
-#   # … all of your existing initialization code …
-#   
-#   # -- 4) Loop over PCs, calling cv_gcv_sequential_hybrid() with the one cluster --
-#   for (i in seq_len(n)) {
-#     cat(sprintf("Computing the %s PC…\n", ordinal_msg(i)))
-#     # prepare C_temp, nf_data_temp, tuning grids, etc.
-#     # …
-#     
-#     cv_result <- cv_gcv_sequential_hybrid(
-#       fdata                 = C_temp,
-#       nfdata                = nf_data_temp,
-#       hd_obj                = hd_obj,
-#       smooth_tuning         = if (is.null(smooth_tuning)) smooth_tuning else smooth_tuning_temp,
-#       sparse_tuning_u       = if (is.null(sparse_tuning_u)) sparse_tuning_u   else sparse_tuning_temp_u,
-#       sparse_tuning_nfd     = if (is.null(sparse_tuning_nfd)) sparse_tuning_nfd else sparse_tuning_temp_nfd,
-#       sparse_tuning_fd      = if (is.null(sparse_tuning_fd)) sparse_tuning_fd   else sparse_tuning_temp_fd,
-#       sparse_tuning_type_u  = sparse_tuning_type_u,
-#       sparse_tuning_type_nfd= sparse_tuning_type_nfd,
-#       sparse_tuning_type_fd = sparse_tuning_type_fd,
-#       K_fold_u              = K_fold_u,
-#       K_fold_nfd            = K_fold_nfd,
-#       K_fold_fd             = K_fold_fd,
-#       G                     = G,
-#       G_half                = G_half,
-#       G_half_inverse        = G_half_inverse,
-#       S_smooth              = S_smooth,
-#       S_2_inverse           = S_2_inverse,
-#       penalize_nfd          = penalize_nfd,
-#       penalize_fd           = penalize_fd,
-#       penalize_u            = penalize_u,
-#       cl                    = cl
-#     )
-#     
-#     # … extract cv_result, init_sequential_hybrid(), update u, pc, variance …
-#   }
-#   
-#   # on.exit will stopCluster(cl) when we return
-#   # return the final list of PCs, scores, variance, tuning results …
-#   invisible(result)
-# }
+
 
 # joint smooth and sparse power algorithm
 joint_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, centerfns, alpha_orth) {
@@ -1844,7 +1702,6 @@ joint_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, cen
   }
   
 
-  # cv_result = gcv_joint(data = C, mvmfd_obj = mvmfd_obj, smooth_tuning = smooth_tuning, G = G, G_half = G_half, G_half_inverse = G_half_inverse, S_smooth = S_smooth, S_2_inverse = S_2_inverse, n = n)
   cv_result = gcv_joint_hybrid(
     fdata = C, 
     nfdata = nf_data,
