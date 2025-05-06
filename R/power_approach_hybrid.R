@@ -31,9 +31,12 @@ sparse_pen_fun <- function(y, tuning_parameter, type, alpha = 3.7, group_sizes =
   }
   
   # Otherwise, tuning_parameter is a single number.
-  if (length(y) < tuning_parameter) {
-    stop("tuning parameter should be less than number of instances.")
-  }
+  
+  # !!!!!!!!!!!!!!!!!!!!!!!   I hid it to see what is going on 
+  
+  # if (length(y) < tuning_parameter) {
+  #   stop("tuning parameter should be less than number of instances.")
+  # }
   
   y_sorted <- sort(abs(y))
   lambda <- y_sorted[tuning_parameter]
@@ -724,6 +727,7 @@ handle_sparse_tuning_hybrid <- function(
     penalize_nfd = FALSE,
     penalize_fd  = FALSE,
     penalize_u   = FALSE,
+    sparse_iter = 2L,
     cl   # <<— cluster passed in from outside
 ) {
   # Collect the names of the objects to export to the workers:
@@ -753,12 +757,20 @@ handle_sparse_tuning_hybrid <- function(
       CV_score_sparse_fd          = CV_score_sparse_fd
     ))
   }
+  best_u   <- 0
+  best_nfd <- 0
+  if (!is.null(sparse_tuning_fd)) {
+    best_fd <- rep(0, ncol(sparse_tuning_fd))   # same type the grid rows have
+  } else {
+    best_fd <- NULL
+  }
   
   count <- 0
-  
+  for (pass in seq_len(sparse_iter)) {
   # --- 1) tune 'u' ---
   if (!is.null(sparse_tuning_u)) {
-    parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_u"), envir = environment())
+    parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_u",
+                                            "best_nfd", "best_fd"), envir = environment())
     cv_scores_u_list <- parallel::parLapplyLB(cl, sparse_tuning_u, function(candidate_u) {
       res <- cv_local_hybrid(
         fdata   = fdata,
@@ -769,8 +781,8 @@ handle_sparse_tuning_hybrid <- function(
         K_fold_nfd     = K_fold_nfd,
         K_fold_fd      = K_fold_fd,
         sparse_tuning_single_u   = candidate_u,
-        sparse_tuning_single_nfd = NULL,
-        sparse_tuning_single_fd  = NULL,
+        sparse_tuning_single_nfd = best_nfd,
+        sparse_tuning_single_fd  = best_fd,
         sparse_tuning_type_u     = sparse_tuning_type_u,
         sparse_tuning_type_nfd   = sparse_tuning_type_nfd,
         sparse_tuning_type_fd    = sparse_tuning_type_fd,
@@ -780,8 +792,8 @@ handle_sparse_tuning_hybrid <- function(
         group_size_u   = group_size_u,
         group_size_nfd = group_size_nfd,
         group_size_fd  = group_size_fd,
-        penalize_nfd = FALSE,
-        penalize_fd  = FALSE,
+        penalize_nfd = TRUE,#FALSE,
+        penalize_fd  = TRUE,#FALSE,
         penalize_u   = TRUE
       )
       res$err_u
@@ -801,7 +813,7 @@ handle_sparse_tuning_hybrid <- function(
   
   # --- 2) tune 'nfd' ---
   if (!is.null(sparse_tuning_nfd)) {
-    parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_nfd", "best_u"), envir = environment())
+    parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_nfd", "best_u","best_fd"), envir = environment())
     cv_scores_nfd_list <- parallel::parLapplyLB(cl, sparse_tuning_nfd, function(candidate_nfd) {
       res <- cv_local_hybrid(
         fdata   = fdata,
@@ -813,7 +825,7 @@ handle_sparse_tuning_hybrid <- function(
         K_fold_fd      = K_fold_fd,
         sparse_tuning_single_u   = best_u,
         sparse_tuning_single_nfd = candidate_nfd,
-        sparse_tuning_single_fd  = NULL,
+        sparse_tuning_single_fd  = best_fd,#NULL,
         sparse_tuning_type_u     = sparse_tuning_type_u,
         sparse_tuning_type_nfd   = sparse_tuning_type_nfd,
         sparse_tuning_type_fd    = sparse_tuning_type_fd,
@@ -824,8 +836,8 @@ handle_sparse_tuning_hybrid <- function(
         group_size_nfd = group_size_nfd,
         group_size_fd  = group_size_fd,
         penalize_nfd = TRUE,
-        penalize_fd  = FALSE,
-        penalize_u   = penalize_u
+        penalize_fd  = TRUE,#FALSE,
+        penalize_u   = TRUE#penalize_u
       )
       res$err_nfd
     })
@@ -885,7 +897,7 @@ handle_sparse_tuning_hybrid <- function(
     count <- count + 1
     setTxtProgressBar(pb, count)
   }
-  
+  }
   list(
     sparse_tuning_selection_u   = best_u,
     sparse_tuning_selection_nfd = best_nfd,
@@ -923,6 +935,7 @@ cv_gcv_sequential_hybrid <- function(
     penalize_nfd = FALSE,
     penalize_fd  = FALSE,
     penalize_u   = FALSE,
+    sparse_iter = 2L,
     cl
 ) {
   # Prepare fold assignments
@@ -941,7 +954,7 @@ cv_gcv_sequential_hybrid <- function(
     (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) +
     (if (is.null(sparse_tuning_nfd)) 1 else length(sparse_tuning_nfd)) +
     (if (is.null(sparse_tuning_fd)) 1 else nrow(sparse_tuning_fd))
-  pb <- txtProgressBar(min = 0, max = n_iter, style = 3, width = 50, char = "=")
+  pb <- txtProgressBar(min = 0, max =  n_iter, style = 3, width = 50, char = "=")
   
   # 1) Sparse tuning (parallel)
   sparse_res <- handle_sparse_tuning_hybrid(
@@ -969,6 +982,7 @@ cv_gcv_sequential_hybrid <- function(
     penalize_nfd = penalize_nfd,
     penalize_fd  = penalize_fd,
     penalize_u   = penalize_u,
+    sparse_iter = sparse_iter,
     cl           = cl
   )
   sparse_tuning_selection_u   <- sparse_res$sparse_tuning_selection_u
@@ -1112,6 +1126,7 @@ sequential_power_hybrid <- function(hd_obj,
                                     penalize_nfd = FALSE,
                                     penalize_fd = FALSE,
                                     penalize_u = FALSE,
+                                    sparse_iter   = 2L,
                                     n_cores) {
   cl <- parallel::makeCluster(
     n_cores,
@@ -1257,7 +1272,8 @@ sequential_power_hybrid <- function(hd_obj,
         S_2_inverse = S_2_inverse, 
         penalize_nfd = penalize_nfd,
         penalize_fd = penalize_fd,
-        penalize_u = penalize_u, 
+        penalize_u = penalize_u,
+        sparse_iter = sparse_iter,
         cl = cl
       )
       sparse_result_u = cv_result$sparse_tuning_selection_u
@@ -1409,6 +1425,7 @@ sequential_power_hybrid <- function(hd_obj,
         penalize_nfd = penalize_nfd,
         penalize_fd = penalize_fd,
         penalize_u = penalize_u,
+        sparse_iter = sparse_iter,
         cl = cl
       )
       
