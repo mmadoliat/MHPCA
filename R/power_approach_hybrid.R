@@ -409,7 +409,6 @@ cv_local_hybrid <- function(
   error_score_sparse_u   <- 0
   error_score_sparse_nfd <- 0
   error_score_sparse_fd <- 0
-
   #-------------------------------
   # 1) Cross-validation over 'u'
   #-------------------------------
@@ -688,7 +687,7 @@ handle_smooth_tuning_hybrid <- function(fdata,
                                               penalize_u = penalize_u,
                                               tol = tol, max_iter = max_iter)
         } else {
-          test_temp <- init_joint_hybrid(fdata %*% G_half, nfdata ,S_smooth[[smooth_index]], S_2_inverse[[smooth_index]], G_half_inverse, G_half, n = n)
+          test_temp <- init_joint_hybrid(fdata %*% G_half, nfdata ,S_smooth[[smooth_index]], S_2_inverse[[smooth_index]], G_half_inverse, G_half, n = n,tol = tol, max_iter = max_iter)
         }
         u_temp <- test_temp[[3]]
         smooth_score <- gcv_local_hybrid(fdata, nfdata, hd_obj, G, G_half, S_smooth[[smooth_index]], u_temp, smooth_tuning = smooth_tuning[smooth_index, ])
@@ -740,6 +739,8 @@ handle_sparse_tuning_hybrid <- function(
     cl,   # <<— cluster passed in from outside,
     tol, max_iter
 ) {
+  
+  
   # Collect the names of the objects to export to the workers:
   data_vars <- c(
     "fdata", "nfdata",
@@ -747,7 +748,8 @@ handle_sparse_tuning_hybrid <- function(
     "K_fold_u", "K_fold_nfd", "K_fold_fd",
     "sparse_tuning_type_u", "sparse_tuning_type_nfd", "sparse_tuning_type_fd",
     "shuffled_row_u", "shuffled_row_nfd", "shuffled_row_fd",
-    "group_size_u", "group_size_nfd", "group_size_fd","tol","max_iter"
+    "group_size_u", "group_size_nfd", "group_size_fd","tol","max_iter",
+    "penalize_u","penalize_fd","penalize_nfd"
   )
   
   # Quick exit if nothing to tune:
@@ -776,6 +778,7 @@ handle_sparse_tuning_hybrid <- function(
   }
   
   count <- 0
+  #browser()
   for (pass in seq_len(sparse_iter)) {
   # --- 1) tune 'u' ---
   if (!is.null(sparse_tuning_u)) {
@@ -802,9 +805,9 @@ handle_sparse_tuning_hybrid <- function(
         group_size_u   = group_size_u,
         group_size_nfd = group_size_nfd,
         group_size_fd  = group_size_fd,
-        penalize_nfd = TRUE,#FALSE,
-        penalize_fd  = TRUE,#FALSE,
-        penalize_u   = TRUE,
+        penalize_nfd = penalize_nfd,#FALSE,
+        penalize_fd  = penalize_fd,#FALSE,
+        penalize_u   = penalize_u,
         tol = tol, max_iter = max_iter
       )
       res$err_u
@@ -846,9 +849,9 @@ handle_sparse_tuning_hybrid <- function(
         group_size_u   = group_size_u,
         group_size_nfd = group_size_nfd,
         group_size_fd  = group_size_fd,
-        penalize_nfd = TRUE,
-        penalize_fd  = TRUE,#FALSE,
-        penalize_u   = TRUE,#penalize_u
+        penalize_nfd = penalize_nfd,
+        penalize_fd  = penalize_fd,#FALSE,
+        penalize_u   = penalize_u,#penalize_u
         tol = tol, max_iter = max_iter
       )
       res$err_nfd
@@ -892,7 +895,7 @@ handle_sparse_tuning_hybrid <- function(
         group_size_nfd = group_size_nfd,
         group_size_fd  = group_size_fd,
         penalize_nfd = penalize_nfd,
-        penalize_fd  = TRUE,
+        penalize_fd  = penalize_fd,
         penalize_u   = penalize_u,
         tol = tol, max_iter = max_iter
       )
@@ -1145,6 +1148,7 @@ sequential_power_hybrid <- function(hd_obj,
                                     sparse_iter   = 2L,
                                     n_cores,
                                     tol, max_iter) {
+  
   cl <- parallel::makeCluster(
     n_cores,
     outfile = if (.Platform$OS.type == "windows") "NUL" else "/dev/null"
@@ -1622,7 +1626,7 @@ joint_power_hybrid <- function(hd_obj, n, smooth_tuning, smooth_tuning_type, cen
   smooth_result_index = cv_result[[2]]
   GCV_score = cv_result[[3]]
   CG_temp <- if (!is.null(mvmfd_obj)) C%*%G_half else NULL
-  test_result = init_joint_hybrid(CG_temp, nf_data,S_smooth[[smooth_result_index]], S_2_inverse[[smooth_result_index]], G_half_inverse, G_half, n = n)
+  test_result = init_joint_hybrid(CG_temp, nf_data,S_smooth[[smooth_result_index]], S_2_inverse[[smooth_result_index]], G_half_inverse, G_half, n = n,tol = tol, max_iter = max_iter)
   u = test_result[[3]]
   fv = test_result[[1]]
   nfv <- test_result[[2]]
