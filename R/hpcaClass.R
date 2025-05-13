@@ -199,6 +199,47 @@ mhpca <- R6::R6Class("mhpca",
             names(sparse_tuning_fd) <- paste0("var", 1:hd_obj$mf$nvar)
           }
         }
+        
+        if (!is.null(hd_obj$nf)){
+          if (is.vector(sparse_tuning_nfd) & !is.list(sparse_tuning_nfd)) {
+            if (sparse_CV == FALSE) {
+              if (length(sparse_tuning_nfd) != ncomp) {
+                warning("The length of 'sparse_tuning_nfd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
+                sparse_tuning_nfd <- rep(sparse_tuning_nfd, length.out = ncomp)
+              }
+              sparse_tuning_nfd <- replicate(hd_obj$nf$nvar, sparse_tuning_nfd, simplify = FALSE)
+            } else {
+              
+              warning("The length of 'sparse_tuning_nfd' did not match 'hd_obj$mf$nvar' and has been adjusted accordingly.", call. = FALSE)
+              sparse_tuning_nfd <- replicate(hd_obj$nf$nvar, sparse_tuning_nfd, simplify = FALSE)
+            }
+          } 
+          else if (is.list(sparse_tuning_nfd)) {
+            if (sparse_CV == FALSE) {
+              if (length(sparse_tuning_nfd) != hd_obj$nf$nvar) {
+                warning("Adjusting 'sparse_tuning_nfd' to match 'hd_obj$nf$nvar'.", call. = FALSE)
+                sparse_tuning_nfd <- rep(sparse_tuning_nfd, length.out = hd_obj$nf$nvar)
+              }
+              sparse_tuning_nfd <- lapply(sparse_tuning_nfd, function(vec) {
+                if (length(vec) != ncomp) {
+                  warning("Adjusting vector length in 'sparse_tuning_nfd' to match 'ncomp'.", call. = FALSE)
+                  vec <- rep(vec, length.out = ncomp)
+                }
+                vec
+              })
+            } else {
+              if (length(sparse_tuning_nfd) != hd_obj$nf$nvar) {
+                warning("Adjusting 'sparse_tuning_nfd' to match 'hd_obj$nf$nvar'.", call. = FALSE)
+                sparse_tuning_nfd <- rep(sparse_tuning_nfd, length.out = hd_obj$mf$nvar)
+              }
+              
+              
+            }
+          }
+          if (!is.null(sparse_tuning_nfd)) {
+            names(sparse_tuning_nfd) <- paste0("var", 1:hd_obj$nf$nvar)
+          }
+        }
 
 
         # Adjust the list length and element sizes to match the required dimensions if they are incorrect
@@ -206,10 +247,15 @@ mhpca <- R6::R6Class("mhpca",
           warning("The length of 'sparse_tuning_u' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
           sparse_tuning_u <- rep(sparse_tuning_u, length.out = ncomp)
         }
-        if (sparse_CV == FALSE & length(sparse_tuning_nfd) != ncomp & !is.null(sparse_tuning_nfd)) {
-          warning("The length of 'sparse_tuning_nfd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
-          sparse_tuning_nfd <- rep(sparse_tuning_nfd, length.out = ncomp)
-        }
+        
+        
+        # if (sparse_CV == FALSE & length(sparse_tuning_nfd) != ncomp & !is.null(sparse_tuning_nfd)) {
+        #   warning("The length of 'sparse_tuning_nfd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
+        #   sparse_tuning_nfd <- rep(sparse_tuning_nfd, length.out = ncomp)
+        # }
+        
+        
+        
         # if (sparse_CV == FALSE & length(sparse_tuning_fd) != ncomp & !is.null(sparse_tuning_fd)) {
         #   warning("The length of 'sparse_tuning_nfd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
         #   sparse_tuning_fd <- rep(sparse_tuning_fd, length.out = ncomp)

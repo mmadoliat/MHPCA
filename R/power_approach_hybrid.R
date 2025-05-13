@@ -735,7 +735,7 @@ handle_sparse_tuning_hybrid <- function(
     penalize_nfd = FALSE,
     penalize_fd  = FALSE,
     penalize_u   = FALSE,
-    sparse_iter = 2L,
+    sparse_iter = 1L,
     cl,   # <<— cluster passed in from outside,
     tol, max_iter
 ) {
@@ -759,7 +759,7 @@ handle_sparse_tuning_hybrid <- function(
     setTxtProgressBar(pb, 4)
     return(list(
       sparse_tuning_selection_u   = 0,
-      sparse_tuning_selection_nfd = 0,
+      sparse_tuning_selection_nfd = NULL,
       sparse_tuning_selection_fd  = NULL,
       cv_scores_u                 = NULL,
       cv_scores_nfd               = NULL,
@@ -770,7 +770,12 @@ handle_sparse_tuning_hybrid <- function(
     ))
   }
   best_u   <- 0
-  best_nfd <- 0
+  #best_nfd <- 0
+  if (!is.null(sparse_tuning_nfd)) {
+    best_nfd <- rep(0, ncol(sparse_tuning_nfd))   # same type the grid rows have
+  } else {
+    best_nfd <- NULL
+  }
   if (!is.null(sparse_tuning_fd)) {
     best_fd <- rep(0, ncol(sparse_tuning_fd))   # same type the grid rows have
   } else {
@@ -828,7 +833,8 @@ handle_sparse_tuning_hybrid <- function(
   # --- 2) tune 'nfd' ---
   if (!is.null(sparse_tuning_nfd)) {
     parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_nfd", "best_u","best_fd"), envir = environment())
-    cv_scores_nfd_list <- parallel::parLapplyLB(cl, sparse_tuning_nfd, function(candidate_nfd) {
+    cv_scores_nfd_list <- parallel::parLapplyLB(cl, seq_len(nrow(sparse_tuning_nfd)), function(i) {
+      candidate_nfd <- sparse_tuning_nfd[i, , drop = TRUE]
       res <- cv_local_hybrid(
         fdata   = fdata,
         nfdata  = nfdata,
@@ -858,12 +864,12 @@ handle_sparse_tuning_hybrid <- function(
     })
     cv_scores_nfd      <- unlist(cv_scores_nfd_list)
     best_index_nfd     <- which.min(cv_scores_nfd)
-    best_nfd           <- sparse_tuning_nfd[best_index_nfd]
+    best_nfd           <- sparse_tuning_nfd[best_index_nfd,,drop = TRUE]
     CV_score_sparse_nfd <- cv_scores_nfd[best_index_nfd]
-    count <- count + length(sparse_tuning_nfd)
+    count <- count +  nrow(sparse_tuning_fd)
     setTxtProgressBar(pb, count)
   } else {
-    best_nfd       <- 0
+    best_nfd       <- NULL
     cv_scores_nfd  <- NULL
     count <- count + 1
     setTxtProgressBar(pb, count)
@@ -969,7 +975,7 @@ cv_gcv_sequential_hybrid <- function(
   # Determine progress‐bar length
   n_iter <- (if (is.null(smooth_tuning)) 1 else nrow(smooth_tuning)) +
     (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) +
-    (if (is.null(sparse_tuning_nfd)) 1 else length(sparse_tuning_nfd)) +
+    (if (is.null(sparse_tuning_nfd)) 1 else nrow(sparse_tuning_nfd)) +
     (if (is.null(sparse_tuning_fd)) 1 else nrow(sparse_tuning_fd))
   pb <- txtProgressBar(min = 0, max =  n_iter, style = 3, width = 50, char = "=")
   
@@ -1012,7 +1018,7 @@ cv_gcv_sequential_hybrid <- function(
   
   # 2) Smooth tuning (GCV)
   count0 <- (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) +
-    (if (is.null(sparse_tuning_nfd)) 1 else length(sparse_tuning_nfd)) +
+    (if (is.null(sparse_tuning_nfd)) 1 else nrow(sparse_tuning_nfd)) +
     (if (is.null(sparse_tuning_fd)) 1 else nrow(sparse_tuning_fd))
   smooth_res <- handle_smooth_tuning_hybrid(
     fdata                     = fdata,
@@ -1257,8 +1263,19 @@ sequential_power_hybrid <- function(hd_obj,
       if (!is.null(sparse_tuning_u)) {
         sparse_tuning_temp_u <- if (sparse_CV == FALSE) sparse_tuning_u[i] else sparse_tuning_u
       }
+      # if (!is.null(sparse_tuning_nfd)) {
+      #   sparse_tuning_temp_nfd <- if (sparse_CV == FALSE) sparse_tuning_nfd[i] else sparse_tuning_nfd
+      # }
+      
       if (!is.null(sparse_tuning_nfd)) {
-        sparse_tuning_temp_nfd <- if (sparse_CV == FALSE) sparse_tuning_nfd[i] else sparse_tuning_nfd
+        if (sparse_CV == FALSE) {
+          # Convert the list/vector into a matrix and extract the i-th row as a 1-row matrix.
+          #smooth_tuning_temp = expand.grid(lapply(smooth_tuning, function(x) x[i]))
+          sparse_tuning_temp_nfd <- as.matrix(expand.grid(lapply(sparse_tuning_nfd,function(x) x[i])))
+          #sparse_tuning_temp_fd <- as.matrix(expand.grid(sparse_tuning_fd))[i, , drop = FALSE]
+        } else {
+          sparse_tuning_temp_nfd <- as.matrix(expand.grid(sparse_tuning_nfd))
+        }
       }
       if (!is.null(sparse_tuning_fd)) {
         if (sparse_CV == FALSE) {
@@ -1414,9 +1431,19 @@ sequential_power_hybrid <- function(hd_obj,
       if (!is.null(sparse_tuning_u)) {
         sparse_tuning_temp_u <- if (sparse_CV == FALSE) sparse_tuning_u[i] else sparse_tuning_u
       }
+      # if (!is.null(sparse_tuning_nfd)) {
+      #   sparse_tuning_temp_nfd <- if (sparse_CV == FALSE) sparse_tuning_nfd[i] else sparse_tuning_nfd
+      # }
+      
       if (!is.null(sparse_tuning_nfd)) {
-        sparse_tuning_temp_nfd <- if (sparse_CV == FALSE) sparse_tuning_nfd[i] else sparse_tuning_nfd
+        if (sparse_CV == FALSE) {
+          # Convert the list/vector into a matrix and extract the i-th row as a 1-row matrix.
+          sparse_tuning_temp_nfd <- as.matrix(expand.grid(lapply(sparse_tuning_nfd,function(x) x[i])))
+        } else {
+          sparse_tuning_temp_nfd <- as.matrix(expand.grid(sparse_tuning_nfd))
+        }
       }
+      
       if (!is.null(sparse_tuning_fd)) {
         if (sparse_CV == FALSE) {
           # Convert the list/vector into a matrix and extract the i-th row as a 1-row matrix.
