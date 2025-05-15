@@ -5,7 +5,14 @@
 \alias{Mfd}
 \title{Define a Set of Multidimensional Functional Data objects}
 \usage{
-Mfd(argval = NULL, X, mdbs, method = "data")
+Mfd(
+  argval = NULL,
+  X,
+  mdbs,
+  method = "data",
+  spars_par = NULL,
+  smooth_par = NULL
+)
 }
 \arguments{
 \item{argval}{A list of numeric vectors of argument values at which the `mfd` object is to be evaluated}
@@ -16,6 +23,10 @@ if `method="coefs"` and discrete observations if `method="data"`.}
 \item{mdbs}{a basismfd object}
 
 \item{method}{determine the `X` matrix type as "coefs" and "data".}
+
+\item{spars_par}{assign sparsity parameters to mfd object}
+
+\item{smooth_par}{assign smoothness parameters to mfd object}
 }
 \description{
 The `mfd` class represents a set of multidimensional functional data with 
@@ -62,6 +73,10 @@ plot(mfd1)
 \item{\code{coefs}}{a matrix of the coefficients.}
 
 \item{\code{nobs}}{number of the observation}
+
+\item{\code{spars_par}}{vector of integers, associated with sparsity penalty}
+
+\item{\code{smooth_par}}{vector of numerics, associated with smoothing penalty}
 }
 \if{html}{\out{</div>}}
 }
@@ -80,7 +95,14 @@ plot(mfd1)
 \subsection{Method \code{new()}}{
 Constructor for `mfd` objects (same as Mfd(...) )
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{mfd$new(argval = NULL, X, mdbs, method = "data")}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{mfd$new(
+  argval = NULL,
+  X,
+  mdbs,
+  method = "data",
+  spars_par = NULL,
+  smooth_par = NULL
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{

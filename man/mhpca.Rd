@@ -23,6 +23,9 @@ Mhpca(
   K_fold_nfd = 30,
   K_fold_fd = 30,
   n_cores = 1,
+  sparse_iter = 1,
+  tol = 1e-04,
+  max_iter = 1000,
   sparse_CV = TRUE,
   smooth_GCV = TRUE,
   penalize_nfd = FALSE,
@@ -72,6 +75,12 @@ while setting `alpha_orth = TRUE` uses the joint power approach.}
 \item{K_fold_fd}{An integer specifying the number of folds in the sparse cross-validation process for fd. Default is 30.}
 
 \item{n_cores}{parallel computing of Cross Validation.}
+
+\item{sparse_iter}{number of iteration for sparse parameter selection}
+
+\item{tol}{power algorithm tolerance}
+
+\item{max_iter}{power algorithm max iteration}
 
 \item{sparse_CV}{Logical indicating whether cross-validation should be applied to select the optimal sparse tuning parameter in sequential power approach.
 If `sparse_CV = TRUE`, a series of tuning parameters should be provided as a vector with positive number with max equals to number of subjects.
@@ -213,6 +222,9 @@ means it is computed based on the optimal sparse tuning parameter selected via c
   K_fold_nfd = 30,
   K_fold_fd = 30,
   n_cores = 1,
+  sparse_iter = 1,
+  tol = 1e-04,
+  max_iter = 1000,
   sparse_CV,
   smooth_GCV,
   penalize_nfd = FALSE,

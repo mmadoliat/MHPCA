@@ -9,6 +9,8 @@
 #' @field basis an object of the class `basismfd`.
 #' @field coefs  a matrix of the coefficients.
 #' @field nobs number of the observation
+#' @field spars_par vector of integers, associated with sparsity penalty
+#' @field smooth_par vector of numerics, associated with smoothing penalty
 #'
 #' @examples
 #' require(fda)
@@ -50,7 +52,7 @@ mfd <- R6::R6Class("mfd",
     #' if `method="coefs"` and discrete observations if `method="data"`.
     #' @param mdbs a basismfd object
     #' @param method determine the `X` matrix type as "coefs" and "data".
-    initialize = function(argval = NULL, X, mdbs, method = "data") { # c("data", "coefs")
+    initialize = function(argval = NULL, X, mdbs, method = "data",spars_par = NULL,smooth_par = NULL) { # c("data", "coefs")
       init_mfd_check(argval, X, mdbs, method)
       if (is.basis(mdbs)) {
         mdbs <- basismfd$new(mdbs)
@@ -84,6 +86,9 @@ mfd <- R6::R6Class("mfd",
         }
       }
       private$.nobs <- tail(dim(X), 1)
+      
+      if (!is.null(spars_par)) self$spars_par <- spars_par
+      if (!is.null(smooth_par)) self$smooth_par <- smooth_par
     },
     #' @description Evaluation an `mfd` object in some arguments.
     #' @param evalarg a list of numeric vector of argument values at which the \code{mfd} is to be evaluated.
@@ -112,6 +117,43 @@ mfd <- R6::R6Class("mfd",
     }
   ),
   active = list(
+    # Getter and setter for spars_par` field
+    spars_par = function(value) {
+      if (missing(value)) {
+        # getter
+        return(private$.spars_par)
+      }
+      # setter: 1) must be integer
+      if (!is.numeric(value) || any(value != as.integer(value))) {
+        stop("`spars_par` must be an integer vector.", call. = FALSE)
+      }
+      value <- as.integer(value)
+      
+      # 2) max index must be less than total nbasis
+      total_nb <- sum(private$.basis$nbasis)
+      if (length(value) && max(value) >= total_nb) {
+        stop(
+          sprintf("all(spars_par) must be < %d (total number of basis functions)", 
+                  total_nb),
+          call. = FALSE
+        )
+      }
+      
+      # assign into private storage
+      private$.spars_par <- value
+    },
+    smooth_par = function(value) {
+      if (missing(value)) {
+        # getter
+        return(private$.smooth_par)
+      }
+      # setter: 1) must be integer
+      if (!is.numeric(value)) {
+        stop("`smooth_par` must be a numeric vector.", call. = FALSE)
+      }
+      # assign into private storage
+      private$.smooth_par <- value
+    },
     # Getter and setter for `basis` field
     basis = function(value) {
       if (missing(value)) {
@@ -139,8 +181,10 @@ mfd <- R6::R6Class("mfd",
   ),
   private = list(
     .basis = NULL,
-    .coefs = NULL, # we record vetorized of the coefs
-    .nobs = NULL
+    .coefs = NULL, # we record vectorized of the coefs
+    .nobs = NULL,
+    .spars_par   = NULL,
+    .smooth_par   = NULL
   )
 )
 
@@ -156,5 +200,7 @@ mfd <- R6::R6Class("mfd",
 #'        if `method="coefs"` and discrete observations if `method="data"`.
 #' @param mdbs a basismfd object
 #' @param method determine the `X` matrix type as "coefs" and "data".
+#' @param spars_par assign sparsity parameters to mfd object
+#' @param smooth_par assign smoothness parameters to mfd object
 #' @export
-Mfd <- function(argval = NULL, X, mdbs, method = "data") mfd$new(argval, X, mdbs, method)
+Mfd <- function(argval = NULL, X, mdbs, method = "data",spars_par = NULL, smooth_par = NULL) mfd$new(argval, X, mdbs, method,spars_par = spars_par,smooth_par = smooth_par)

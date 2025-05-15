@@ -101,9 +101,43 @@ print.nfd = function(x,...) {
     }
   } else if (name == "data"){
     return(unclass(x))
+  } else if (name == "spars_par"){
+    return(attr(x, "spars_par", exact = TRUE))
   } else {
     stop(paste("Unknown field:", name))
   }
+}
+
+#' Title
+#'
+#' @param x An object of class `nfd`.
+#' @param name The name of the element to access.
+#' @param value The value of the element to assign
+#'
+#' @returns assign value to requested element.
+#' @export
+#'
+#' @examples
+#' mat <- matrix(1:9, nrow = 3)
+#' nfd_obj <- nfd(mat)
+#' nfd_obj$spars_par <- c(1,2)
+`$<-.nfd` <- function(x, name, value) {
+  if (name != "spars_par") {
+    stop("`", name, "` is read-only or unknown for nfd objects.", call. = FALSE)
+  }
+  if (!is.numeric(value) || any(value != as.integer(value))) {
+    stop("`spars_par` must be an integer vector.", call. = FALSE)
+  }
+  value <- as.integer(value)
+  if (length(value) >= ncol(x)) {
+    stop(
+      sprintf("length(spars_par) = %d must be < ncol(data) = %d",
+              length(value), ncol(x)),
+      call. = FALSE
+    )
+  }
+  attr(x, "spars_par") <- value
+  x
 }
 
 #' Subset Method for 'nfd' Objects

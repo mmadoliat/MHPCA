@@ -4,7 +4,7 @@
 \alias{nfd}
 \title{Define a Set of Multidimensional Non Functional Data Objects}
 \usage{
-nfd(data)
+nfd(data, spars_par = NULL)
 }
 \arguments{
 \item{data}{A numeric matrix of data points.}

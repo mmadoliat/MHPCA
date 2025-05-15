@@ -61,6 +61,27 @@ mvmfd <- R6::R6Class("mvmfd",
         private$.coefs[[i]] <- mfd_list[[i]]$coefs
       }
       private$.basis <- mvbasismfd$new(basis_list)
+      sp_list <- lapply(mfd_list, function(comp) {
+        v <- comp$spars_par
+        if (length(v) == 0L) NULL else v
+      })
+      if (all(vapply(sp_list, is.null, logical(1)))) {
+        private$.spars_par <- NULL
+      } else {
+        # replace NULLs with 0
+        private$.spars_par <- lapply(sp_list, function(v) if (is.null(v)) 0L else v)
+      }
+      
+      sm_list <- lapply(mfd_list, function(comp) {
+        v <- comp$smooth_par
+        if (length(v) == 0L) NULL else v
+      })
+      if (all(vapply(sp_list, is.null, logical(1)))) {
+        private$.smooth_par <- NULL
+      } else {
+        # replace NULLs with 0
+        private$.smooth_par <- lapply(sm_list, function(v) if (is.null(v)) 0L else v)
+      }
     },
 
     #' @description
@@ -130,13 +151,60 @@ mvmfd <- R6::R6Class("mvmfd",
       } else {
         stop("`$nobs` is read only", call. = FALSE)
       }
+    }, 
+    spars_par = function(value) {
+      if (missing(value)) {
+        # getter
+        return(private$.spars_par)
+      }
+      # setter
+      if (!is.list(value)) {
+        stop("`spars_par` must be a **list**.", call. = FALSE)
+      }
+      if (length(value) != private$.nvar) {
+        stop(sprintf("`spars_par` must be length %d (nvar).", private$.nvar),
+             call. = FALSE)
+      }
+      nbv <- private$.basis$nbasis
+      # each element must be integer‐vector
+      for (i in seq_along(value)) {
+        elt <- value[[i]]
+        if (!is.numeric(elt) || any(elt != as.integer(elt))) {
+          stop(sprintf("`spars_par[[%d]]` must be an integer vector.", i),
+               call. = FALSE)
+        }
+        value[[i]] <- as.integer(elt)
+        if (length(elt) >= nbv[i]) {
+          stop(sprintf("length(spars_par[[%d]]) = %d must be < %d (nbasis[%d]).",
+                       i, length(vi), nbv[i], i),
+               call. = FALSE)
+        }
+      }
+      private$.spars_par <- value
+    }, 
+    smooth_par = function(value) {
+      if (missing(value)) {
+        # getter
+        return(private$.smooth_par)
+      }
+      # setter
+      if (!is.list(value)) {
+        stop("`smooth_par` must be a **list**.", call. = FALSE)
+      }
+      if (length(value) != private$.nvar) {
+        stop(sprintf("`smooth_par` must be length %d (nvar).", private$.nvar),
+             call. = FALSE)
+      }
+      private$.smooth_par <- value
     }
   ),
   private = list(
     .basis = NULL,
     .coefs = list(), # we record vectorized of the coefs
     .nobs = NULL,
-    .nvar = NULL
+    .nvar = NULL,
+    .spars_par = NULL,
+    .smooth_par = NULL
   )
 )
 #' @rdname mvmfd
