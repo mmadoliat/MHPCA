@@ -93,6 +93,18 @@ mhpca <- R6::R6Class("mhpca",
       if (is.mfd(hd_obj) || is.mvmfd(hd_obj) || is.nfd(hd_obj) || is.mvnfd(hd_obj)) {
         hd_obj <- Hd(hd_obj)
       }
+      
+      if (is.null(smooth_tuning) && !is.null(hd_obj$mf)) {
+        smooth_tuning <- hd_obj$mf$smooth_par
+      }
+      
+      if (is.null(sparse_tuning_fd) && !is.null(hd_obj$mf)) {
+        sparse_tuning_fd <- hd_obj$mf$spars_par
+      }
+      
+      if (is.null(sparse_tuning_nfd) && !is.null(hd_obj$nf)) {
+        sparse_tuning_nfd <- hd_obj$nf$spars_par
+      }
       if (method == "power" & alpha_orth == "FALSE") {
         if (!is.null(hd_obj$mf)) {
           # Adjust the vector length to match the required dimensions if they are incorrect
