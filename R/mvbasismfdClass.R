@@ -148,7 +148,7 @@ Mvbasismfd <- function(basis) mvbasismfd$new(basis)
   } else {
     mvbasismfd_list <- list()
     for (j in 1:length(i)) {
-      mvbasismfd_list[[j]] <- mvbasismfd_obj$basis[[j]]
+      mvbasismfd_list[[j]] <- mvbasismfd_obj$basis[[i[j]]]
     }
     return(mvbasismfd$new(mvbasismfd_list))
   }

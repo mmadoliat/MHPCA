@@ -112,16 +112,16 @@ plot_mvmfd <- function(mvmfd_obj, xlab = NULL, ylab = NULL, ...) {
     } else {
       coef <- mvmfd_obj$coefs[[j]][, , i]
     }
-    return(mfd$new(X = coef, mdbs = bs, method = "coefs"))
+    return(mfd$new(X = coef, mdbs = bs, method = "coefs",spars_par = mvmfd_obj$spars_par[[j]],smooth_par = mvmfd_obj$smooth_par[[j]]))
   } else {
     mvmfd_list <- list()
     for (k in 1:length(j)) {
-      if (dimSupp[k] == 1) {
-        coef <- mvmfd_obj$coefs[[k]][, i]
+      if (dimSupp[j[k]] == 1) {
+        coef <- mvmfd_obj$coefs[[j[k]]][, i]
       } else {
-        coef <- mvmfd_obj$coefs[[k]][, , i]
+        coef <- mvmfd_obj$coefs[[j[k]]][, , i]
       }
-      mvmfd_list[[k]] <- mfd$new(X = coef, mdbs = bs[k], method = "coefs")
+      mvmfd_list[[k]] <- mfd$new(X = coef, mdbs = bs[k], method = "coefs",spars_par = mvmfd_obj$spars_par[[j[k]]],smooth_par = mvmfd_obj$smooth_par[[j[k]]])
     }
     return(Mvmfd(mvmfd_list))
   }
