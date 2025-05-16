@@ -76,7 +76,7 @@ mvmfd <- R6::R6Class("mvmfd",
         v <- comp$smooth_par
         if (length(v) == 0L) NULL else v
       })
-      if (all(vapply(sp_list, is.null, logical(1)))) {
+      if (all(vapply(sm_list, is.null, logical(1)))) {
         private$.smooth_par <- NULL
       } else {
         # replace NULLs with 0
