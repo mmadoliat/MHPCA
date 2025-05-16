@@ -77,18 +77,18 @@ mhpca <- R6::R6Class("mhpca",
                           sparse_type_u = "soft",
                           sparse_type_nfd = "soft",
                           sparse_type_fd = "soft",
-                          K_fold_u = 30,
-                          K_fold_nfd = 30,
-                          K_fold_fd = 30,
-                          n_cores = 1,
+                          nfold_u = 30,
+                          nfold_nfd = 30,
+                          nfold_fd = 30,
+                          ncor = 1,
                           sparse_iter = 1,
                           tol = 1e-4, 
                           max_iter = 1000,
                           sparse_CV,
                           smooth_GCV,
-                          penalize_nfd = FALSE,
-                          penalize_fd = FALSE,
-                          penalize_u = FALSE) {
+                          pen_nfd = FALSE,
+                          pen_fd = FALSE,
+                          pen_u = FALSE) {
       
       if (is.mfd(hd_obj) || is.mvmfd(hd_obj) || is.nfd(hd_obj) || is.mvnfd(hd_obj)) {
         hd_obj <- Hd(hd_obj)
@@ -286,15 +286,15 @@ mhpca <- R6::R6Class("mhpca",
           sparse_tuning_type_u = sparse_type_u,
           sparse_tuning_type_nfd = sparse_type_nfd,
           sparse_tuning_type_fd = sparse_type_fd,
-          K_fold_u = K_fold_u,
-          K_fold_nfd = K_fold_nfd,
-          K_fold_fd = K_fold_fd,
+          nfold_u = nfold_u,
+          nfold_nfd = nfold_nfd,
+          nfold_fd = nfold_fd,
           sparse_CV = sparse_CV,
           smooth_GCV = smooth_GCV,
-          penalize_nfd = penalize_nfd,
-          penalize_fd = penalize_fd,
-          penalize_u = penalize_u,
-          n_cores = n_cores,
+          pen_nfd = pen_nfd,
+          pen_fd = pen_fd,
+          pen_u = pen_u,
+          ncor = ncor,
           sparse_iter = sparse_iter,
           tol = tol, max_iter = max_iter
         )
@@ -566,10 +566,10 @@ mhpca <- R6::R6Class("mhpca",
 #' @param sparse_type_u The type of sparse penalty to be applied on the coefficients. The types "soft", "hard" and "SCAD" is supported. Default is "soft".
 #' @param sparse_type_nfd The type of sparse penalty to be applied on the nfd right singular vectors. The types "soft", "hard" and "SCAD" is supported. Default is "soft".
 #' @param sparse_type_fd The type of sparse penalty to be applied on the fd right singular vectors. The types "soft", "hard" and "SCAD" is supported. Default is "soft".
-#' @param K_fold_u  An integer specifying the number of folds in the sparse cross-validation process for u. Default is 30.
-#' @param K_fold_nfd  An integer specifying the number of folds in the sparse cross-validation process for nfd. Default is 30.
-#' @param K_fold_fd  An integer specifying the number of folds in the sparse cross-validation process for fd. Default is 30.
-#' @param n_cores parallel computing of Cross Validation. 
+#' @param nfold_u  An integer specifying the number of folds in the sparse cross-validation process for u. Default is 30.
+#' @param nfold_nfd  An integer specifying the number of folds in the sparse cross-validation process for nfd. Default is 30.
+#' @param nfold_fd  An integer specifying the number of folds in the sparse cross-validation process for fd. Default is 30.
+#' @param ncor parallel computing of Cross Validation. 
 #' @param sparse_iter number of iteration for sparse parameter selection 
 #' @param tol power algorithm tolerance 
 #' @param max_iter power algorithm max iteration 
@@ -584,9 +584,9 @@ mhpca <- R6::R6Class("mhpca",
 #'                                        tuning parameters should be provided as a list with length equal to the number of variables, where each element is a vector of length `ncomp`.
 #'                                        If `method` is "power" and `alpha_orth = TRUE` (joint power), tuning parameters should be provided as a vector with length equal to the number of variables.
 #'                                        If the dimensions of input tuning parameters are incorrect, it will be converted to a list internally, and a warning will be issued.
-#' @param penalize_nfd Logical indicating whether sparsity penalty in sequential power approach should be applied on nfd right singular vector.
-#' @param penalize_fd Logical indicating whether sparsity penalty in sequential power approach should be applied on fd right singular vector.
-#' @param penalize_u Logical indicating whether penalize non functional object or left singular vector or not.
+#' @param pen_nfd Logical indicating whether sparsity penalty in sequential power approach should be applied on nfd right singular vector.
+#' @param pen_fd Logical indicating whether sparsity penalty in sequential power approach should be applied on fd right singular vector.
+#' @param pen_u Logical indicating whether penalize non functional object or left singular vector or not.
 #' @export
 Mhpca <- function(hd_obj,
                   method = "power",
@@ -601,18 +601,18 @@ Mhpca <- function(hd_obj,
                   sparse_type_u = "soft",
                   sparse_type_nfd = "soft",
                   sparse_type_fd = "soft",
-                  K_fold_u = 30,
-                  K_fold_nfd = 30,
-                  K_fold_fd = 30,
-                  n_cores = 1,
+                  nfold_u = 30,
+                  nfold_nfd = 30,
+                  nfold_fd = 30,
+                  ncor = 1,
                   sparse_iter = 1,
                   tol = 1e-4, 
                   max_iter = 1000,
                   sparse_CV = TRUE,
                   smooth_GCV = TRUE,
-                  penalize_nfd = FALSE,
-                  penalize_fd = FALSE,
-                  penalize_u = FALSE) {
+                  pen_nfd = FALSE,
+                  pen_fd = FALSE,
+                  pen_u = FALSE) {
   mhpca$new(
     hd_obj = hd_obj,
     method = method,
@@ -627,18 +627,18 @@ Mhpca <- function(hd_obj,
     sparse_type_u = sparse_type_u,
     sparse_type_nfd = sparse_type_nfd,
     sparse_type_fd = sparse_type_fd,
-    K_fold_u = K_fold_u,
-    K_fold_nfd = K_fold_nfd,
-    K_fold_fd = K_fold_fd,
-    n_cores = n_cores,
+    nfold_u = nfold_u,
+    nfold_nfd = nfold_nfd,
+    nfold_fd = nfold_fd,
+    ncor = ncor,
     sparse_iter=sparse_iter,
     tol = tol, 
     max_iter = max_iter,
     sparse_CV = sparse_CV,
     smooth_GCV = smooth_GCV,
-    penalize_nfd = penalize_nfd,
-    penalize_fd = penalize_fd,
-    penalize_u = penalize_u
+    pen_nfd = pen_nfd,
+    pen_fd = pen_fd,
+    pen_u = pen_u
   )
 }
 #' @rdname mhpca

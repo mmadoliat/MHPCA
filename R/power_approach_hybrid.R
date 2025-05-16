@@ -81,9 +81,9 @@ init_sequential_hybrid <- function(fdata,
                                    G_half_inverse = NULL,
                                    G_half = NULL,
                                    cv_flag = FALSE,
-                                   penalize_u = FALSE,
-                                   penalize_nfd = FALSE,
-                                   penalize_fd = FALSE,
+                                   pen_u = FALSE,
+                                   pen_nfd = FALSE,
+                                   pen_fd = FALSE,
                                    tol, max_iter) {
   
   fv_old <- if (!is.null(fdata)) svd(fdata)$v[, 1] else NULL
@@ -100,11 +100,11 @@ init_sequential_hybrid <- function(fdata,
       u_old <- u_old + nfdata %*% nfv_old
     }
 
-    if (penalize_u==TRUE) {
+    if (pen_u==TRUE) {
        u_old <- sparse_pen_fun(y = u_old, tuning_parameter = sparse_tuning_result_u, sparse_tuning_type_u)
     } 
     u_old <- u_old / norm(u_old, type = "2")
-    if (cv_flag == TRUE && penalize_u == TRUE) { # incorporate power algorithm in CV sparse tuning selection for u
+    if (cv_flag == TRUE && pen_u == TRUE) { # incorporate power algorithm in CV sparse tuning selection for u
       
 
       fv_new <- if (!is.null(fdata)) t(fdata) %*% u_old else NULL
@@ -133,7 +133,7 @@ init_sequential_hybrid <- function(fdata,
         u_new <- u_new + nfdata %*% nfv_new
       }
 
-      if (penalize_u==TRUE) {
+      if (pen_u==TRUE) {
         u_new <-  sparse_pen_fun(y = u_new, tuning_parameter = sparse_tuning_result_u, sparse_tuning_type_u)
       } 
       u_new <- u_new / norm(u_new, type = "2")
@@ -141,12 +141,12 @@ init_sequential_hybrid <- function(fdata,
       if (!is.null(fdata)) fv_old <- fv_new
       if (!is.null(nfdata)) nfv_old <- nfv_new
       u_old <- u_new
-    } else if(cv_flag == TRUE && (penalize_nfd == TRUE || penalize_fd == TRUE)){ # incorporate power algorithm in CV sparse tuning selection for nfd or fd
+    } else if(cv_flag == TRUE && (pen_nfd == TRUE || pen_fd == TRUE)){ # incorporate power algorithm in CV sparse tuning selection for nfd or fd
       if (!is.null(fdata)){
         fv_new <- t(fdata) %*% u_old # v_tilde
         
         # v_tilde
-        fv_new <- if(penalize_fd==TRUE) G_half%*%sparse_pen_fun(y = G_half_inverse%*%fv_new, tuning_parameter = sparse_tuning_result_fd, type = sparse_tuning_type_fd) else fv_new 
+        fv_new <- if(pen_fd==TRUE) G_half%*%sparse_pen_fun(y = G_half_inverse%*%fv_new, tuning_parameter = sparse_tuning_result_fd, type = sparse_tuning_type_fd) else fv_new 
         #fv_new_back <- G_half_inverse %*% fv_new # real v 
         fv_weight <- norm(fv_new,"2")^2 #fv_weight <- norm(fv_new_back,"2") 
       } else {
@@ -158,7 +158,7 @@ init_sequential_hybrid <- function(fdata,
       if (!is.null(nfdata)) {
         nfv_new <- t(nfdata) %*% u_old
         
-        nfv_new <- if(penalize_nfd==TRUE) sparse_pen_fun(y = nfv_new, tuning_parameter = sparse_tuning_result_nfd, type = sparse_tuning_type_nfd) else nfv_new
+        nfv_new <- if(pen_nfd==TRUE) sparse_pen_fun(y = nfv_new, tuning_parameter = sparse_tuning_result_nfd, type = sparse_tuning_type_nfd) else nfv_new
         nfv_weight <- norm(nfv_new,"2")^2
       } else {
         nfv_weight <- 0
@@ -199,7 +199,7 @@ init_sequential_hybrid <- function(fdata,
       
       if (!is.null(fdata)) {
         fv_new <- S_smooth %*% t(fdata) %*% u_old
-        fv_new <- if (penalize_fd==TRUE) G_half%*%sparse_pen_fun(y = G_half_inverse%*%fv_new, tuning_parameter = sparse_tuning_result_fd, type = sparse_tuning_type_fd) else fv_new
+        fv_new <- if (pen_fd==TRUE) G_half%*%sparse_pen_fun(y = G_half_inverse%*%fv_new, tuning_parameter = sparse_tuning_result_fd, type = sparse_tuning_type_fd) else fv_new
         fv_weight <- norm(fv_new,"2")^2
         } else {
         fv_new <- NULL
@@ -208,7 +208,7 @@ init_sequential_hybrid <- function(fdata,
       
       if (!is.null(nfdata)) {
         nfv_new <- t(nfdata) %*% u_old
-        nfv_new <- if (penalize_nfd==TRUE) sparse_pen_fun(y = nfv_new, tuning_parameter = sparse_tuning_result_nfd, type = sparse_tuning_type_nfd) else nfv_new
+        nfv_new <- if (pen_nfd==TRUE) sparse_pen_fun(y = nfv_new, tuning_parameter = sparse_tuning_result_nfd, type = sparse_tuning_type_nfd) else nfv_new
         nfv_weight <-  norm(nfv_new, "2")^2
         } else {
         nfv_new <- NULL
@@ -237,7 +237,7 @@ init_sequential_hybrid <- function(fdata,
         u_new <- u_new + nfdata %*% nfv_new
       }
 
-      if (penalize_u ==TRUE) {
+      if (pen_u ==TRUE) {
         u_new <-  sparse_pen_fun(y = u_new, tuning_parameter = sparse_tuning_result_u, sparse_tuning_type_u)
       } 
       u_new <- u_new / norm(u_new, type = "2")
@@ -248,9 +248,9 @@ init_sequential_hybrid <- function(fdata,
     }
   }
   #
-  if (cv_flag == TRUE && penalize_u==TRUE) {
+  if (cv_flag == TRUE && pen_u==TRUE) {
     return(u_new)
-  } else if (cv_flag == TRUE && (penalize_nfd==TRUE || penalize_fd==TRUE)){
+  } else if (cv_flag == TRUE && (pen_nfd==TRUE || pen_fd==TRUE)){
     coef_norm <- 0
     if (is.null(nfdata)){
       nfv_new <- NULL
@@ -373,9 +373,9 @@ cv_local_hybrid <- function(
     nfdata,
     G_half,
     G_half_inverse,
-    K_fold_u,
-    K_fold_nfd,
-    K_fold_fd,
+    nfold_u,
+    nfold_nfd,
+    nfold_fd,
     sparse_tuning_single_u,
     sparse_tuning_single_nfd,
     sparse_tuning_single_fd,
@@ -388,9 +388,9 @@ cv_local_hybrid <- function(
     group_size_u,
     group_size_nfd,
     group_size_fd,
-    penalize_nfd = FALSE,
-    penalize_fd  = FALSE,
-    penalize_u   = FALSE,
+    pen_nfd = FALSE,
+    pen_fd  = FALSE,
+    pen_u   = FALSE,
     tol , max_iter
 ) {
 
@@ -413,8 +413,8 @@ cv_local_hybrid <- function(
   # 1) Cross-validation over 'u'
   #-------------------------------
   err_u <- NULL
-  if (penalize_u) {
-    for (k in seq_len(K_fold_u)) {
+  if (pen_u) {
+    for (k in seq_len(nfold_u)) {
       rows_to_remove_f <- if (!is.null(fdata)) {
         shuffled_row_f[((k-1)*group_size_f + 1) : (k * group_size_f)]
       } else NULL
@@ -450,8 +450,8 @@ cv_local_hybrid <- function(
         sparse_tuning_result_u= sparse_tuning_single_u,
         sparse_tuning_type_u  = sparse_tuning_type_u,
         cv_flag               = TRUE,
-        penalize_nfd          = FALSE,
-        penalize_u            = penalize_u,
+        pen_nfd          = FALSE,
+        pen_u            = pen_u,
         tol = tol, max_iter = max_iter
       )
 
@@ -491,9 +491,9 @@ cv_local_hybrid <- function(
 
   err_nfd <- NULL
 
-  if (penalize_nfd) {
+  if (pen_nfd) {
 
-    for (k in seq_len(K_fold_nfd)) {
+    for (k in seq_len(nfold_nfd)) {
       rows_to_remove_nfd <- shuffled_row_nfd[((k-1)*group_size_nfd + 1) : (k * group_size_nfd)]
       nfdata_train <- nfdata[-rows_to_remove_nfd, , drop = FALSE]
       nfdata_test  <- nfdata[ rows_to_remove_nfd, , drop = FALSE]
@@ -509,9 +509,9 @@ cv_local_hybrid <- function(
         G_half_inverse = G_half_inverse,
         G_half = G_half,
         cv_flag               = TRUE,
-        penalize_nfd          = penalize_nfd,
-        penalize_fd           = FALSE,
-        penalize_u            = FALSE,
+        pen_nfd          = pen_nfd,
+        pen_fd           = FALSE,
+        pen_u            = FALSE,
         tol = tol, max_iter = max_iter
       )
 
@@ -543,9 +543,9 @@ cv_local_hybrid <- function(
 
   err_fd <- NULL
 
-  if (penalize_fd) {
+  if (pen_fd) {
 
-    for (k in seq_len(K_fold_fd)) {
+    for (k in seq_len(nfold_fd)) {
       rows_to_remove_fd <- shuffled_row_fd[((k-1)*group_size_fd + 1) : (k * group_size_fd)]
       # Training/testing splits
       fdata_train <- data_double_tilde[, -rows_to_remove_fd, drop = FALSE]
@@ -560,9 +560,9 @@ cv_local_hybrid <- function(
         G_half_inverse = G_half_inverse,
         G_half = G_half,
         cv_flag               = TRUE,
-        penalize_nfd          = FALSE,
-        penalize_fd           = penalize_fd,
-        penalize_u            = FALSE,
+        pen_nfd          = FALSE,
+        pen_fd           = pen_fd,
+        pen_u            = FALSE,
         tol = tol, max_iter = max_iter
       )
 
@@ -648,9 +648,9 @@ handle_smooth_tuning_hybrid <- function(fdata,
                                         n = NULL, 
                                         pb, 
                                         count, 
-                                        penalize_nfd = F,
-                                        penalize_fd = F,
-                                        penalize_u = F,
+                                        pen_nfd = F,
+                                        pen_fd = F,
+                                        pen_u = F,
                                         tol, max_iter) {
   if (!is.null(hd_obj$mf)){
     mvmfd_obj <- hd_obj$mf
@@ -682,9 +682,9 @@ handle_smooth_tuning_hybrid <- function(fdata,
                                               S_2_inverse = S_2_inverse[[smooth_index]],
                                               G_half_inverse =  G_half_inverse,
                                               G_half = G_half,
-                                              penalize_nfd = penalize_nfd,
-                                              penalize_fd = penalize_fd,
-                                              penalize_u = penalize_u,
+                                              pen_nfd = pen_nfd,
+                                              pen_fd = pen_fd,
+                                              pen_u = pen_u,
                                               tol = tol, max_iter = max_iter)
         } else {
           test_temp <- init_joint_hybrid(fdata %*% G_half, nfdata ,S_smooth[[smooth_index]], S_2_inverse[[smooth_index]], G_half_inverse, G_half, n = n,tol = tol, max_iter = max_iter)
@@ -719,9 +719,9 @@ handle_sparse_tuning_hybrid <- function(
     sparse_tuning_type_u,
     sparse_tuning_type_nfd,
     sparse_tuning_type_fd,
-    K_fold_u,
-    K_fold_nfd,
-    K_fold_fd,
+    nfold_u,
+    nfold_nfd,
+    nfold_fd,
     shuffled_row_u,
     shuffled_row_nfd,
     shuffled_row_fd,
@@ -732,9 +732,9 @@ handle_sparse_tuning_hybrid <- function(
     CV_score_sparse_nfd,
     CV_score_sparse_fd,
     pb,
-    penalize_nfd = FALSE,
-    penalize_fd  = FALSE,
-    penalize_u   = FALSE,
+    pen_nfd = FALSE,
+    pen_fd  = FALSE,
+    pen_u   = FALSE,
     sparse_iter = 1L,
     cl,   # <<— cluster passed in from outside,
     tol, max_iter
@@ -745,11 +745,11 @@ handle_sparse_tuning_hybrid <- function(
   data_vars <- c(
     "fdata", "nfdata",
     "G_half", "G_half_inverse",
-    "K_fold_u", "K_fold_nfd", "K_fold_fd",
+    "nfold_u", "nfold_nfd", "nfold_fd",
     "sparse_tuning_type_u", "sparse_tuning_type_nfd", "sparse_tuning_type_fd",
     "shuffled_row_u", "shuffled_row_nfd", "shuffled_row_fd",
     "group_size_u", "group_size_nfd", "group_size_fd","tol","max_iter",
-    "penalize_u","penalize_fd","penalize_nfd"
+    "pen_u","pen_fd","pen_nfd"
   )
   
   # Quick exit if nothing to tune:
@@ -795,9 +795,9 @@ handle_sparse_tuning_hybrid <- function(
         nfdata  = nfdata,
         G_half  = G_half,
         G_half_inverse = G_half_inverse,
-        K_fold_u       = K_fold_u,
-        K_fold_nfd     = K_fold_nfd,
-        K_fold_fd      = K_fold_fd,
+        nfold_u       = nfold_u,
+        nfold_nfd     = nfold_nfd,
+        nfold_fd      = nfold_fd,
         sparse_tuning_single_u   = candidate_u,
         sparse_tuning_single_nfd = best_nfd,
         sparse_tuning_single_fd  = best_fd,
@@ -810,9 +810,9 @@ handle_sparse_tuning_hybrid <- function(
         group_size_u   = group_size_u,
         group_size_nfd = group_size_nfd,
         group_size_fd  = group_size_fd,
-        penalize_nfd = penalize_nfd,#FALSE,
-        penalize_fd  = penalize_fd,#FALSE,
-        penalize_u   = penalize_u,
+        pen_nfd = pen_nfd,#FALSE,
+        pen_fd  = pen_fd,#FALSE,
+        pen_u   = pen_u,
         tol = tol, max_iter = max_iter
       )
       res$err_u
@@ -840,9 +840,9 @@ handle_sparse_tuning_hybrid <- function(
         nfdata  = nfdata,
         G_half  = G_half,
         G_half_inverse = G_half_inverse,
-        K_fold_u       = K_fold_u,
-        K_fold_nfd     = K_fold_nfd,
-        K_fold_fd      = K_fold_fd,
+        nfold_u       = nfold_u,
+        nfold_nfd     = nfold_nfd,
+        nfold_fd      = nfold_fd,
         sparse_tuning_single_u   = best_u,
         sparse_tuning_single_nfd = candidate_nfd,
         sparse_tuning_single_fd  = best_fd,#NULL,
@@ -855,9 +855,9 @@ handle_sparse_tuning_hybrid <- function(
         group_size_u   = group_size_u,
         group_size_nfd = group_size_nfd,
         group_size_fd  = group_size_fd,
-        penalize_nfd = penalize_nfd,
-        penalize_fd  = penalize_fd,#FALSE,
-        penalize_u   = penalize_u,#penalize_u
+        pen_nfd = pen_nfd,
+        pen_fd  = pen_fd,#FALSE,
+        pen_u   = pen_u,#pen_u
         tol = tol, max_iter = max_iter
       )
       res$err_nfd
@@ -885,9 +885,9 @@ handle_sparse_tuning_hybrid <- function(
         nfdata  = nfdata,
         G_half  = G_half,
         G_half_inverse = G_half_inverse,
-        K_fold_u       = K_fold_u,
-        K_fold_nfd     = K_fold_nfd,
-        K_fold_fd      = K_fold_fd,
+        nfold_u       = nfold_u,
+        nfold_nfd     = nfold_nfd,
+        nfold_fd      = nfold_fd,
         sparse_tuning_single_u   = best_u,
         sparse_tuning_single_nfd = best_nfd,
         sparse_tuning_single_fd  = candidate_fd,
@@ -900,9 +900,9 @@ handle_sparse_tuning_hybrid <- function(
         group_size_u   = group_size_u,
         group_size_nfd = group_size_nfd,
         group_size_fd  = group_size_fd,
-        penalize_nfd = penalize_nfd,
-        penalize_fd  = penalize_fd,
-        penalize_u   = penalize_u,
+        pen_nfd = pen_nfd,
+        pen_fd  = pen_fd,
+        pen_u   = pen_u,
         tol = tol, max_iter = max_iter
       )
       res$err_fd
@@ -946,17 +946,17 @@ cv_gcv_sequential_hybrid <- function(
     sparse_tuning_type_u,
     sparse_tuning_type_nfd,
     sparse_tuning_type_fd,
-    K_fold_u,
-    K_fold_nfd,
-    K_fold_fd,
+    nfold_u,
+    nfold_nfd,
+    nfold_fd,
     G,
     G_half,
     G_half_inverse,
     S_smooth,
     S_2_inverse,
-    penalize_nfd = FALSE,
-    penalize_fd  = FALSE,
-    penalize_u   = FALSE,
+    pen_nfd = FALSE,
+    pen_fd  = FALSE,
+    pen_u   = FALSE,
     sparse_iter = 2L,
     cl,
     tol, max_iter
@@ -965,12 +965,12 @@ cv_gcv_sequential_hybrid <- function(
   ncf   <- if (!is.null(fdata))  ncol(fdata)  else NULL
   ncnf  <- if (!is.null(nfdata)) ncol(nfdata) else NULL
   shuffled_row_u   <- list(f = sample(ncf), nf = sample(ncnf))
-  group_size_u     <- list(f = length(shuffled_row_u$f)/K_fold_u,
-                           nf= length(shuffled_row_u$nf)/K_fold_u)
+  group_size_u     <- list(f = length(shuffled_row_u$f)/nfold_u,
+                           nf= length(shuffled_row_u$nf)/nfold_u)
   nrf   <- if (!is.null(fdata))  nrow(fdata)  else nrow(nfdata)
   shuffled_row_nfd <- shuffled_row_fd <- sample(nrf)
-  group_size_nfd   <- length(shuffled_row_nfd)/K_fold_nfd
-  group_size_fd    <- length(shuffled_row_nfd)/K_fold_fd
+  group_size_nfd   <- length(shuffled_row_nfd)/nfold_nfd
+  group_size_fd    <- length(shuffled_row_nfd)/nfold_fd
   
   # Determine progress‐bar length
   n_iter <- (if (is.null(smooth_tuning)) 1 else nrow(smooth_tuning)) +
@@ -989,9 +989,9 @@ cv_gcv_sequential_hybrid <- function(
     sparse_tuning_type_u   = sparse_tuning_type_u,
     sparse_tuning_type_nfd = sparse_tuning_type_nfd,
     sparse_tuning_type_fd  = sparse_tuning_type_fd,
-    K_fold_u   = K_fold_u,
-    K_fold_nfd = K_fold_nfd,
-    K_fold_fd  = K_fold_fd,
+    nfold_u   = nfold_u,
+    nfold_nfd = nfold_nfd,
+    nfold_fd  = nfold_fd,
     shuffled_row_u   = shuffled_row_u,
     shuffled_row_nfd = shuffled_row_nfd,
     shuffled_row_fd  = shuffled_row_fd,
@@ -1002,9 +1002,9 @@ cv_gcv_sequential_hybrid <- function(
     CV_score_sparse_nfd = Inf,
     CV_score_sparse_fd  = Inf,
     pb          = pb,
-    penalize_nfd = penalize_nfd,
-    penalize_fd  = penalize_fd,
-    penalize_u   = penalize_u,
+    pen_nfd = pen_nfd,
+    pen_fd  = pen_fd,
+    pen_u   = pen_u,
     sparse_iter = sparse_iter,
     cl           = cl,
     tol = tol, max_iter = max_iter
@@ -1143,20 +1143,20 @@ sequential_power_hybrid <- function(hd_obj,
                                     sparse_tuning_type_fd,
                                     centerfns, 
                                     alpha_orth, 
-                                    K_fold_u,
-                                    K_fold_nfd,
-                                    K_fold_fd,
+                                    nfold_u,
+                                    nfold_nfd,
+                                    nfold_fd,
                                     sparse_CV, 
                                     smooth_GCV, 
-                                    penalize_nfd = FALSE,
-                                    penalize_fd = FALSE,
-                                    penalize_u = FALSE,
+                                    pen_nfd = FALSE,
+                                    pen_fd = FALSE,
+                                    pen_u = FALSE,
                                     sparse_iter   = 2L,
-                                    n_cores,
+                                    ncor,
                                     tol, max_iter) {
   
   cl <- parallel::makeCluster(
-    n_cores,
+    ncor,
     outfile = if (.Platform$OS.type == "windows") "NUL" else "/dev/null"
   )
   on.exit({
@@ -1300,17 +1300,17 @@ sequential_power_hybrid <- function(hd_obj,
         sparse_tuning_type_u = sparse_tuning_type_u, 
         sparse_tuning_type_nfd = sparse_tuning_type_nfd,
         sparse_tuning_type_fd = sparse_tuning_type_fd,
-        K_fold_u = K_fold_u, 
-        K_fold_nfd = K_fold_nfd,
-        K_fold_fd = K_fold_fd,
+        nfold_u = nfold_u, 
+        nfold_nfd = nfold_nfd,
+        nfold_fd = nfold_fd,
         G = G, 
         G_half = G_half, 
         G_half_inverse = G_half_inverse, 
         S_smooth = S_smooth, 
         S_2_inverse = S_2_inverse, 
-        penalize_nfd = penalize_nfd,
-        penalize_fd = penalize_fd,
-        penalize_u = penalize_u,
+        pen_nfd = pen_nfd,
+        pen_fd = pen_fd,
+        pen_u = pen_u,
         sparse_iter = sparse_iter,
         cl = cl,
         tol = tol, max_iter = max_iter
@@ -1343,9 +1343,9 @@ sequential_power_hybrid <- function(hd_obj,
                                            S_2_inverse = S_2_inverse[[1]], 
                                            G_half_inverse = G_half_inverse, 
                                            G_half = G_half, 
-                                           penalize_nfd = penalize_nfd,
-                                           penalize_fd = penalize_fd,
-                                           penalize_u =  penalize_u,
+                                           pen_nfd = pen_nfd,
+                                           pen_fd = pen_fd,
+                                           pen_u =  pen_u,
                                            tol = tol, max_iter = max_iter)
       u = test_result[[3]]
       fv = test_result[[1]]
@@ -1464,17 +1464,17 @@ sequential_power_hybrid <- function(hd_obj,
         sparse_tuning_type_u = sparse_tuning_type_u, 
         sparse_tuning_type_nfd = sparse_tuning_type_nfd,
         sparse_tuning_type_fd = sparse_tuning_type_fd,
-        K_fold_u = K_fold_u, 
-        K_fold_nfd = K_fold_nfd,
-        K_fold_fd = K_fold_fd,
+        nfold_u = nfold_u, 
+        nfold_nfd = nfold_nfd,
+        nfold_fd = nfold_fd,
         G = G, 
         G_half = G_half, 
         G_half_inverse = G_half_inverse, 
         S_smooth = S_smooth, 
         S_2_inverse = S_2_inverse, 
-        penalize_nfd = penalize_nfd,
-        penalize_fd = penalize_fd,
-        penalize_u = penalize_u,
+        pen_nfd = pen_nfd,
+        pen_fd = pen_fd,
+        pen_u = pen_u,
         sparse_iter = sparse_iter,
         cl = cl,
         tol = tol, max_iter = max_iter
@@ -1508,9 +1508,9 @@ sequential_power_hybrid <- function(hd_obj,
                                            S_2_inverse = S_2_inverse[[smooth_result_index]], 
                                            G_half_inverse = G_half_inverse, 
                                            G_half = G_half, 
-                                           penalize_nfd = penalize_nfd,
-                                           penalize_fd = penalize_fd, 
-                                           penalize_u = penalize_u,
+                                           pen_nfd = pen_nfd,
+                                           pen_fd = pen_fd, 
+                                           pen_u = pen_u,
                                            tol = tol, max_iter = max_iter)
 
       u = test_result[[3]]
