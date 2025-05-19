@@ -45,8 +45,9 @@ hd <- R6::R6Class("hd",
                     #' Constructor for `hd` objects (same as 'Hd')
                     #'
                     #' @param ... A `mfd` or `nfd` objects which have separated by comma
+                    #' @param spars_par assign sparsity parameters of observations to hd object
                     #'
-                    initialize = function(...) {
+                    initialize = function(..., spars_par = NULL) {
                       hd_list <- list(...)
                       if (is.list(hd_list[[1]])) hd_list <- hd_list[[1]]
                       init_hd_list_check(hd_list)
@@ -81,6 +82,7 @@ hd <- R6::R6Class("hd",
                       if (length(mfd_list) > 0) mvmfd_list <- list(Mvmfd(mfd_list))
                       if (length(mvnfd_list) > 0) private$.nf <- mvnfd_list[[1]] 
                       if (length(mvmfd_list) > 0) private$.mf <- mvmfd_list[[1]]  
+                      if (!is.null(spars_par)) self$spars_par <- spars_par
                     },
                     
                     #' @description
@@ -130,11 +132,42 @@ hd <- R6::R6Class("hd",
                       } else {
                         stop("`$mf` is read only", call. = FALSE)
                       }
+                    },
+                    spars_par = function(value) {
+                      if (missing(value)) {
+                        # getter
+                        return(private$.spars_par)
+                      }
+                      # setter: 1) must be integer
+                      if (!is.numeric(value) || any(value != as.integer(value))) {
+                        stop("`spars_par` must be an integer vector.", call. = FALSE)
+                      }
+                      value <- as.integer(value)
+                      
+                      # 2) max index must be less than total nbasis
+                      if (!is.null(self$mf)) {
+                        total_nb <- self$mf$nobs
+                      } else if (!is.null(self$nf)) {
+                        total_nb <- self$nf$nobs
+                      } else {
+                        stop("`hd` has neither `mf` nor `nf`.", call. = FALSE)
+                      }
+                      if (length(value) && max(value) >= total_nb) {
+                        stop(
+                          sprintf("all(spars_par) must be < %d (total number of basis functions)", 
+                                  total_nb),
+                          call. = FALSE
+                        )
+                      }
+                      
+                      # assign into private storage
+                      private$.spars_par <- value
                     }
                   ),
                   private = list(
                     .mf = NULL,
-                    .nf = NULL
+                    .nf = NULL,
+                    .spars_par = NULL
                   )
 )
 #' @rdname hd
@@ -146,5 +179,6 @@ hd <- R6::R6Class("hd",
 #' Constructor for `hd` objects (same as `Hd`)
 #'
 #' @param ... A `mfd` objects which have separated by comma
+#' @param spars_par assign sparsity parameters of observations to hd object
 #' @export
-Hd <- function(...) hd$new(...)
+Hd <- function(..., spars_par = NULL) hd$new(..., spars_par = spars_par)
