@@ -5,10 +5,12 @@
 \alias{Hd}
 \title{Define a Set of Hybrid Data objects}
 \usage{
-Hd(...)
+Hd(..., spars_par = NULL)
 }
 \arguments{
 \item{...}{A `mfd` objects which have separated by comma}
+
+\item{spars_par}{assign sparsity parameters of observations to hd object}
 }
 \description{
 The `hd` class represents functional data ...
@@ -72,13 +74,15 @@ bimfdplot(hd1)
 \subsection{Method \code{new()}}{
 Constructor for `hd` objects (same as 'Hd')
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{hd$new(...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{hd$new(..., spars_par = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{...}}{A `mfd` or `nfd` objects which have separated by comma}
+
+\item{\code{spars_par}}{assign sparsity parameters of observations to hd object}
 }
 \if{html}{\out{</div>}}
 }
