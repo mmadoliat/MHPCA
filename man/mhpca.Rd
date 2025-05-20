@@ -22,7 +22,7 @@ Mhpca(
   nfold_u = 30,
   nfold_nfd = 30,
   nfold_fd = 30,
-  ncor = 1,
+  parallel = FALSE,
   sparse_iter = 1,
   tol = 1e-04,
   max_iter = 1000,
@@ -74,7 +74,7 @@ while setting `alpha_orth = TRUE` uses the joint power approach.}
 
 \item{nfold_fd}{An integer specifying the number of folds in the sparse cross-validation process for fd. Default is 30.}
 
-\item{ncor}{parallel computing of Cross Validation.}
+\item{parallel}{`TRUE`/`FALSE` parallel computing of Cross Validation.}
 
 \item{sparse_iter}{number of iteration for sparse parameter selection}
 
@@ -221,7 +221,7 @@ means it is computed based on the optimal sparse tuning parameter selected via c
   nfold_u = 30,
   nfold_nfd = 30,
   nfold_fd = 30,
-  ncor = 1,
+  parallel = FALSE,
   sparse_iter = 1,
   tol = 1e-04,
   max_iter = 1000,

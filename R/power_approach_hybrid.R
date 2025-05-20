@@ -1,6 +1,7 @@
 #' @importFrom expm sqrtm
 #' @importFrom utils  txtProgressBar setTxtProgressBar
 #' @importFrom parallel clusterExport parLapplyLB makeCluster clusterEvalQ stopCluster
+#' @importFrom foreach getDoParWorkers
 
 sparse_pen_fun <- function(y, tuning_parameter, type, alpha = 3.7, group_sizes = NULL, gamma = 2.5) {
   if (length(tuning_parameter) > 1) {
@@ -740,7 +741,7 @@ handle_sparse_tuning_hybrid <- function(
     tol, max_iter
 ) {
   
-  
+  applyFun <- if (is.null(cl)) lapply else function(x, FUN) parallel::parLapplyLB(cl, x, FUN)
   # Collect the names of the objects to export to the workers:
   data_vars <- c(
     "fdata", "nfdata",
@@ -787,9 +788,11 @@ handle_sparse_tuning_hybrid <- function(
   for (pass in seq_len(sparse_iter)) {
   # --- 1) tune 'u' ---
   if (!is.null(sparse_tuning_u)) {
-    parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_u",
-                                            "best_nfd", "best_fd"), envir = environment())
-    cv_scores_u_list <- parallel::parLapplyLB(cl, sparse_tuning_u, function(candidate_u) {
+    if (!is.null(cl)){
+      parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_u",
+                                              "best_nfd", "best_fd"), envir = environment())
+    }
+    cv_scores_u_list <- applyFun(sparse_tuning_u, function(candidate_u){ 
       res <- cv_local_hybrid(
         fdata   = fdata,
         nfdata  = nfdata,
@@ -817,6 +820,7 @@ handle_sparse_tuning_hybrid <- function(
       )
       res$err_u
     })
+
     cv_scores_u    <- unlist(cv_scores_u_list)
     best_index_u   <- which.min(cv_scores_u)
     best_u         <- sparse_tuning_u[best_index_u]
@@ -832,8 +836,11 @@ handle_sparse_tuning_hybrid <- function(
   
   # --- 2) tune 'nfd' ---
   if (!is.null(sparse_tuning_nfd)) {
-    parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_nfd", "best_u","best_fd"), envir = environment())
-    cv_scores_nfd_list <- parallel::parLapplyLB(cl, seq_len(nrow(sparse_tuning_nfd)), function(i) {
+    if (!is.null(cl)){
+      parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_nfd", "best_u","best_fd"), envir = environment())
+    }
+    cv_scores_nfd_list <- applyFun(seq_len(nrow(sparse_tuning_nfd)), function(i){
+      
       candidate_nfd <- sparse_tuning_nfd[i, , drop = TRUE]
       res <- cv_local_hybrid(
         fdata   = fdata,
@@ -861,6 +868,7 @@ handle_sparse_tuning_hybrid <- function(
         tol = tol, max_iter = max_iter
       )
       res$err_nfd
+      
     })
     cv_scores_nfd      <- unlist(cv_scores_nfd_list)
     best_index_nfd     <- which.min(cv_scores_nfd)
@@ -877,8 +885,11 @@ handle_sparse_tuning_hybrid <- function(
   
   # --- 3) tune 'fd' ---
   if (!is.null(sparse_tuning_fd)) {
-    parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_fd", "best_u", "best_nfd"), envir = environment())
-    cv_scores_fd_list <- parallel::parLapplyLB(cl, seq_len(nrow(sparse_tuning_fd)), function(i) {
+    if (!is.null(cl)){
+      parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_fd", "best_u", "best_nfd"), envir = environment())
+    }
+    cv_scores_fd_list <- applyFun(seq_len(nrow(sparse_tuning_fd)),function(i){
+      
       candidate_fd <- sparse_tuning_fd[i, , drop = TRUE]
       res <- cv_local_hybrid(
         fdata   = fdata,
@@ -906,6 +917,7 @@ handle_sparse_tuning_hybrid <- function(
         tol = tol, max_iter = max_iter
       )
       res$err_fd
+      
     })
     cv_scores_fd    <- unlist(cv_scores_fd_list)
     best_index_fd   <- which.min(cv_scores_fd)
@@ -1154,21 +1166,26 @@ sequential_power_hybrid <- function(hd_obj,
                                     sparse_iter   = 2L,
                                     ncor,
                                     tol, max_iter) {
-  
-  cl <- parallel::makeCluster(
-    ncor,
-    outfile = if (.Platform$OS.type == "windows") "NUL" else "/dev/null"
-  )
-  on.exit({
-    parallel::stopCluster(cl)
-    closeAllConnections()
-  }, add = TRUE)
-  
-  parallel::clusterEvalQ(cl, {
-    suppressPackageStartupMessages(
-      library(MHPCA, quietly = TRUE, warn.conflicts = FALSE)
+  use_cluster <- ncor > 1L
+  if (use_cluster){
+    cl <- parallel::makeCluster(
+      ncor,
+      outfile = if (.Platform$OS.type == "windows") "NUL" else "/dev/null"
     )
-  })
+    on.exit({
+      parallel::stopCluster(cl)
+      #closeAllConnections()
+    }, add = TRUE)
+    
+    parallel::clusterEvalQ(cl, {
+      suppressPackageStartupMessages(
+        library(MHPCA, quietly = TRUE, warn.conflicts = FALSE)
+      )
+    })
+  } else {
+    cl <- NULL
+  }
+ 
 
   
   #######centralize########

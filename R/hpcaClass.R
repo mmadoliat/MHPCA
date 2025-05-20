@@ -80,7 +80,7 @@ mhpca <- R6::R6Class("mhpca",
                           nfold_u = 30,
                           nfold_nfd = 30,
                           nfold_fd = 30,
-                          ncor = 1,
+                          parallel = FALSE,#ncor = 1,
                           sparse_iter = 1,
                           tol = 1e-4, 
                           max_iter = 1000,
@@ -108,6 +108,15 @@ mhpca <- R6::R6Class("mhpca",
       if (is.null(sparse_tuning_u)) {
         sparse_tuning_u <- hd_obj$spars_par
       }
+      if (isTRUE(parallel)) {
+        ## use workers that the user already registered
+        ncor <- foreach::getDoParWorkers()
+        if (ncor < 2L)                         # user forgot to register?
+          ncor <- max(1L, parallel::detectCores() - 1L)
+      } else {                                    # sequential path
+        ncor <- 1L
+      }
+      
       if (method == "power" & alpha_orth == "FALSE") {
         if (!is.null(hd_obj$mf)) {
           # Adjust the vector length to match the required dimensions if they are incorrect
@@ -572,7 +581,7 @@ mhpca <- R6::R6Class("mhpca",
 #' @param nfold_u  An integer specifying the number of folds in the sparse cross-validation process for u. Default is 30.
 #' @param nfold_nfd  An integer specifying the number of folds in the sparse cross-validation process for nfd. Default is 30.
 #' @param nfold_fd  An integer specifying the number of folds in the sparse cross-validation process for fd. Default is 30.
-#' @param ncor parallel computing of Cross Validation. 
+#' @param parallel `TRUE`/`FALSE` parallel computing of Cross Validation. 
 #' @param sparse_iter number of iteration for sparse parameter selection 
 #' @param tol power algorithm tolerance 
 #' @param max_iter power algorithm max iteration 
@@ -607,7 +616,7 @@ Mhpca <- function(hd_obj,
                   nfold_u = 30,
                   nfold_nfd = 30,
                   nfold_fd = 30,
-                  ncor = 1,
+                  parallel = FALSE,
                   sparse_iter = 1,
                   tol = 1e-4, 
                   max_iter = 1000,
@@ -633,7 +642,7 @@ Mhpca <- function(hd_obj,
     nfold_u = nfold_u,
     nfold_nfd = nfold_nfd,
     nfold_fd = nfold_fd,
-    ncor = ncor,
+    parallel = parallel,
     sparse_iter=sparse_iter,
     tol = tol, 
     max_iter = max_iter,
