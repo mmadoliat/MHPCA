@@ -27,6 +27,7 @@ Mhpca(
   tol = 1e-04,
   max_iter = 1000,
   sparse_CV = TRUE,
+  cv.pick = "1se",
   smooth_GCV = TRUE,
   pen_nfd = FALSE,
   pen_fd = FALSE,
@@ -86,6 +87,8 @@ while setting `alpha_orth = TRUE` uses the joint power approach.}
 If `sparse_CV = TRUE`, a series of tuning parameters should be provided as a vector with positive number with max equals to number of subjects.
 If `sparse_CV = FALSE`, specific tuning parameters are given directly to each principal components. Tuning parameters should be provided as a vector with length equal to `ncomp`.
 If the dimensions of input tuning parameters are incorrect, it will be converted to a list internally, and a warning will be issued.}
+
+\item{cv.pick}{CV selection either based on "1se" or "min"}
 
 \item{smooth_GCV}{Logical indicating whether generalized cross-validation should be applied to select the optimal smooth tuning parameter.
 If `smooth_GCV = TRUE`, a series of tuning parameters should be provided as a list with length equal to the number of variables.
@@ -226,6 +229,7 @@ means it is computed based on the optimal sparse tuning parameter selected via c
   tol = 1e-04,
   max_iter = 1000,
   sparse_CV,
+  cv.pick = "1se",
   smooth_GCV,
   pen_nfd = FALSE,
   pen_fd = FALSE,

@@ -415,6 +415,7 @@ cv_local_hybrid <- function(
   #-------------------------------
   err_u <- NULL
   if (pen_u) {
+    fold_errors_u <- numeric(nfold_u)
     for (k in seq_len(nfold_u)) {
       rows_to_remove_f <- if (!is.null(fdata)) {
         shuffled_row_f[((k-1)*group_size_f + 1) : (k * group_size_f)]
@@ -473,6 +474,7 @@ cv_local_hybrid <- function(
       }
 
       error_score_sparse_u <- error_score_sparse_u + (fv_error + nfv_error)
+      fold_errors_u[k] <- fv_error + nfv_error
     }
 
     # Normalization
@@ -484,6 +486,12 @@ cv_local_hybrid <- function(
       1
     }
     err_u <- error_score_sparse_u / normalization_factor
+    errs_u <- fold_errors_u/normalization_factor
+    mean_u <- mean(errs_u)
+    sd_u <- sd(errs_u)
+    se_u <- sd_u/sqrt(nfold_u)
+  } else {
+    mean_u <- sd_u <- se_u <- NULL
   }
 
   #----------------------------------------------
@@ -493,7 +501,7 @@ cv_local_hybrid <- function(
   err_nfd <- NULL
 
   if (pen_nfd) {
-
+    fold_errors_nfd <- numeric(nfold_nfd)
     for (k in seq_len(nfold_nfd)) {
       rows_to_remove_nfd <- shuffled_row_nfd[((k-1)*group_size_nfd + 1) : (k * group_size_nfd)]
       nfdata_train <- nfdata[-rows_to_remove_nfd, , drop = FALSE]
@@ -529,13 +537,20 @@ cv_local_hybrid <- function(
 
 
       error_score_sparse_nfd <- error_score_sparse_nfd + nfv_error # (fv_error + nfv_error)
+      fold_errors_nfd[k] <-  nfv_error
 
     }
 
     # Normalization
     normalization_factor <- nrow(nfdata)
     err_nfd <- error_score_sparse_nfd / normalization_factor
+    errs_nfd <- fold_errors_nfd/normalization_factor
+    mean_nfd <- mean(errs_nfd)
+    sd_nfd <- sd(errs_nfd)
+    se_nfd <- sd_nfd/sqrt(nfold_nfd)
 
+  } else {
+    mean_nfd <- sd_nfd <- se_nfd <- NULL
   }
 
   #----------------------------------------------
@@ -545,6 +560,8 @@ cv_local_hybrid <- function(
   err_fd <- NULL
 
   if (pen_fd) {
+    #browser()
+    fold_errors_fd <- numeric(nfold_fd)
 
     for (k in seq_len(nfold_fd)) {
       rows_to_remove_fd <- shuffled_row_fd[((k-1)*group_size_fd + 1) : (k * group_size_fd)]
@@ -579,19 +596,26 @@ cv_local_hybrid <- function(
       fv_error <- sum((t(fdata_test_smooth_back) - fv_test_smooth_back %*% t(u_test))^2)
 
       error_score_sparse_fd <- error_score_sparse_fd + fv_error 
+      fold_errors_fd[k] <-  fv_error
 
     }
 
     # Normalization
     normalization_factor <- ncol(fdata)
     err_fd <- error_score_sparse_fd / normalization_factor
+    errs_fd <- fold_errors_fd/normalization_factor
+    mean_fd <- mean(errs_fd)
+    sd_fd <- sd(errs_fd)
+    se_fd <- sd_fd/sqrt(nfold_fd)
 
+  } else {
+    mean_fd <- sd_fd <- se_fd <- NULL
   }
 
   #--------------------------------
   # Return the same output structure
   #--------------------------------
-  list(err_u = err_u, err_nfd = err_nfd,err_fd = err_fd)
+  list(err_u = err_u, err_nfd = err_nfd,err_fd = err_fd, se_u = se_u, se_nfd = se_nfd, se_fd = se_fd)
 }
 
 
@@ -738,7 +762,9 @@ handle_sparse_tuning_hybrid <- function(
     pen_u   = FALSE,
     sparse_iter = 1L,
     cl,   # <<— cluster passed in from outside,
-    tol, max_iter
+    tol, 
+    max_iter,
+    cv.pick = "1se"
 ) {
   
   applyFun <- if (is.null(cl)) lapply else function(x, FUN) parallel::parLapplyLB(cl, x, FUN)
@@ -784,10 +810,9 @@ handle_sparse_tuning_hybrid <- function(
   }
   
   count <- 0
-  #browser()
   for (pass in seq_len(sparse_iter)) {
   # --- 1) tune 'u' ---
-  if (!is.null(sparse_tuning_u)) {
+  if (!is.null(sparse_tuning_u) && isTRUE(pen_u)) {
     if (!is.null(cl)){
       parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_u",
                                               "best_nfd", "best_fd"), envir = environment())
@@ -818,24 +843,38 @@ handle_sparse_tuning_hybrid <- function(
         pen_u   = pen_u,
         tol = tol, max_iter = max_iter
       )
-      res$err_u
+      #res$err_u
+      c(err_u = res$err_u,
+        se_u  = res$se_u)
     })
+    
+    cv_scores_u_mat <- do.call(rbind, cv_scores_u_list)
+    cv_scores_u <- cv_scores_u_mat[ , "err_u" ]
+    cv_se_u     <- cv_scores_u_mat[ , "se_u"  ]
 
-    cv_scores_u    <- unlist(cv_scores_u_list)
-    best_index_u   <- which.min(cv_scores_u)
+    #cv_scores_u    <- unlist(cv_scores_u_list)
+    #best_index_u   <- which.min(cv_scores_u)
+    if (cv.pick == "1se"){
+      min_idx <- which.min(cv_scores_u)
+      cutoff <- cv_scores_u[min_idx] + cv_se_u[min_idx]
+      idx_within <- which(cv_scores_u <= cutoff)
+      best_index_u <- max(idx_within)
+    } else {
+      best_index_u   <- which.min(cv_scores_u)
+    }
     best_u         <- sparse_tuning_u[best_index_u]
     CV_score_sparse_u <- cv_scores_u[best_index_u]
     count <- count + length(sparse_tuning_u)
     setTxtProgressBar(pb, count)
   } else {
     best_u      <- 0
-    cv_scores_u <- NULL
+    cv_scores_u <- cv_se_u <-  NULL
     count <- count + 1
     setTxtProgressBar(pb, count)
   }
   
   # --- 2) tune 'nfd' ---
-  if (!is.null(sparse_tuning_nfd)) {
+  if (!is.null(sparse_tuning_nfd)&& isTRUE(pen_nfd)) {
     if (!is.null(cl)){
       parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_nfd", "best_u","best_fd"), envir = environment())
     }
@@ -867,27 +906,41 @@ handle_sparse_tuning_hybrid <- function(
         pen_u   = pen_u,#pen_u
         tol = tol, max_iter = max_iter
       )
-      res$err_nfd
+      #res$err_nfd
+      c(err_nfd = res$err_nfd,
+        se_nfd  = res$se_nfd)
       
     })
-    cv_scores_nfd      <- unlist(cv_scores_nfd_list)
-    best_index_nfd     <- which.min(cv_scores_nfd)
+    cv_scores_nfd_mat <- do.call(rbind, cv_scores_nfd_list)
+    cv_scores_nfd <- cv_scores_nfd_mat[ , "err_nfd"]
+    cv_se_nfd     <- cv_scores_nfd_mat[ , "se_nfd"]
+    #cv_scores_nfd      <- unlist(cv_scores_nfd_list)
+    #best_index_nfd     <- which.min(cv_scores_nfd)
+    if (cv.pick == "1se"){
+      min_idx <- which.min(cv_scores_nfd)
+      cutoff <- cv_scores_nfd[min_idx] + cv_se_nfd[min_idx]
+      idx_within <- which(cv_scores_nfd <= cutoff)
+      best_index_nfd <- max(idx_within)
+    } else {
+      best_index_nfd   <- which.min(cv_scores_nfd)
+    }
     best_nfd           <- sparse_tuning_nfd[best_index_nfd,,drop = TRUE]
     CV_score_sparse_nfd <- cv_scores_nfd[best_index_nfd]
     count <- count +  nrow(sparse_tuning_fd)
     setTxtProgressBar(pb, count)
   } else {
     best_nfd       <- NULL
-    cv_scores_nfd  <- NULL
+    cv_scores_nfd  <- cv_se_nfd <- NULL
     count <- count + 1
     setTxtProgressBar(pb, count)
   }
   
   # --- 3) tune 'fd' ---
-  if (!is.null(sparse_tuning_fd)) {
+  if (!is.null(sparse_tuning_fd) && isTRUE(pen_fd)) {
     if (!is.null(cl)){
       parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_fd", "best_u", "best_nfd"), envir = environment())
     }
+    #browser()
     cv_scores_fd_list <- applyFun(seq_len(nrow(sparse_tuning_fd)),function(i){
       
       candidate_fd <- sparse_tuning_fd[i, , drop = TRUE]
@@ -916,18 +969,31 @@ handle_sparse_tuning_hybrid <- function(
         pen_u   = pen_u,
         tol = tol, max_iter = max_iter
       )
-      res$err_fd
+      #res$err_fd
+      c(err_fd = res$err_fd,
+        se_fd  = res$se_fd)
       
     })
-    cv_scores_fd    <- unlist(cv_scores_fd_list)
-    best_index_fd   <- which.min(cv_scores_fd)
+    cv_scores_fd_mat <- do.call(rbind, cv_scores_fd_list)
+    cv_scores_fd <- cv_scores_fd_mat[ , "err_fd"]
+    cv_se_fd     <- cv_scores_fd_mat[ , "se_fd"]
+    #cv_scores_fd    <- unlist(cv_scores_fd_list)
+    #best_index_fd   <- which.min(cv_scores_fd)
+    if (cv.pick == "1se"){
+      min_idx <- which.min(cv_scores_fd)
+      cutoff <- cv_scores_fd[min_idx] + cv_se_fd[min_idx]
+      idx_within <- which(cv_scores_fd <= cutoff)
+      best_index_fd <- max(idx_within)
+    } else {
+      best_index_fd   <- which.min(cv_scores_fd)
+    }
     best_fd         <- sparse_tuning_fd[best_index_fd, , drop = TRUE]
     CV_score_sparse_fd <- cv_scores_fd[best_index_fd]
     count <- count + nrow(sparse_tuning_fd)
     setTxtProgressBar(pb, count)
   } else {
     best_fd      <- NULL
-    cv_scores_fd <- NULL
+    cv_scores_fd <- cv_se_fd <- NULL
     count <- count + 1
     setTxtProgressBar(pb, count)
   }
@@ -941,7 +1007,10 @@ handle_sparse_tuning_hybrid <- function(
     cv_scores_fd                = cv_scores_fd,
     CV_score_sparse_u           = CV_score_sparse_u,
     CV_score_sparse_nfd         = CV_score_sparse_nfd,
-    CV_score_sparse_fd          = CV_score_sparse_fd
+    CV_score_sparse_fd          = CV_score_sparse_fd, 
+    cv_se_u                     = cv_se_u,
+    cv_se_nfd                   = cv_se_nfd,
+    cv_se_fd                    = cv_se_fd
   )
 }
 
@@ -971,7 +1040,9 @@ cv_gcv_sequential_hybrid <- function(
     pen_u   = FALSE,
     sparse_iter = 2L,
     cl,
-    tol, max_iter
+    tol, 
+    max_iter,
+    cv.pick
 ) {
   # Prepare fold assignments
   ncf   <- if (!is.null(fdata))  ncol(fdata)  else NULL
@@ -1019,7 +1090,9 @@ cv_gcv_sequential_hybrid <- function(
     pen_u   = pen_u,
     sparse_iter = sparse_iter,
     cl           = cl,
-    tol = tol, max_iter = max_iter
+    tol = tol, 
+    max_iter = max_iter,
+    cv.pick = cv.pick
   )
   sparse_tuning_selection_u   <- sparse_res$sparse_tuning_selection_u
   sparse_tuning_selection_nfd <- sparse_res$sparse_tuning_selection_nfd
@@ -1027,6 +1100,9 @@ cv_gcv_sequential_hybrid <- function(
   cv_scores_u                 <- sparse_res$cv_scores_u
   cv_scores_nfd               <- sparse_res$cv_scores_nfd
   cv_scores_fd                <- sparse_res$cv_scores_fd
+  cv_se_u <- sparse_res$cv_se_u
+  cv_se_nfd <- sparse_res$cv_se_nfd
+  cv_se_fd <- sparse_res$cv_se_fd
   
   # 2) Smooth tuning (GCV)
   count0 <- (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) +
@@ -1060,15 +1136,18 @@ cv_gcv_sequential_hybrid <- function(
   
   close(pb)
   list(
-    sparse_tuning_selection_u   = sparse_tuning_selection_u,
-    sparse_tuning_selection_nfd = sparse_tuning_selection_nfd,
-    sparse_tuning_selection_fd  = sparse_tuning_selection_fd,
-    cv_scores_u                 = cv_scores_u,
-    cv_scores_nfd               = cv_scores_nfd,
-    cv_scores_fd                = cv_scores_fd,
-    gcv_scores                  = gcv_scores,
-    index_selection             = index_selection
-  )
+   sparse_tuning_selection_u = sparse_tuning_selection_u,
+   sparse_tuning_selection_nfd = sparse_tuning_selection_nfd,
+   sparse_tuning_selection_fd = sparse_tuning_selection_fd,
+   cv_scores_u = cv_scores_u,
+   cv_scores_nfd = cv_scores_nfd,
+   cv_scores_fd = cv_scores_fd,
+   gcv_scores = gcv_scores,
+   index_selection = index_selection,
+   cv_se_u = cv_se_u,
+   cv_se_nfd = cv_se_nfd,
+   cv_se_fd = cv_se_fd
+ )
 }
 
 # Function for gcv_joint
@@ -1165,7 +1244,7 @@ sequential_power_hybrid <- function(hd_obj,
                                     pen_u = FALSE,
                                     sparse_iter   = 2L,
                                     ncor,
-                                    tol, max_iter) {
+                                    tol, max_iter, cv.pick) {
   use_cluster <- ncor > 1L
   if (use_cluster){
     cl <- parallel::makeCluster(
@@ -1330,8 +1409,11 @@ sequential_power_hybrid <- function(hd_obj,
         pen_u = pen_u,
         sparse_iter = sparse_iter,
         cl = cl,
-        tol = tol, max_iter = max_iter
+        tol = tol, max_iter = max_iter,cv.pick = cv.pick
       )
+      cv_se_u <- cv_result$cv_se_u
+      cv_se_nfd <- cv_result$cv_se_nfd
+      cv_se_fd <- cv_result$cv_se_fd
       sparse_result_u = cv_result$sparse_tuning_selection_u
       sparse_result_nfd = cv_result$sparse_tuning_selection_nfd
       sparse_result_fd = cv_result$sparse_tuning_selection_fd
@@ -1494,9 +1576,11 @@ sequential_power_hybrid <- function(hd_obj,
         pen_u = pen_u,
         sparse_iter = sparse_iter,
         cl = cl,
-        tol = tol, max_iter = max_iter
+        tol = tol, max_iter = max_iter, cv.pick = cv.pick
       )
-      
+      cv_se_u <- cv_result$cv_se_u
+      cv_se_nfd <- cv_result$cv_se_nfd
+      cv_se_fd <- cv_result$cv_se_fd
       sparse_result_u = cv_result$sparse_tuning_selection_u
       sparse_result_nfd = cv_result$sparse_tuning_selection_nfd
       sparse_result_fd = cv_result$sparse_tuning_selection_fd
@@ -1565,7 +1649,10 @@ sequential_power_hybrid <- function(hd_obj,
     CV_score_u = CV_score_u,
     CV_score_nfd = CV_score_nfd, 
     CV_score_fd = CV_score_fd, 
-    GCV_score = GCV_score
+    GCV_score = GCV_score,
+    cv_se_u = cv_se_u,
+    cv_se_nfd = cv_se_nfd,
+    cv_se_fd = cv_se_fd
     ))
 } 
 

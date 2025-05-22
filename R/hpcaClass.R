@@ -85,6 +85,7 @@ mhpca <- R6::R6Class("mhpca",
                           tol = 1e-4, 
                           max_iter = 1000,
                           sparse_CV,
+                          cv.pick = "1se",
                           smooth_GCV,
                           pen_nfd = FALSE,
                           pen_fd = FALSE,
@@ -308,7 +309,7 @@ mhpca <- R6::R6Class("mhpca",
           pen_u = pen_u,
           ncor = ncor,
           sparse_iter = sparse_iter,
-          tol = tol, max_iter = max_iter
+          tol = tol, max_iter = max_iter, cv.pick = cv.pick
         )
       } else if (method == "eigen" || alpha_orth == "TRUE") {
         if (!is.null(hd_obj$mf)) {
@@ -437,12 +438,13 @@ mhpca <- R6::R6Class("mhpca",
         private$.CVs_nfd <- result$CV_score_nfd
         private$.CVs_fd <- result$CV_score_fd
         private$.GCVs <- result$GCV_score
+        private$.CV_se_u <- result$cv_se_u
+        private$.CV_se_nfd <- result$cv_se_nfd
+        private$.CV_se_fd <- result$cv_se_fd
+        
       } else {
         private$.GCVs <- result$GCV_score
       }
-      # private$.sparse_tuning <- result[[5]]
-      # private$.mean_mfd <- mean(mfd_obj)
-      # private$.mean_nfd <- mean(mfd_obj) # change it later
       private$.mean_hd <- mean(hd_obj)
     }
   ),
@@ -524,6 +526,27 @@ mhpca <- R6::R6Class("mhpca",
         stop("`$CVs_fd` is read only", call. = FALSE)
       }
     },
+    CV_se_u = function(value) {
+      if (missing(value)) {
+        private$.CV_se_u
+      } else {
+        stop("`$CV_se_u` is read only", call. = FALSE)
+      }
+    }, 
+    CV_se_nfd = function(value) {
+      if (missing(value)) {
+        private$.CV_se_nfd
+      } else {
+        stop("`$CV_se_nfd` is read only", call. = FALSE)
+      }
+    }, 
+    CV_se_fd = function(value) {
+      if (missing(value)) {
+        private$.CV_se_fd
+      } else {
+        stop("`$CV_se_fd` is read only", call. = FALSE)
+      }
+    }, 
     mean_hd = function(value) {
       if (missing(value)) {
         private$.mean_hd
@@ -544,6 +567,9 @@ mhpca <- R6::R6Class("mhpca",
     .CVs_u = NULL,
     .CVs_nfd = NULL,
     .CVs_fd = NULL,
+    .CV_se_u = NULL,
+    .CV_se_nfd = NULL,
+    .CV_se_fd = NULL,
     .mean_hd = NULL
   )
 )
@@ -589,6 +615,7 @@ mhpca <- R6::R6Class("mhpca",
 #'                                        If `sparse_CV = TRUE`, a series of tuning parameters should be provided as a vector with positive number with max equals to number of subjects.
 #'                                        If `sparse_CV = FALSE`, specific tuning parameters are given directly to each principal components. Tuning parameters should be provided as a vector with length equal to `ncomp`.
 #'                                        If the dimensions of input tuning parameters are incorrect, it will be converted to a list internally, and a warning will be issued.
+#' @param cv.pick CV selection either based on "1se" or "min"
 #' @param smooth_GCV Logical indicating whether generalized cross-validation should be applied to select the optimal smooth tuning parameter.
 #'                                        If `smooth_GCV = TRUE`, a series of tuning parameters should be provided as a list with length equal to the number of variables.
 #'                                        If a list with incorrect dimensions is provided, it will be converted to a correct list internally, and a warning will be issued.
@@ -621,6 +648,7 @@ Mhpca <- function(hd_obj,
                   tol = 1e-4, 
                   max_iter = 1000,
                   sparse_CV = TRUE,
+                  cv.pick = "1se",
                   smooth_GCV = TRUE,
                   pen_nfd = FALSE,
                   pen_fd = FALSE,
@@ -647,6 +675,7 @@ Mhpca <- function(hd_obj,
     tol = tol, 
     max_iter = max_iter,
     sparse_CV = sparse_CV,
+    cv.pick = cv.pick,
     smooth_GCV = smooth_GCV,
     pen_nfd = pen_nfd,
     pen_fd = pen_fd,
