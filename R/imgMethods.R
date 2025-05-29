@@ -1,13 +1,15 @@
 
 #' Title
 #'
-#' @param x 
-#' @param ... 
+#' @param x a matrix
+#' @param ... other args
 #'
-#' @return
+#' @return `img` class
 #' @export
 #'
 #' @examples
+#'  x <- matrix(rnorm(100),ncol = 10)
+#' img_obj <- img(x)
 print.img <- function(x, ...) {
   cat("An object of class 'img':\n")
   

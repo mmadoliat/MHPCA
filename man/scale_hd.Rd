@@ -6,10 +6,10 @@
 \usage{
 scale_hd(
   hd_obj,
+  method = c("component", "balanced", "manual"),
   f_weight = NULL,
   nf_weight = NULL,
-  mf_eval_length = NULL,
-  scale_components = FALSE
+  mf_eval_length = NULL
 )
 }
 \arguments{

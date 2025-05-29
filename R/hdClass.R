@@ -5,6 +5,7 @@
 
 #' @field mf a `mvmfd` object
 #' @field nf  a `mvnfd` object
+#' @field spars_par assign sparsity parameters of observations to hd object 
 #'
 #' @examples
 #' require(fda)

@@ -170,7 +170,6 @@ eigen_approach_hybrid <- function(hd_obj, n, alpha, centerfns, penalty_type) {
   #variance <- diag(t(b) %*% G %*% V %*% G %*% b)
   variance <- (diag(t(as.matrix(rbind(b,bv))) %*% V %*% as.matrix(rbind(b,bv))))
   lsv <- scale(v, center = FALSE, scale = sqrt(colSums(as.matrix(v)^2)))
-  #lsv <- (B_c %*% G %*% b) %*% solve(diag(sqrt(diag(t(B_c %*% G %*% b) %*% (B_c %*% G %*% b))),nc=ncol(b)))
-  
+
   return(list(pc_fd = pc, lsv = lsv, variance = variance, GCV_result = GCV_result, GCVs = GCVs,pc_nfd = bv))
 }

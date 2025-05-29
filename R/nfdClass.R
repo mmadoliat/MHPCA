@@ -6,10 +6,12 @@
 #' 
 #' @param data A numeric matrix of data points.
 #'
-#' @return 
+#' @return `nfd` object
 #' @export
 #'
 #' @examples
+#' x <- matrix(rnorm(100),ncol = 10)
+#' nfd_obj <- nfd(x)
 nfd <- function(data,spars_par = NULL) {
   if (!is.matrix(data) && !is.array(data)) {
     stop("Input must be a matrix or an array.")
