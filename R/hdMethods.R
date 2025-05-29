@@ -83,39 +83,7 @@ scale_hd <- function(hd_obj,
   }
 }
 
-# scale_hd <- function(hd_obj, f_weight = NULL, nf_weight = NULL, mf_eval_length = NULL,scale_components = FALSE){
-#   
-#   
-#   mf <- hd_obj$mf
-#   nf <- hd_obj$nf
-#   if (scale_components == TRUE){
-#     if (!is.null(mf)) {
-#       mf_eval_length <-  if (is.null(mf_eval_length)) rep(100,mf$nvar) else mf_eval_length
-#       mvmfd_scaled <- scale_mvmfd(mf,mf_eval_length,f_weight)
-#     } 
-#     if (!is.null(nf)) {
-#       mvnfd_scaled <- scale_mvnfd(nf,nf_weight)
-#     }
-#   } else {
-#     if (!is.null(f_weight) && is.null(nf_weight)) nf_weight <- 1 - f_weight 
-#     if (is.null(f_weight) && !is.null(nf_weight)) f_weight <- 1 - nf_weight
-#     if (!is.null(f_weight) && !is.null(nf_weight) && (f_weight+nf_weight != 1)){
-#       f_weight <- f_weight/(f_weight + nf_weight)
-#       nf_weight <- nf_weight/(f_weight + nf_weight)
-#     }
-#     if (!is.null(mf)) {
-#       mvmfd_scaled <- f_weight*mf
-#     } 
-#     if (!is.null(nf)) {
-#       mvnfd_scaled <- nf_weight*nf
-#     }
-#   }
-#   
-#   if (!is.null(mf) && !is.null(nf)) hd_scaled <- Hd(mvmfd_scaled,mvnfd_scaled)
-#   if (!is.null(mf) && is.null(nf)) hd_scaled <- Hd(mvmfd_scaled)
-#   if (is.null(mf) && !is.null(nf)) hd_scaled <- Hd(mvnfd_scaled)
-#   return(hd_scaled)
-# }
+
 
 #' @title Addition of two `hd` objects
 #'
