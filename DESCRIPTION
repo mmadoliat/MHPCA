@@ -10,10 +10,11 @@ Authors@R: c(
     )
 Maintainer: Hossein Haghbin <haghbin@pgu.ac.ir>
 Description: Methods and tools for implementing multivariate hybrid principal component analysis ('MHPCA') for multivariate (non)functional data whose variables might be observed over different dimensional domains. 'MHPCA' is an object-oriented interface leveraging the extensibility and scalability of R6. It employs a parameter vector to control the smoothness of each functional variable. By incorporating smoothness constraints as penalty terms within a regularized optimization framework, 'MHPCA' generates smooth multivariate (non)functional principal components, offering a concise and interpretable representation of the data. For detailed information on the methods and techniques used in 'MHPCA', please refer to Mahmoudiandehkordi et al. (2025) <doi:10.48550/arXiv.xxxx.yyyyy>. 
-URL: https://github.com/mmadoliat/MHPCA
-License: GPL (>= 2)
+URL: https://github.com/mmadoliat/MHPCA, https://mmadoliat.github.io/MHPCA/
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: TRUE
 Imports: fda, expm, Matrix
+Suggests: knitr, rmarkdown
 RoxygenNote: 7.3.2
 Depends: R (>= 4.0), R6
