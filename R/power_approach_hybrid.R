@@ -560,7 +560,6 @@ cv_local_hybrid <- function(
   err_fd <- NULL
 
   if (pen_fd) {
-    #browser()
     fold_errors_fd <- numeric(nfold_fd)
 
     for (k in seq_len(nfold_fd)) {
@@ -766,7 +765,7 @@ handle_sparse_tuning_hybrid <- function(
     max_iter,
     cv.pick = "1se"
 ) {
-  
+
   applyFun <- if (is.null(cl)) lapply else function(x, FUN) parallel::parLapplyLB(cl, x, FUN)
   # Collect the names of the objects to export to the workers:
   data_vars <- c(
@@ -808,7 +807,7 @@ handle_sparse_tuning_hybrid <- function(
   } else {
     best_fd <- NULL
   }
-  
+   
   count <- 0
   for (pass in seq_len(sparse_iter)) {
   # --- 1) tune 'u' ---
@@ -926,7 +925,8 @@ handle_sparse_tuning_hybrid <- function(
     }
     best_nfd           <- sparse_tuning_nfd[best_index_nfd,,drop = TRUE]
     CV_score_sparse_nfd <- cv_scores_nfd[best_index_nfd]
-    count <- count +  nrow(sparse_tuning_fd)
+    count <- count +  nrow(sparse_tuning_nfd)
+     
     setTxtProgressBar(pb, count)
   } else {
     best_nfd       <- NULL
@@ -940,7 +940,7 @@ handle_sparse_tuning_hybrid <- function(
     if (!is.null(cl)){
       parallel::clusterExport(cl, varlist = c(data_vars, "sparse_tuning_fd", "best_u", "best_nfd"), envir = environment())
     }
-    #browser()
+     
     cv_scores_fd_list <- applyFun(seq_len(nrow(sparse_tuning_fd)),function(i){
       
       candidate_fd <- sparse_tuning_fd[i, , drop = TRUE]
