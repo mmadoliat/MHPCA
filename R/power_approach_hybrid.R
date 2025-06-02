@@ -1316,9 +1316,9 @@ sequential_power_hybrid <- function(hd_obj,
     S_smooth <- S_2_inverse <- list()
     GCV_score = c()
     if(sparse_CV == FALSE){
-      CV_score_u <- CV_score_nfd <- CV_score_fd <- c()
+      CV_score_u <- CV_score_nfd <- CV_score_fd <- cv_se_u <- cv_se_nfd <- cv_se_fd <- c()
     } else{
-      CV_score_u <- CV_score_nfd <- CV_score_fd <- list()
+      CV_score_u <- CV_score_nfd <- CV_score_fd <- cv_se_u <- cv_se_nfd <- cv_se_fd <- list()
     }
     for (i in 1:n) {
       cat(sprintf("Computing the %s PC...\n", ordinal_msg(i)))
@@ -1411,9 +1411,9 @@ sequential_power_hybrid <- function(hd_obj,
         cl = cl,
         tol = tol, max_iter = max_iter,cv.pick = cv.pick
       )
-      cv_se_u <- cv_result$cv_se_u
-      cv_se_nfd <- cv_result$cv_se_nfd
-      cv_se_fd <- cv_result$cv_se_fd
+      # cv_se_u <- cv_result$cv_se_u
+      # cv_se_nfd <- cv_result$cv_se_nfd
+      # cv_se_fd <- cv_result$cv_se_fd
       sparse_result_u = cv_result$sparse_tuning_selection_u
       sparse_result_nfd = cv_result$sparse_tuning_selection_nfd
       sparse_result_fd = cv_result$sparse_tuning_selection_fd
@@ -1422,10 +1422,16 @@ sequential_power_hybrid <- function(hd_obj,
         CV_score_u = c(CV_score_u, cv_result$cv_scores_u)
         CV_score_nfd = c(CV_score_nfd, cv_result$cv_scores_nfd)
         CV_score_fd = c(CV_score_fd, cv_result$cv_scores_fd)
+        cv_se_u <- c(cv_se_u,cv_result$cv_se_u)
+        cv_se_fd <- c(cv_se_fd,cv_result$cv_se_fd)
+        cv_se_nfd <- c(cv_se_nfd,cv_result$cv_se_nfd)
       } else{
-        CV_score_u[[i]] = cv_result$cv_scores_u
-        CV_score_nfd[[i]] = cv_result$cv_scores_nfd
-        CV_score_fd[[i]] = cv_result$cv_scores_fd
+        CV_score_u[[i]] <- cv_result$cv_scores_u
+        CV_score_nfd[[i]] <- cv_result$cv_scores_nfd
+        CV_score_fd[[i]] <- cv_result$cv_scores_fd
+        cv_se_u[[i]] <- cv_result$cv_se_u
+        cv_se_fd[[i]] <- cv_result$cv_se_fd
+        cv_se_nfd[[i]] <- cv_result$cv_se_nfd
       }
       GCV_score = c(GCV_score, cv_result$gcv_scores)
       CG_temp <- if(!is.null(mvmfd_obj)) C_temp%*%G_half else NULL
@@ -1464,7 +1470,7 @@ sequential_power_hybrid <- function(hd_obj,
   } 
   #########sequential inputs of smoothing parameters###########
   else{
-    
+
     if (is.null(smooth_tuning)) {
       smooth_tuning_temp = if (!is.null(mvmfd_obj)) expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1])) else expand.grid(lapply(rep(0,nf_obj$nvar), function(x) x[1]))
     } else{
@@ -1503,9 +1509,9 @@ sequential_power_hybrid <- function(hd_obj,
     nfv_total = c()
     GCV_score = list()
     if(sparse_CV == FALSE){
-      CV_score_u <- CV_score_nfd <- CV_score_fd <-  c()
+      CV_score_u <- CV_score_nfd <- CV_score_fd <- cv_se_u <- cv_se_nfd <- cv_se_fd <- c()
     } else{
-      CV_score_u <- CV_score_nfd <- CV_score_fd <- list()
+      CV_score_u <- CV_score_nfd <- CV_score_fd <- cv_se_u <- cv_se_nfd <- cv_se_fd <- list()
     }
     
     for (i in 1:n) {
@@ -1578,9 +1584,9 @@ sequential_power_hybrid <- function(hd_obj,
         cl = cl,
         tol = tol, max_iter = max_iter, cv.pick = cv.pick
       )
-      cv_se_u <- cv_result$cv_se_u
-      cv_se_nfd <- cv_result$cv_se_nfd
-      cv_se_fd <- cv_result$cv_se_fd
+      # cv_se_u <- cv_result$cv_se_u
+      # cv_se_nfd <- cv_result$cv_se_nfd
+      # cv_se_fd <- cv_result$cv_se_fd
       sparse_result_u = cv_result$sparse_tuning_selection_u
       sparse_result_nfd = cv_result$sparse_tuning_selection_nfd
       sparse_result_fd = cv_result$sparse_tuning_selection_fd
@@ -1589,10 +1595,16 @@ sequential_power_hybrid <- function(hd_obj,
         CV_score_u = c(CV_score_u, cv_result$cv_scores_u)
         CV_score_nfd = c(CV_score_nfd, cv_result$cv_scores_nfd)
         CV_score_fd = c(CV_score_fd, cv_result$cv_scores_fd)
+        cv_se_u <- c(cv_se_u,cv_result$cv_se_u)
+        cv_se_fd <- c(cv_se_fd,cv_result$cv_se_fd)
+        cv_se_nfd <- c(cv_se_nfd,cv_result$cv_se_nfd)
       } else{
         CV_score_u[[i]] = cv_result$cv_scores_u
         CV_score_nfd[[i]] = cv_result$cv_scores_nfd
         CV_score_fd[[i]] = cv_result$cv_scores_fd
+        cv_se_u[[i]] <- cv_result$cv_se_u
+        cv_se_fd[[i]] <- cv_result$cv_se_fd
+        cv_se_nfd[[i]] <- cv_result$cv_se_nfd
       }
       GCV_score[[i]] = cv_result$gcv_scores
       CG_temp <- if(!is.null(mvmfd_obj)) C_temp%*%G_half else NULL
