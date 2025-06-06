@@ -1366,11 +1366,9 @@ sequential_power_hybrid <- function(hd_obj,
       if (!is.null(sparse_tuning_nfd)) {
         if (sparse_CV == FALSE) {
           # Convert the list/vector into a matrix and extract the i-th row as a 1-row matrix.
-          #sparse_tuning_temp_nfd <- as.matrix(expand.grid(lapply(sparse_tuning_nfd,function(x) x[i])))
-          sparse_tuning_temp_nfd <- do.call(cbind,sparse_tuning_nfd)[i,]
+          sparse_tuning_temp_nfd <- as.matrix(expand.grid(lapply(sparse_tuning_nfd,function(x) x[i])))
         } else {
-          #sparse_tuning_temp_nfd <- as.matrix(expand.grid(sparse_tuning_nfd))
-          sparse_tuning_temp_nfd <- do.call(cbind,sparse_tuning_nfd)
+          sparse_tuning_temp_nfd <- as.matrix(expand.grid(sparse_tuning_nfd))
         }
         nn  <- ncol(sparse_tuning_temp_nfd)
         colnames(sparse_tuning_temp_nfd) <- paste0("Var", seq_len(nn))
@@ -1378,9 +1376,7 @@ sequential_power_hybrid <- function(hd_obj,
       if (!is.null(sparse_tuning_fd)) {
         if (sparse_CV == FALSE) {
           # Convert the list/vector into a matrix and extract the i-th row as a 1-row matrix.
-          #smooth_tuning_temp = expand.grid(lapply(smooth_tuning, function(x) x[i]))
           sparse_tuning_temp_fd <- as.matrix(expand.grid(lapply(sparse_tuning_fd,function(x) x[i])))
-          #sparse_tuning_temp_fd <- as.matrix(expand.grid(sparse_tuning_fd))[i, , drop = FALSE]
         } else {
           sparse_tuning_temp_fd <- as.matrix(expand.grid(sparse_tuning_fd))
         }
@@ -1544,11 +1540,9 @@ sequential_power_hybrid <- function(hd_obj,
       if (!is.null(sparse_tuning_nfd)) {
         if (sparse_CV == FALSE) {
           # Convert the list/vector into a matrix and extract the i-th row as a 1-row matrix.
-          #sparse_tuning_temp_nfd <- as.matrix(expand.grid(lapply(sparse_tuning_nfd,function(x) x[i])))
-          sparse_tuning_temp_nfd <- do.call(cbind,sparse_tuning_nfd)[i,]
+          sparse_tuning_temp_nfd <- as.matrix(expand.grid(lapply(sparse_tuning_nfd,function(x) x[i])))
         } else {
-          #sparse_tuning_temp_nfd <- as.matrix(expand.grid(sparse_tuning_nfd))
-          sparse_tuning_temp_nfd <- do.call(cbind,sparse_tuning_nfd)
+          sparse_tuning_temp_nfd <- as.matrix(expand.grid(sparse_tuning_nfd))
         }
         nn  <- ncol(sparse_tuning_temp_nfd)
         colnames(sparse_tuning_temp_nfd) <- paste0("Var", seq_len(nn))
@@ -1557,13 +1551,11 @@ sequential_power_hybrid <- function(hd_obj,
       if (!is.null(sparse_tuning_fd)) {
         if (sparse_CV == FALSE) {
           # Convert the list/vector into a matrix and extract the i-th row as a 1-row matrix.
-          #sparse_tuning_temp_fd <- as.matrix(expand.grid(lapply(sparse_tuning_fd,function(x) x[i])))
-          sparse_tuning_temp_fd <- do.call(cbind,sparse_tuning_fd)[i,]
-          
+          sparse_tuning_temp_fd <- as.matrix(expand.grid(lapply(sparse_tuning_fd,function(x) x[i])))
+
         } else {
-          #sparse_tuning_temp_fd <- as.matrix(expand.grid(sparse_tuning_fd))
-          sparse_tuning_temp_fd <- do.call(cbind,sparse_tuning_fd)
-          
+          sparse_tuning_temp_fd <- as.matrix(expand.grid(sparse_tuning_fd))
+
         }
         nn  <- ncol(sparse_tuning_temp_fd)
         colnames(sparse_tuning_temp_fd) <- paste0("Var", seq_len(nn))
