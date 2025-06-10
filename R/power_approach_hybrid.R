@@ -790,13 +790,15 @@ handle_sparse_tuning_hybrid <- function(
   best_u   <- 0
   if (!is.null(sparse_tuning_nfd)) {
     d <- length(sparse_tuning_nfd)
-    best_nfd <- rep(0, d)
+    best_nfd <- numeric(d)
+    names(best_nfd) <- paste0("Var",seq_len(d))
   } else {
     best_nfd <- NULL
   }
   if (!is.null(sparse_tuning_fd)) {
     dd <- length(sparse_tuning_fd)
-    best_fd <- rep(0, dd)
+    best_fd <- numeric(dd)
+    names(best_fd) <- paste0("Var",seq_len(dd))
   } else {
     best_fd <- NULL
   }
@@ -968,7 +970,6 @@ handle_sparse_tuning_hybrid <- function(
           pen_u   = pen_u,
           tol = tol, max_iter = max_iter
         )
-        #res$err_fd
         c(err_fd = res$err_fd,
           se_fd  = res$se_fd)
         
@@ -984,13 +985,12 @@ handle_sparse_tuning_hybrid <- function(
       } else {
         best_index_fd   <- which.min(cv_scores_fd[[j]])
       }
-      best_fd <- sparse_tuning_fd[[j]][best_index_fd]
+      best_fd[j] <- sparse_tuning_fd[[j]][best_index_fd]
       CV_score_sparse_fd <- cv_scores_fd[[j]][best_index_fd]
       count <- count + length(sparse_tuning_fd[[j]])
       setTxtProgressBar(pb, count)
     }
   } else {
-    best_fd      <- NULL
     cv_scores_fd <- cv_se_fd <- NULL
     count <- count + 1
     setTxtProgressBar(pb, count)
@@ -1494,11 +1494,12 @@ sequential_power_hybrid <- function(hd_obj,
     fv_total = c()
     nfv_total = c()
     GCV_score = list()
-    if(sparse_CV == FALSE){
-      CV_score_u <- CV_score_nfd <- CV_score_fd <- cv_se_u <- cv_se_nfd <- cv_se_fd <- c()
-    } else{
-      CV_score_u <- CV_score_nfd <- CV_score_fd <- cv_se_u <- cv_se_nfd <- cv_se_fd <- list()
-    }
+    CV_score_u <- CV_score_nfd <- CV_score_fd <- cv_se_u <- cv_se_nfd <- cv_se_fd <- list()
+    # if(sparse_CV == FALSE){
+    #   CV_score_u <- CV_score_nfd <- CV_score_fd <- cv_se_u <- cv_se_nfd <- cv_se_fd <- c()
+    # } else{
+    #   CV_score_u <- CV_score_nfd <- CV_score_fd <- cv_se_u <- cv_se_nfd <- cv_se_fd <- list()
+    # }
     
     for (i in 1:n) {
       cat(sprintf("Computing the %s PC...\n", ordinal_msg(i)))
@@ -1538,7 +1539,7 @@ sequential_power_hybrid <- function(hd_obj,
           sparse_tuning_temp_fd <- sparse_tuning_fd
         }
       }
-      
+
       cv_result = cv_gcv_sequential_hybrid(
         fdata = C_temp,
         nfdata = nf_data,
@@ -1570,21 +1571,14 @@ sequential_power_hybrid <- function(hd_obj,
       sparse_result_nfd = cv_result$sparse_tuning_selection_nfd
       sparse_result_fd = cv_result$sparse_tuning_selection_fd
       smooth_result_index = cv_result$index_selection
-      if (sparse_CV == FALSE) {
-        CV_score_u = c(CV_score_u, cv_result$cv_scores_u)
-        CV_score_nfd = c(CV_score_nfd, cv_result$cv_scores_nfd)
-        CV_score_fd = c(CV_score_fd, cv_result$cv_scores_fd)
-        cv_se_u <- c(cv_se_u,cv_result$cv_se_u)
-        cv_se_fd <- c(cv_se_fd,cv_result$cv_se_fd)
-        cv_se_nfd <- c(cv_se_nfd,cv_result$cv_se_nfd)
-      } else{
+    
         CV_score_u[[i]] = cv_result$cv_scores_u
         CV_score_nfd[[i]] = cv_result$cv_scores_nfd
         CV_score_fd[[i]] = cv_result$cv_scores_fd
         cv_se_u[[i]] <- cv_result$cv_se_u
         cv_se_fd[[i]] <- cv_result$cv_se_fd
         cv_se_nfd[[i]] <- cv_result$cv_se_nfd
-      }
+ 
       GCV_score[[i]] = cv_result$gcv_scores
       CG_temp <- if(!is.null(mvmfd_obj)) C_temp%*%G_half else NULL
       test_result = init_sequential_hybrid(fdata = CG_temp, 
@@ -1609,8 +1603,11 @@ sequential_power_hybrid <- function(hd_obj,
       nfv = test_result[[2]]
       smooth_tuning_result[[i]] = smooth_tuning_temp[smooth_result_index, ]
       sparse_tuning_result_u[[i]] = sparse_result_u
+      names( sparse_tuning_result_u[[i]]) <- paste0("Var",seq_len(length( sparse_tuning_result_u[[i]])))
       sparse_tuning_result_nfd[[i]] = sparse_result_nfd
+      names(sparse_tuning_result_nfd[[i]]) <- paste0("Var",seq_len(length(sparse_tuning_result_nfd[[i]])))
       sparse_tuning_result_fd[[i]] = sparse_result_fd
+      names(sparse_tuning_result_fd[[i]]) <- paste0("Var",seq_len(length(sparse_tuning_result_fd[[i]])))
       temp_count <- 0
       variance_result <- handle_variance_update_hybrid(i, n, C, nf_data,G, fv_total, nfv_total,hd_obj, all_equal_check, c(sparse_tuning_u,sparse_tuning_nfd,sparse_tuning_fd), pc, lsv, fv, nfv,u, G_half, test_result, temp_count, p)
       pc <- variance_result$pc
@@ -1619,13 +1616,62 @@ sequential_power_hybrid <- function(hd_obj,
       nfv_total <- variance_result$nfv_total
       variance[i] <- variance_result$variance
     }
+    names(sparse_tuning_result_u) <- paste0("PC",seq_len(length(sparse_tuning_result_u)))
+    names(sparse_tuning_result_nfd) <- paste0("PC",seq_len(length(sparse_tuning_result_nfd)))
+    names(sparse_tuning_result_fd) <- paste0("PC",seq_len(length(sparse_tuning_result_fd)))
+    
     if (is.null(smooth_tuning)) {
       GCV_score = NULL
     }
-    if (is.null(sparse_tuning_u) && is.null(sparse_tuning_nfd)) {
-      CV_score = NULL
-    }
   }
+  if (isTRUE(sparse_CV)){
+    if (!is.null(sparse_tuning_fd) && isTRUE(pen_fd)){
+      sp <-  list(sparse_tuning_fd)
+      cvs <- CV_score_fd
+      ses <- cv_se_fd
+      combined_fd <- Map(function(cvs_list, ses_list, sps_list){
+        temp <- Map(function(cvs_i,ses_i,sps_i){
+          cbind(gamma = sps_i,CV = cvs_i, SE = ses_i)
+        },cvs_list, ses_list, sps_list)
+        names(temp) <- paste0("Var",seq_len(length(temp)))
+        temp
+      },cvs,ses,sp)
+      names(combined_fd) <- paste0("PC",seq_len(length(combined_fd)))
+    } else {
+      combined_fd <- NULL
+    }
+    
+    if (!is.null(sparse_tuning_nfd)&& isTRUE(pen_nfd)){
+      sp <- list(sparse_tuning_nfd)
+      cvs <- CV_score_nfd
+      ses <- cv_se_nfd
+      combined_nfd <- Map(function(cvs_list, ses_list, sps_list){
+        temp <- Map(function(cvs_i,ses_i,sps_i){
+          cbind(gamma = sps_i,CV = cvs_i, SE = ses_i)
+        },cvs_list, ses_list, sps_list)
+        names(temp) <- paste0("Var",seq_len(length(temp)))
+        temp
+      },cvs,ses,sp)
+      names(combined_nfd) <- paste0("PC",seq_len(length(combined_nfd)))
+    } else {
+      combined_nfd <- NULL
+    }
+    
+    if (!is.null(sparse_tuning_u)&& isTRUE(pen_fd)){
+      sp <- list(sparse_tuning_u)
+      cvs <- CV_score_u
+      ses <- cv_se_u
+      combined_u <- Map(function(cvs_i, ses_i,sp_i){
+        cbind(gamma = sp_i,CV = cvs_i, SE = ses_i)
+      },cvs,ses,sp)
+      names(combined_u) <- paste0("PC",seq_len(length(combined_u)))
+    } else {
+      combined_u <- NULL
+    }
+  } else {
+    combined_fd <- combined_nfd <- combined_u <- NULL
+  }
+   
   
   return(list(
     pc_fd = pc, 
@@ -1636,13 +1682,10 @@ sequential_power_hybrid <- function(hd_obj,
     sparse_tuning_result_u = sparse_tuning_result_u,
     sparse_tuning_result_nfd = sparse_tuning_result_nfd, 
     sparse_tuning_result_fd = sparse_tuning_result_fd,
-    CV_score_u = CV_score_u,
-    CV_score_nfd = CV_score_nfd, 
-    CV_score_fd = CV_score_fd, 
-    GCV_score = GCV_score,
-    cv_se_u = cv_se_u,
-    cv_se_nfd = cv_se_nfd,
-    cv_se_fd = cv_se_fd
+    CV_score_u = combined_u,
+    CV_score_nfd = combined_nfd, 
+    CV_score_fd = combined_fd, 
+    GCV_score = GCV_score
     ))
 } 
 

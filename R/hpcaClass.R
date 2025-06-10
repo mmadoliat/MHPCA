@@ -272,20 +272,7 @@ mhpca <- R6::R6Class("mhpca",
           warning("The length of 'sparse_tuning_u' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
           sparse_tuning_u <- rep(sparse_tuning_u, length.out = ncomp)
         }
-        
-        
-        # if (sparse_CV == FALSE & length(sparse_tuning_nfd) != ncomp & !is.null(sparse_tuning_nfd)) {
-        #   warning("The length of 'sparse_tuning_nfd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
-        #   sparse_tuning_nfd <- rep(sparse_tuning_nfd, length.out = ncomp)
-        # }
-        
-        
-        
-        # if (sparse_CV == FALSE & length(sparse_tuning_fd) != ncomp & !is.null(sparse_tuning_fd)) {
-        #   warning("The length of 'sparse_tuning_nfd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
-        #   sparse_tuning_fd <- rep(sparse_tuning_fd, length.out = ncomp)
-        # }
-        #browser()
+
         result <- sequential_power_hybrid(
           hd_obj = hd_obj,
           n = ncomp,
@@ -375,11 +362,7 @@ mhpca <- R6::R6Class("mhpca",
           result <- eigen_approach_hybrid(hd_obj = hd_obj, n = ncomp, alpha = smooth_tuning, centerfns = centerfns, penalty_type = smoothing_type)
         }
 
-        # result <- joint_power(hd_obj = hd_obj, n = ncomp, smooth_tuning = smooth_tuning, centerfns = centerfns, alpha_orth = alpha_orth, smooth_tuning_type = smoothing_type)
       }
-      # else if (method == "eigen") {
-      #   result <- eigen_approach(hd_obj = hd_obj, n = ncomp, alpha = smooth_tuning, centerfns = centerfns, penalty_type = smoothing_type)
-      # }
 
       coef <- result$pc_fd
       pcmfd <- list()
@@ -416,16 +399,14 @@ mhpca <- R6::R6Class("mhpca",
       } else if (!is.null(hd_obj$mf) && is.null(hd_obj$nf)) {
         mfd_obj <- Mvmfd(pcmfd)
         nfd_obj <- NULL
-        hd_obj <- mfd_obj # Hd(mfd_obj)
+        hd_obj <- mfd_obj 
       } else if (is.null(hd_obj$mf) && !is.null(hd_obj$nf)) {
         mfd_obj <- NULL
         nfd_obj <- Mvnfd(pcnfd)
-        hd_obj <- nfd_obj # Hd(nfd_obj)
+        hd_obj <- nfd_obj 
       }
 
       private$.pc_hd <- hd_obj
-      # private$.pc_mfd <- mfd_obj
-      # private$.pc_nfd <- pcnfd #nfd_obj
 
       private$.lsv <- result$lsv
       private$.values <- result$variance
@@ -438,9 +419,9 @@ mhpca <- R6::R6Class("mhpca",
         private$.CVs_nfd <- result$CV_score_nfd
         private$.CVs_fd <- result$CV_score_fd
         private$.GCVs <- result$GCV_score
-        private$.CV_se_u <- result$cv_se_u
-        private$.CV_se_nfd <- result$cv_se_nfd
-        private$.CV_se_fd <- result$cv_se_fd
+        # private$.CV_se_u <- result$cv_se_u
+        # private$.CV_se_nfd <- result$cv_se_nfd
+        # private$.CV_se_fd <- result$cv_se_fd
         
       } else {
         private$.GCVs <- result$GCV_score
@@ -526,27 +507,27 @@ mhpca <- R6::R6Class("mhpca",
         stop("`$CVs_fd` is read only", call. = FALSE)
       }
     },
-    CV_se_u = function(value) {
-      if (missing(value)) {
-        private$.CV_se_u
-      } else {
-        stop("`$CV_se_u` is read only", call. = FALSE)
-      }
-    }, 
-    CV_se_nfd = function(value) {
-      if (missing(value)) {
-        private$.CV_se_nfd
-      } else {
-        stop("`$CV_se_nfd` is read only", call. = FALSE)
-      }
-    }, 
-    CV_se_fd = function(value) {
-      if (missing(value)) {
-        private$.CV_se_fd
-      } else {
-        stop("`$CV_se_fd` is read only", call. = FALSE)
-      }
-    }, 
+    # CV_se_u = function(value) {
+    #   if (missing(value)) {
+    #     private$.CV_se_u
+    #   } else {
+    #     stop("`$CV_se_u` is read only", call. = FALSE)
+    #   }
+    # }, 
+    # CV_se_nfd = function(value) {
+    #   if (missing(value)) {
+    #     private$.CV_se_nfd
+    #   } else {
+    #     stop("`$CV_se_nfd` is read only", call. = FALSE)
+    #   }
+    # }, 
+    # CV_se_fd = function(value) {
+    #   if (missing(value)) {
+    #     private$.CV_se_fd
+    #   } else {
+    #     stop("`$CV_se_fd` is read only", call. = FALSE)
+    #   }
+    # }, 
     mean_hd = function(value) {
       if (missing(value)) {
         private$.mean_hd
@@ -567,9 +548,9 @@ mhpca <- R6::R6Class("mhpca",
     .CVs_u = NULL,
     .CVs_nfd = NULL,
     .CVs_fd = NULL,
-    .CV_se_u = NULL,
-    .CV_se_nfd = NULL,
-    .CV_se_fd = NULL,
+    # .CV_se_u = NULL,
+    # .CV_se_nfd = NULL,
+    # .CV_se_fd = NULL,
     .mean_hd = NULL
   )
 )
