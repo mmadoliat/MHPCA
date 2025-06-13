@@ -9,7 +9,14 @@ nfd(data, spars_par = NULL)
 \arguments{
 \item{data}{A numeric matrix of data points.}
 }
+\value{
+`nfd` object
+}
 \description{
 The `nfd` class represents a set of multidimensional vector data.
 Vector data objects are constructed by specifying a matrix of data points.
+}
+\examples{
+x <- matrix(rnorm(100),ncol = 10)
+nfd_obj <- nfd(x)
 }

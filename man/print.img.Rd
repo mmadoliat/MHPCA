@@ -7,10 +7,17 @@
 \method{print}{img}(x, ...)
 }
 \arguments{
-\item{x}{}
+\item{x}{a matrix}
 
-\item{...}{}
+\item{...}{other args}
+}
+\value{
+`img` class
 }
 \description{
 Title
+}
+\examples{
+ x <- matrix(rnorm(100),ncol = 10)
+img_obj <- img(x)
 }

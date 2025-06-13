@@ -56,6 +56,8 @@ bimfdplot(hd1)
 \item{\code{mf}}{a `mvmfd` object}
 
 \item{\code{nf}}{a `mvnfd` object}
+
+\item{\code{spars_par}}{assign sparsity parameters of observations to hd object}
 }
 \if{html}{\out{</div>}}
 }
