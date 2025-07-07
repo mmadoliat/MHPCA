@@ -1605,9 +1605,13 @@ sequential_power_hybrid <- function(hd_obj,
       sparse_tuning_result_u[[i]] = sparse_result_u
       names( sparse_tuning_result_u[[i]]) <- paste0("Var",seq_len(length( sparse_tuning_result_u[[i]])))
       sparse_tuning_result_nfd[[i]] = sparse_result_nfd
-      names(sparse_tuning_result_nfd[[i]]) <- paste0("Var",seq_len(length(sparse_tuning_result_nfd[[i]])))
+      if (!is.null(sparse_result_nfd)){
+        names(sparse_tuning_result_nfd[[i]]) <- paste0("Var",seq_len(length(sparse_tuning_result_nfd[[i]])))
+      }
       sparse_tuning_result_fd[[i]] = sparse_result_fd
-      names(sparse_tuning_result_fd[[i]]) <- paste0("Var",seq_len(length(sparse_tuning_result_fd[[i]])))
+      if (!is.null(sparse_result_fd)){
+        names(sparse_tuning_result_fd[[i]]) <- paste0("Var",seq_len(length(sparse_tuning_result_fd[[i]])))
+      }
       temp_count <- 0
       variance_result <- handle_variance_update_hybrid(i, n, C, nf_data,G, fv_total, nfv_total,hd_obj, all_equal_check, c(sparse_tuning_u,sparse_tuning_nfd,sparse_tuning_fd), pc, lsv, fv, nfv,u, G_half, test_result, temp_count, p)
       pc <- variance_result$pc
@@ -1616,9 +1620,15 @@ sequential_power_hybrid <- function(hd_obj,
       nfv_total <- variance_result$nfv_total
       variance[i] <- variance_result$variance
     }
+    #browser()
     names(sparse_tuning_result_u) <- paste0("PC",seq_len(length(sparse_tuning_result_u)))
-    names(sparse_tuning_result_nfd) <- paste0("PC",seq_len(length(sparse_tuning_result_nfd)))
-    names(sparse_tuning_result_fd) <- paste0("PC",seq_len(length(sparse_tuning_result_fd)))
+    if (!length(sparse_tuning_result_nfd) == 0){
+      names(sparse_tuning_result_nfd) <- paste0("PC",seq_len(length(sparse_tuning_result_nfd)))
+    }
+    if (!length(sparse_tuning_result_fd) == 0){
+      names(sparse_tuning_result_fd) <- paste0("PC",seq_len(length(sparse_tuning_result_fd)))
+    }
+    
     
     if (is.null(smooth_tuning)) {
       GCV_score = NULL
