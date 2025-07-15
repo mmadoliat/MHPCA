@@ -56,7 +56,7 @@ scale_hd <- function(hd_obj,
     if (is.null(mf) || is.null(nf)) stop("Balanced scaling requires both mf and nf")
     w_top    <- sum(norm_mvmfd(mf - mean(mf)))
     nf_new <- nfd(do.call("cbind",lapply(seq_len(nf$nvar),function(i) nf[,i])))
-    w_bottom <- sum(apply(sweep(nf_new, 1, colMeans(nf_new), "-"), 1, norm, "2"))
+    w_bottom <- sum(apply(sweep(nf_new, 2, colMeans(nf_new), "-"), 2, norm, "2")^2)
     w_half   <- sqrt(w_top / w_bottom)
     mvmfd_scaled <- mf
     mvnfd_scaled <- w_half * nf
