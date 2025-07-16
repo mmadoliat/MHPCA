@@ -11,6 +11,7 @@ sparse_pen_fun <- function(y, tuning_parameter, type, alpha = 3.7, group_sizes =
         stop("Length of y is not divisible by number of groups. Please provide group_sizes.")
       }
       group_sizes <- rep(length(y) / n_groups, n_groups)
+      #
     }
     
     if (sum(group_sizes) != length(y)) {
