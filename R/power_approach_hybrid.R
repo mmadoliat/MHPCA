@@ -1620,7 +1620,6 @@ sequential_power_hybrid <- function(hd_obj,
       nfv_total <- variance_result$nfv_total
       variance[i] <- variance_result$variance
     }
-    #browser()
     names(sparse_tuning_result_u) <- paste0("PC",seq_len(length(sparse_tuning_result_u)))
     if (!length(sparse_tuning_result_nfd) == 0){
       names(sparse_tuning_result_nfd) <- paste0("PC",seq_len(length(sparse_tuning_result_nfd)))
