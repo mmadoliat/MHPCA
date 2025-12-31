@@ -31,7 +31,11 @@ Mhpca(
   smooth_GCV = TRUE,
   pen_nfd = FALSE,
   pen_fd = FALSE,
-  pen_u = FALSE
+  pen_u = FALSE,
+  sparse_selection_method = "cv",
+  ebic_xi = 0.5,
+  ebic_N_type = "product",
+  ebic_RSS_type = "direct"
 )
 }
 \arguments{
@@ -103,6 +107,12 @@ If the dimensions of input tuning parameters are incorrect, it will be converted
 \item{pen_fd}{Logical indicating whether sparsity penalty in sequential power approach should be applied on fd right singular vector.}
 
 \item{pen_u}{Logical indicating whether penalize non functional object or left singular vector or not.}
+
+\item{sparse_selection_method}{Character: "cv" for cross-validation or "ebic" for extended BIC. Default is "cv".}
+
+\item{ebic_xi}{eBIC tuning parameter in [0,1]. 0 = standard BIC, 1 = most conservative. Default is 0.5.}
+
+\item{ebic_N_type}{How to compute effective sample size for eBIC: "product", "sum", or a numeric value.}
 }
 \description{
 The `mhpca` class represents hybrid principal components components.
@@ -189,6 +199,12 @@ means it is computed based on the optimal sparse tuning parameter selected via c
 
 \item{\code{CVs_nfd}}{= Cross validations scores of sparse penalties on nfd parameters}
 
+\item{\code{eBICs_u}}{= Extended BIC scores of sparse penalties on u parameters}
+
+\item{\code{eBICs_nfd}}{= Extended BIC scores of sparse penalties on nfd parameters}
+
+\item{\code{eBICs_fd}}{= Extended BIC scores of sparse penalties on fd parameters}
+
 \item{\code{mean_mfd}}{A multivariate functional data object giving the mean function}
 
 \item{\code{mean_nfd}}{A data object giving the mean of non functional objects}
@@ -233,7 +249,11 @@ means it is computed based on the optimal sparse tuning parameter selected via c
   smooth_GCV,
   pen_nfd = FALSE,
   pen_fd = FALSE,
-  pen_u = FALSE
+  pen_u = FALSE,
+  sparse_selection_method = "cv",
+  ebic_xi = 0.5,
+  ebic_N_type = "product",
+  ebic_RSS_type = "direct"
 )}\if{html}{\out{</div>}}
 }
 

@@ -1040,8 +1040,69 @@ cv_gcv_sequential_hybrid <- function(
     cl,
     tol, 
     max_iter,
-    cv.pick
+    cv.pick,
+    sparse_selection_method = "cv",
+    ebic_xi = 0.5,
+    ebic_N_type = "product",
+    ebic_RSS_type = "direct"
 ) {
+  # Validate sparse_selection_method
+  sparse_selection_method <- match.arg(sparse_selection_method, c("cv", "ebic"))
+  #-----------------------------------------
+  # Branch based on selection method
+  #-----------------------------------------
+  n_iter <- (if (is.null(smooth_tuning)) 1 else nrow(smooth_tuning)) +
+    (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) +
+    (if (is.null(sparse_tuning_nfd)) 1 else sum(sapply(sparse_tuning_nfd, length)))+
+    (if (is.null(sparse_tuning_fd)) 1 else  sum(sapply(sparse_tuning_fd, length)))
+  pb <- txtProgressBar(min = 0, max =  n_iter, style = 3, width = 50, char = "=")
+  if (sparse_selection_method == "ebic") {
+    
+    # Use eBIC for sparse parameter selection
+    cat("Using eBIC for sparse tuning parameter selection...\n")
+    
+    sparse_res <- eBIC_sequential_hybrid(
+      fdata = fdata,
+      nfdata = nfdata,
+      hd_obj = hd_obj,
+      sparse_tuning_u = sparse_tuning_u,
+      sparse_tuning_nfd = sparse_tuning_nfd,
+      sparse_tuning_fd = sparse_tuning_fd,
+      sparse_tuning_type_u = sparse_tuning_type_u,
+      sparse_tuning_type_nfd = sparse_tuning_type_nfd,
+      sparse_tuning_type_fd = sparse_tuning_type_fd,
+      G_half = G_half,
+      G_half_inverse = G_half_inverse,
+      S_smooth = S_smooth,
+      S_2_inverse = S_2_inverse,
+      pen_u = pen_u,
+      pen_nfd = pen_nfd,
+      pen_fd = pen_fd,
+      xi = ebic_xi,
+      N_type = ebic_N_type,
+      ebic_RSS_type,
+      tol = tol,
+      max_iter = max_iter,
+      verbose = TRUE
+    )
+    
+    sparse_tuning_selection_u <- sparse_res$sparse_tuning_selection_u
+    sparse_tuning_selection_nfd <- sparse_res$sparse_tuning_selection_nfd
+    sparse_tuning_selection_fd <- sparse_res$sparse_tuning_selection_fd
+    
+    # For eBIC, we return eBIC scores instead of CV scores
+    cv_scores_u <- NULL
+    cv_scores_nfd <- NULL
+    cv_scores_fd <- NULL
+    cv_se_u <- NULL
+    cv_se_nfd <- NULL
+    cv_se_fd <- NULL
+    
+    eBIC_scores_u <- sparse_res$eBIC_scores_u
+    eBIC_scores_nfd <- sparse_res$eBIC_scores_nfd
+    eBIC_scores_fd <- sparse_res$eBIC_scores_fd
+    
+  } else {
   # Prepare fold assignments
   ncf   <- if (!is.null(fdata))  ncol(fdata)  else NULL
   ncnf  <- if (!is.null(nfdata)) ncol(nfdata) else NULL
@@ -1053,11 +1114,11 @@ cv_gcv_sequential_hybrid <- function(
   group_size_nfd   <- length(shuffled_row_nfd)/nfold_nfd
   group_size_fd    <- length(shuffled_row_nfd)/nfold_fd
   # Determine progress‐bar length
-  n_iter <- (if (is.null(smooth_tuning)) 1 else nrow(smooth_tuning)) +
-    (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) +
-    (if (is.null(sparse_tuning_nfd)) 1 else sum(sapply(sparse_tuning_nfd, length)))+
-    (if (is.null(sparse_tuning_fd)) 1 else  sum(sapply(sparse_tuning_fd, length)))
-  pb <- txtProgressBar(min = 0, max =  n_iter, style = 3, width = 50, char = "=")
+  # n_iter <- (if (is.null(smooth_tuning)) 1 else nrow(smooth_tuning)) +
+  #   (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) +
+  #   (if (is.null(sparse_tuning_nfd)) 1 else sum(sapply(sparse_tuning_nfd, length)))+
+  #   (if (is.null(sparse_tuning_fd)) 1 else  sum(sapply(sparse_tuning_fd, length)))
+  # pb <- txtProgressBar(min = 0, max =  n_iter, style = 3, width = 50, char = "=")
 
   # 1) Sparse tuning (parallel)
   sparse_res <- handle_sparse_tuning_hybrid(
@@ -1101,6 +1162,16 @@ cv_gcv_sequential_hybrid <- function(
   cv_se_nfd <- sparse_res$cv_se_nfd
   cv_se_fd <- sparse_res$cv_se_fd
   
+  eBIC_scores_u <- NULL
+  eBIC_scores_nfd <- NULL
+  eBIC_scores_fd <- NULL
+  
+  # close(pb)
+  
+  }
+  
+  #pb_smooth <- txtProgressBar(min = 0, max = n_smooth, style = 3, width = 50, char = "=")
+  
   # 2) Smooth tuning (GCV)
   count0 <- (if (is.null(sparse_tuning_u)) 1 else length(sparse_tuning_u)) +
     (if (is.null(sparse_tuning_nfd)) 1 else sum(sapply(sparse_tuning_nfd, length))) +
@@ -1127,15 +1198,19 @@ cv_gcv_sequential_hybrid <- function(
     count                      = count0,
     tol = tol, max_iter= max_iter
   )
+  #close(pb_smooth)
+  close(pb)
   smooth_tuning_selection <- smooth_res$smooth_tuning_selection
   index_selection         <- smooth_res$index_selection
   gcv_scores              <- smooth_res$gcv_scores
   
-  close(pb)
   list(
    sparse_tuning_selection_u = sparse_tuning_selection_u,
    sparse_tuning_selection_nfd = sparse_tuning_selection_nfd,
    sparse_tuning_selection_fd = sparse_tuning_selection_fd,
+   eBIC_scores_u = eBIC_scores_u,
+   eBIC_scores_nfd = eBIC_scores_nfd,
+   eBIC_scores_fd = eBIC_scores_fd,
    cv_scores_u = cv_scores_u,
    cv_scores_nfd = cv_scores_nfd,
    cv_scores_fd = cv_scores_fd,
@@ -1143,7 +1218,8 @@ cv_gcv_sequential_hybrid <- function(
    index_selection = index_selection,
    cv_se_u = cv_se_u,
    cv_se_nfd = cv_se_nfd,
-   cv_se_fd = cv_se_fd
+   cv_se_fd = cv_se_fd,
+   selection_method = sparse_selection_method
  )
 }
 
@@ -1241,7 +1317,11 @@ sequential_power_hybrid <- function(hd_obj,
                                     pen_u = FALSE,
                                     sparse_iter   = 2L,
                                     ncor,
-                                    tol, max_iter, cv.pick) {
+                                    tol, max_iter, cv.pick,
+                                    sparse_selection_method = "cv",
+                                    ebic_xi = 0.5,
+                                    ebic_N_type = "product",
+                                    ebic_RSS_type = "direct") {
   use_cluster <- ncor > 1L
   if (use_cluster){
     cl <- parallel::makeCluster(
@@ -1314,8 +1394,10 @@ sequential_power_hybrid <- function(hd_obj,
     GCV_score = c()
     if(sparse_CV == FALSE){
       CV_score_u <- CV_score_nfd <- CV_score_fd <- cv_se_u <- cv_se_nfd <- cv_se_fd <- c()
+      eBIC_score_u <- eBIC_score_nfd <- eBIC_score_fd <- c()
     } else{
       CV_score_u <- CV_score_nfd <- CV_score_fd <- cv_se_u <- cv_se_nfd <- cv_se_fd <- list()
+      eBIC_score_u <- eBIC_score_nfd <- eBIC_score_fd <- list()
     }
     for (i in 1:n) {
       cat(sprintf("Computing the %s PC...\n", ordinal_msg(i)))
@@ -1398,27 +1480,45 @@ sequential_power_hybrid <- function(hd_obj,
         pen_u = pen_u,
         sparse_iter = sparse_iter,
         cl = cl,
-        tol = tol, max_iter = max_iter,cv.pick = cv.pick
+        tol = tol, max_iter = max_iter,cv.pick = cv.pick,
+        sparse_selection_method = sparse_selection_method,
+        ebic_xi = ebic_xi,
+        ebic_N_type = ebic_N_type,
+        ebic_RSS_type = ebic_RSS_type
       )
       sparse_result_u = cv_result$sparse_tuning_selection_u
       sparse_result_nfd = cv_result$sparse_tuning_selection_nfd
       sparse_result_fd = cv_result$sparse_tuning_selection_fd
       smooth_result_index = cv_result$index_selection
+      
       if (sparse_CV == FALSE) {
-        CV_score_u = c(CV_score_u, cv_result$cv_scores_u)
-        CV_score_nfd = c(CV_score_nfd, cv_result$cv_scores_nfd)
-        CV_score_fd = c(CV_score_fd, cv_result$cv_scores_fd)
-        cv_se_u <- c(cv_se_u,cv_result$cv_se_u)
-        cv_se_fd <- c(cv_se_fd,cv_result$cv_se_fd)
-        cv_se_nfd <- c(cv_se_nfd,cv_result$cv_se_nfd)
-      } else{
-        CV_score_u[[i]] <- cv_result$cv_scores_u
-        CV_score_nfd[[i]] <- cv_result$cv_scores_nfd
-        CV_score_fd[[i]] <- cv_result$cv_scores_fd
-        cv_se_u[[i]] <- cv_result$cv_se_u
-        cv_se_fd[[i]] <- cv_result$cv_se_fd
-        cv_se_nfd[[i]] <- cv_result$cv_se_nfd
+        if (sparse_selection_method == "cv") {
+          CV_score_u <- c(CV_score_u, cv_result$cv_scores_u)
+          CV_score_nfd <- c(CV_score_nfd, cv_result$cv_scores_nfd)
+          CV_score_fd <- c(CV_score_fd, cv_result$cv_scores_fd)
+          cv_se_u <- c(cv_se_u, cv_result$cv_se_u)
+          cv_se_fd <- c(cv_se_fd, cv_result$cv_se_fd)
+          cv_se_nfd <- c(cv_se_nfd, cv_result$cv_se_nfd)
+        } else {
+          eBIC_score_u <- c(eBIC_score_u, list(cv_result$eBIC_scores_u))
+          eBIC_score_nfd <- c(eBIC_score_nfd, list(cv_result$eBIC_scores_nfd))
+          eBIC_score_fd <- c(eBIC_score_fd, list(cv_result$eBIC_scores_fd))
+        }
+      } else {
+        if (sparse_selection_method == "cv") {
+          CV_score_u[[i]] <- cv_result$cv_scores_u
+          CV_score_nfd[[i]] <- cv_result$cv_scores_nfd
+          CV_score_fd[[i]] <- cv_result$cv_scores_fd
+          cv_se_u[[i]] <- cv_result$cv_se_u
+          cv_se_fd[[i]] <- cv_result$cv_se_fd
+          cv_se_nfd[[i]] <- cv_result$cv_se_nfd
+        } else {
+          eBIC_score_u[[i]] <- cv_result$eBIC_scores_u
+          eBIC_score_nfd[[i]] <- cv_result$eBIC_scores_nfd
+          eBIC_score_fd[[i]] <- cv_result$eBIC_scores_fd
+        }
       }
+      
       GCV_score = c(GCV_score, cv_result$gcv_scores)
       CG_temp <- if(!is.null(mvmfd_obj)) C_temp%*%G_half else NULL
       
@@ -1495,6 +1595,8 @@ sequential_power_hybrid <- function(hd_obj,
     nfv_total = c()
     GCV_score = list()
     CV_score_u <- CV_score_nfd <- CV_score_fd <- cv_se_u <- cv_se_nfd <- cv_se_fd <- list()
+    eBIC_score_u <- eBIC_score_nfd <- eBIC_score_fd <- list()
+    
     # if(sparse_CV == FALSE){
     #   CV_score_u <- CV_score_nfd <- CV_score_fd <- cv_se_u <- cv_se_nfd <- cv_se_fd <- c()
     # } else{
@@ -1564,7 +1666,11 @@ sequential_power_hybrid <- function(hd_obj,
         pen_u = pen_u,
         sparse_iter = sparse_iter,
         cl = cl,
-        tol = tol, max_iter = max_iter, cv.pick = cv.pick
+        tol = tol, max_iter = max_iter, cv.pick = cv.pick,
+        sparse_selection_method = sparse_selection_method,
+        ebic_xi = ebic_xi,
+        ebic_N_type = ebic_N_type,
+        ebic_RSS_type = ebic_RSS_type
       )
       
       sparse_result_u = cv_result$sparse_tuning_selection_u
@@ -1572,12 +1678,19 @@ sequential_power_hybrid <- function(hd_obj,
       sparse_result_fd = cv_result$sparse_tuning_selection_fd
       smooth_result_index = cv_result$index_selection
     
-        CV_score_u[[i]] = cv_result$cv_scores_u
-        CV_score_nfd[[i]] = cv_result$cv_scores_nfd
-        CV_score_fd[[i]] = cv_result$cv_scores_fd
+      # Store CV or eBIC scores based on selection method
+      if (sparse_selection_method == "cv") {
+        CV_score_u[[i]] <- cv_result$cv_scores_u
+        CV_score_nfd[[i]] <- cv_result$cv_scores_nfd
+        CV_score_fd[[i]] <- cv_result$cv_scores_fd
         cv_se_u[[i]] <- cv_result$cv_se_u
         cv_se_fd[[i]] <- cv_result$cv_se_fd
         cv_se_nfd[[i]] <- cv_result$cv_se_nfd
+      } else {
+        eBIC_score_u[[i]] <- cv_result$eBIC_scores_u
+        eBIC_score_nfd[[i]] <- cv_result$eBIC_scores_nfd
+        eBIC_score_fd[[i]] <- cv_result$eBIC_scores_fd
+      }
  
       GCV_score[[i]] = cv_result$gcv_scores
       CG_temp <- if(!is.null(mvmfd_obj)) C_temp%*%G_half else NULL
@@ -1633,7 +1746,7 @@ sequential_power_hybrid <- function(hd_obj,
       GCV_score = NULL
     }
   }
-  if (isTRUE(sparse_CV)){
+  if (isTRUE(sparse_CV) && sparse_selection_method == "cv"){
     if (!is.null(sparse_tuning_fd) && isTRUE(pen_fd)){
       sp <-  list(sparse_tuning_fd)
       cvs <- CV_score_fd
@@ -1680,6 +1793,26 @@ sequential_power_hybrid <- function(hd_obj,
   } else {
     combined_fd <- combined_nfd <- combined_u <- NULL
   }
+  
+  # Format eBIC scores for output
+  if (isTRUE(sparse_CV) && sparse_selection_method == "ebic") {
+    combined_eBIC_u <- eBIC_score_u
+    combined_eBIC_nfd <- eBIC_score_nfd
+    combined_eBIC_fd <- eBIC_score_fd
+    
+    if (length(combined_eBIC_u) > 0) {
+      names(combined_eBIC_u) <- paste0("PC", seq_len(length(combined_eBIC_u)))
+    }
+    if (length(combined_eBIC_nfd) > 0) {
+      names(combined_eBIC_nfd) <- paste0("PC", seq_len(length(combined_eBIC_nfd)))
+    }
+    if (length(combined_eBIC_fd) > 0) {
+      names(combined_eBIC_fd) <- paste0("PC", seq_len(length(combined_eBIC_fd)))
+    }
+  } else {
+    combined_eBIC_u <- combined_eBIC_nfd <- combined_eBIC_fd <- NULL
+  }
+  
    
   
   return(list(
@@ -1694,7 +1827,11 @@ sequential_power_hybrid <- function(hd_obj,
     CV_score_u = combined_u,
     CV_score_nfd = combined_nfd, 
     CV_score_fd = combined_fd, 
-    GCV_score = GCV_score
+    eBIC_score_u = combined_eBIC_u,
+    eBIC_score_nfd = combined_eBIC_nfd,
+    eBIC_score_fd = combined_eBIC_fd,
+    GCV_score = GCV_score,
+    selection_method = sparse_selection_method
     ))
 } 
 

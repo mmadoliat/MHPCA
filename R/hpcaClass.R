@@ -18,8 +18,12 @@
 #'               means it is computed based on the optimal sparse tuning parameter selected via cross validation.
 #' @field CVs_u = Cross validations scores of sparse penalties on u parameters
 #' @field CVs_nfd = Cross validations scores of sparse penalties on nfd parameters
+#' @field eBICs_u = Extended BIC scores of sparse penalties on u parameters
+#' @field eBICs_nfd = Extended BIC scores of sparse penalties on nfd parameters
+#' @field eBICs_fd = Extended BIC scores of sparse penalties on fd parameters
 #' @field mean_mfd A multivariate functional data object giving the mean function
 #' @field mean_nfd A data object giving the mean of non functional objects
+#' 
 
 #' @examples
 #' require(fda)
@@ -89,7 +93,28 @@ mhpca <- R6::R6Class("mhpca",
                           smooth_GCV,
                           pen_nfd = FALSE,
                           pen_fd = FALSE,
-                          pen_u = FALSE) {
+                          pen_u = FALSE,
+                          sparse_selection_method = "cv",
+                          ebic_xi = 0.5,
+                          ebic_N_type = "product",
+                          ebic_RSS_type = "direct") {
+      
+      # Validate sparse_selection_method
+      sparse_selection_method <- match.arg(sparse_selection_method, c("cv", "ebic"))
+      
+      # Validate ebic_xi
+      if (sparse_selection_method == "ebic") {
+        if (!is.numeric(ebic_xi) || length(ebic_xi) != 1 || ebic_xi < 0 || ebic_xi > 1) {
+          stop("ebic_xi must be a single numeric value between 0 and 1", call. = FALSE)
+        }
+      }
+      
+      # Validate ebic_N_type
+      if (sparse_selection_method == "ebic") {
+        if (!is.numeric(ebic_N_type)) {
+          ebic_N_type <- match.arg(ebic_N_type, c("product", "sum"))
+        }
+      }
       
       if (is.mfd(hd_obj) || is.mvmfd(hd_obj) || is.nfd(hd_obj) || is.mvnfd(hd_obj)) {
         hd_obj <- Hd(hd_obj)
@@ -296,7 +321,11 @@ mhpca <- R6::R6Class("mhpca",
           pen_u = pen_u,
           ncor = ncor,
           sparse_iter = sparse_iter,
-          tol = tol, max_iter = max_iter, cv.pick = cv.pick
+          tol = tol, max_iter = max_iter, cv.pick = cv.pick,
+          sparse_selection_method = sparse_selection_method,
+          ebic_xi = ebic_xi,
+          ebic_N_type = ebic_N_type,
+          ebic_RSS_type = ebic_RSS_type
         )
       } else if (method == "eigen" || alpha_orth == "TRUE") {
         if (!is.null(hd_obj$mf)) {
@@ -412,13 +441,29 @@ mhpca <- R6::R6Class("mhpca",
       private$.values <- result$variance
       private$.smooth_tuning <- result$smooth_tuning
       if (alpha_orth == "FALSE" && method == "power") {
+        
         private$.sparse_tuning_u <- result$sparse_tuning_result_u
         private$.sparse_tuning_nfd <- result$sparse_tuning_result_nfd
         private$.sparse_tuning_fd <- result$sparse_tuning_result_fd
-        private$.CVs_u <- result$CV_score_u
-        private$.CVs_nfd <- result$CV_score_nfd
-        private$.CVs_fd <- result$CV_score_fd
+        private$.selection_method <- sparse_selection_method
         private$.GCVs <- result$GCV_score
+        # Store CV or eBIC scores based on selection method
+        if (sparse_selection_method == "cv") {
+          private$.CVs_u <- result$CV_score_u
+          private$.CVs_nfd <- result$CV_score_nfd
+          private$.CVs_fd <- result$CV_score_fd
+          private$.eBICs_u <- NULL
+          private$.eBICs_nfd <- NULL
+          private$.eBICs_fd <- NULL
+        } else {
+          private$.CVs_u <- NULL
+          private$.CVs_nfd <- NULL
+          private$.CVs_fd <- NULL
+          private$.eBICs_u <- result$eBIC_score_u
+          private$.eBICs_nfd <- result$eBIC_score_nfd
+          private$.eBICs_fd <- result$eBIC_score_fd
+        }
+        
         # private$.CV_se_u <- result$cv_se_u
         # private$.CV_se_nfd <- result$cv_se_nfd
         # private$.CV_se_fd <- result$cv_se_fd
@@ -507,6 +552,34 @@ mhpca <- R6::R6Class("mhpca",
         stop("`$CVs_fd` is read only", call. = FALSE)
       }
     },
+    eBICs_u = function(value) {
+      if (missing(value)) {
+        private$.eBICs_u
+      } else {
+        stop("`$eBICs_u` is read only", call. = FALSE)
+      }
+    },
+    eBICs_nfd = function(value) {
+      if (missing(value)) {
+        private$.eBICs_nfd
+      } else {
+        stop("`$eBICs_nfd` is read only", call. = FALSE)
+      }
+    },
+    eBICs_fd = function(value) {
+      if (missing(value)) {
+        private$.eBICs_fd
+      } else {
+        stop("`$eBICs_fd` is read only", call. = FALSE)
+      }
+    },
+    selection_method = function(value) {
+      if (missing(value)) {
+        private$.selection_method
+      } else {
+        stop("`$selection_method` is read only", call. = FALSE)
+      }
+    },
     # CV_se_u = function(value) {
     #   if (missing(value)) {
     #     private$.CV_se_u
@@ -548,6 +621,10 @@ mhpca <- R6::R6Class("mhpca",
     .CVs_u = NULL,
     .CVs_nfd = NULL,
     .CVs_fd = NULL,
+    .eBICs_u = NULL,
+    .eBICs_nfd = NULL,
+    .eBICs_fd = NULL,
+    .selection_method = NULL,
     # .CV_se_u = NULL,
     # .CV_se_nfd = NULL,
     # .CV_se_fd = NULL,
@@ -607,6 +684,9 @@ mhpca <- R6::R6Class("mhpca",
 #' @param pen_nfd Logical indicating whether sparsity penalty in sequential power approach should be applied on nfd right singular vector.
 #' @param pen_fd Logical indicating whether sparsity penalty in sequential power approach should be applied on fd right singular vector.
 #' @param pen_u Logical indicating whether penalize non functional object or left singular vector or not.
+#' @param sparse_selection_method Character: "cv" for cross-validation or "ebic" for extended BIC. Default is "cv".
+#' @param ebic_xi eBIC tuning parameter in [0,1]. 0 = standard BIC, 1 = most conservative. Default is 0.5.
+#' @param ebic_N_type How to compute effective sample size for eBIC: "product", "sum", or a numeric value.
 #' @export
 Mhpca <- function(hd_obj,
                   method = "power",
@@ -633,7 +713,11 @@ Mhpca <- function(hd_obj,
                   smooth_GCV = TRUE,
                   pen_nfd = FALSE,
                   pen_fd = FALSE,
-                  pen_u = FALSE) {
+                  pen_u = FALSE,
+                  sparse_selection_method = "cv",
+                  ebic_xi = 0.5,
+                  ebic_N_type = "product",
+                  ebic_RSS_type = "direct") {
   mhpca$new(
     hd_obj = hd_obj,
     method = method,
@@ -660,7 +744,12 @@ Mhpca <- function(hd_obj,
     smooth_GCV = smooth_GCV,
     pen_nfd = pen_nfd,
     pen_fd = pen_fd,
-    pen_u = pen_u
+    pen_u = pen_u,
+    sparse_selection_method = sparse_selection_method,
+    ebic_xi = ebic_xi,
+    ebic_N_type = ebic_N_type,
+    ebic_RSS_type =ebic_RSS_type
+    
   )
 }
 #' @rdname mhpca
