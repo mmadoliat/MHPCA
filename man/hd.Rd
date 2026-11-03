@@ -34,7 +34,7 @@ mfd2 <- Mfd(argval2, X2, mdbs1)
 hd1 <- Hd(mfd1, mfd2)
 hd1[1]
 hd1[1, 1]
-hd1[1:5, 2]
+hd1[1:5, 1]
 hd1[, 1]
 hd1[1:5, ]
 evalarg <- list(argval1, argval2)

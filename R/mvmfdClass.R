@@ -166,7 +166,7 @@ mvmfd <- R6::R6Class("mvmfd",
              call. = FALSE)
       }
       nbv <- private$.basis$nbasis
-      # each element must be integer‐vector
+      # each element must be integer-vector
       for (i in seq_along(value)) {
         elt <- value[[i]]
         if (!is.numeric(elt) || any(elt != as.integer(elt))) {
@@ -174,9 +174,10 @@ mvmfd <- R6::R6Class("mvmfd",
                call. = FALSE)
         }
         value[[i]] <- as.integer(elt)
-        if (length(elt) >= nbv[i]) {
+        nb_i <- prod(nbv[[i]])  # number of basis functions of variable i
+        if (length(elt) >= nb_i) {
           stop(sprintf("length(spars_par[[%d]]) = %d must be < %d (nbasis[%d]).",
-                       i, length(vi), nbv[i], i),
+                       i, length(elt), as.integer(nb_i), i),
                call. = FALSE)
         }
       }

@@ -19,7 +19,7 @@ compute_eBIC_hybrid(
 )
 }
 \arguments{
-\item{fdata}{Functional data coefficient matrix (n x J), transformed (C %*% G_half)}
+\item{fdata}{Functional data coefficient matrix (n x J), transformed (C \%*\% G_half)}
 
 \item{nfdata}{Non-functional data matrix (n x m)}
 

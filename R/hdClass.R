@@ -24,7 +24,7 @@
 #' hd1 <- Hd(mfd1, mfd2)
 #' hd1[1]
 #' hd1[1, 1]
-#' hd1[1:5, 2]
+#' hd1[1:5, 1]
 #' hd1[, 1]
 #' hd1[1:5, ]
 #' evalarg <- list(argval1, argval2)
@@ -64,7 +64,7 @@ hd <- R6::R6Class("hd",
                         } else if(inherits(hd_list[[i]],"nfd")) {
                           nfd_list[[length(nfd_list)+1]] <- hd_list[[i]]
                         } else if(inherits(hd_list[[i]],"mvnfd")) {
-                          mvnfd_list[[length(nfd_list)+1]] <- hd_list[[i]]
+                          mvnfd_list[[length(mvnfd_list)+1]] <- hd_list[[i]]
                         }
                       }
                       if (length(mfd_list) > 0 & length(mvmfd_list) > 0){

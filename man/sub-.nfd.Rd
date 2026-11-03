@@ -9,13 +9,7 @@
 \arguments{
 \item{x}{An object of class `nfd`.}
 
-\item{...}{Further arguments passed to or from other methods.}
-
-\item{i}{(optional) Numeric, logical, or character vector specifying the rows to extract.}
-
-\item{j}{(optional) Numeric, logical, or character vector specifying the columns to extract.}
-
-\item{drop}{Logical indicating whether to drop dimensions (default is `FALSE`).}
+\item{...}{Row and column indices (`i`, `j`) and `drop`, as for matrix subsetting.}
 }
 \value{
 An `nfd` object containing the subset of the original data.

@@ -2,18 +2,18 @@
 % Please edit documentation in R/mvnfdMethods.R
 \name{norm_mvnfd}
 \alias{norm_mvnfd}
-\title{Compute the inner product between two objects of class `mvnfd`}
+\title{Compute the norm of an object of class `mvnfd`}
 \usage{
 norm_mvnfd(mvnfd_obj1)
 }
 \arguments{
-\item{mvnfd_obj}{An `mvnfd` object}
+\item{mvnfd_obj1}{An `mvnfd` object}
 }
 \value{
 The norm of `mvnfd` objects
 }
 \description{
-Compute the inner product between two objects of class `mvnfd`
+Compute the norm of an object of class `mvnfd`
 }
 \seealso{
 \code{\link{mvnfd}}

@@ -1,9 +1,13 @@
-plot_mhpca <- function(mhpca_obj, comp_index = NULL, var_index = NULL, ask = TRUE, expand = NULL, nx = 100, xlab = NULL, ylab = NULL, ...) {
-  
-  if (!(inherits(mhpca_obj, "mhpca"))) stop("Argument 'mhpca_obj' is not a mhpca object.")
-  percentvar <- round(100 * (mhpca_obj$values) / sum(mhpca_obj$values), 1)
-  mean_mfd <- mhpca_obj$mean_hd$mf
-  pc_mfd <- mhpca_obj$pc_hd$mf
+# Functional part of a data or component object as an mvmfd (NULL if none).
+functional_part <- function(x) {
+  if (is.hd(x)) x$mf else if (is.mvmfd(x)) x else if (is.mfd(x)) Mvmfd(x) else NULL
+}
+
+# Plot each functional principal component as the mean +/- a multiple of the
+# component, one panel per variable. Used by plot() for mhpca and remfpca fits.
+plot_components <- function(pc_mfd, mean_mfd, values, comp_index = NULL, var_index = NULL, ask = TRUE, expand = NULL, nx = 100, xlab = NULL, ylab = NULL, ...) {
+  if (is.null(pc_mfd)) stop("This fit has no functional part to plot.", call. = FALSE)
+  percentvar <- round(100 * (values) / sum(values), 1)
   n <- pc_mfd$nobs
   p <- pc_mfd$nvar
   if (is.null(var_index)) var_index <- 1:p
@@ -14,7 +18,9 @@ plot_mhpca <- function(mhpca_obj, comp_index = NULL, var_index = NULL, ask = TRU
   }
   if (is.null(ylab)) ylab <- paste("Variable", var_index)
   if (is.null(xlab)) xlab <- rep("time", length(var_index))
-  if (is.null(expand)) expand <- 2 * sqrt(mhpca_obj$values[comp_index])
+  # expand is indexed by component number below, so it covers all components
+  if (is.null(expand)) expand <- 2 * sqrt(values)
+  if (length(expand) == 1) expand <- rep(expand, length(values))
   old <- par()
   exclude_pars <- c("cin", "cra", "csi", "cxy", "din", "page")
   ind <- which(!(names(old) %in% exclude_pars))
@@ -56,6 +62,12 @@ plot_mhpca <- function(mhpca_obj, comp_index = NULL, var_index = NULL, ask = TRU
       }
     }
   }
+}
+
+plot_mhpca <- function(mhpca_obj, ...) {
+  if (!(inherits(mhpca_obj, "mhpca"))) stop("Argument 'mhpca_obj' is not a mhpca object.")
+  plot_components(functional_part(mhpca_obj$pc_hd), functional_part(mhpca_obj$mean_hd),
+                  mhpca_obj$values, ...)
 }
 
 
@@ -102,20 +114,12 @@ plot_cv <- function(mhpca_obj,
   tunes <- mhpca_obj[[paste0("sparse_tuning_", type)]]
   pc_names <- names(CVs)
 
-  # helper: 1st, 2nd, 3rd, …
-  ordinal <- function(n) {
-    if (n %% 100 %in% 11:13) {
-      return(paste0(n, "th"))
+  if (length(CVs) == 0) {
+    if (identical(mhpca_obj$selection_method, "ebic")) {
+      stop("plot_cv() plots cross-validation scores, but this fit selected sparsity by eBIC (see its eBICs_* fields).", call. = FALSE)
     }
-    suf <- switch(n %% 10 + 1,
-      "st",
-      "nd",
-      "rd",
-      rep("th", 7)
-    )
-    paste0(n, suf)
+    stop(sprintf("This fit has no cross-validation scores for type = \"%s\".", type), call. = FALSE)
   }
-
   # --- validate & convert PC index ---
   if (!is.null(PC)) {
     if (!is.numeric(PC) || length(PC) != 1 || PC != as.integer(PC)) {
@@ -148,10 +152,10 @@ plot_cv <- function(mhpca_obj,
     }
   }
 
-  # --- single‐plot shortcut? ---
+  # --- single-plot shortcut? ---
   single_plot <- !is.null(PC) && (type == "u" || !is.null(Var))
   if (single_plot) {
-    # extract the one matrix + selected γ
+    # extract the one matrix + selected gam
     if (type == "u") {
       m <- CVs[[PC_name]]
       sel_val <- tunes[[PC_name]]
@@ -161,29 +165,29 @@ plot_cv <- function(mhpca_obj,
       sel_vec <- tunes[[PC_name]]
       sel_val <- sel_vec[Var]
       desc <- if (type == "fd") "functional variable" else "non-functional variable"
-      ttl <- paste0(ordinal(Var), " ", desc, " – ", PC_name)
+      ttl <- paste0(ordinal(Var), " ", desc, " - ", PC_name)
     }
 
     # unpack data
-    γ <- m[, "gamma"]
+    gam <- m[, "gamma"]
     cv <- m[, "CV"]
     se <- m[, "SE"]
 
-    # y‐limits to fit error bars
+    # y-limits to fit error bars
     y_lo <- min(cv - se)
     y_hi <- max(cv + se)
     pad <- 0.05 * (y_hi - y_lo)
     ylim <- c(y_lo - pad, y_hi + pad)
 
     # draw
-    plot(γ, cv,
+    plot(gam, cv,
       type = "b", pch = 19, lwd = 1,
       xlab = expression(gamma), ylab = "CV",
       main = ttl, ylim = ylim
     )
-    arrows(γ, cv - se, γ, cv + se, code = 3, angle = 90, length = 0.05)
-    if (!sel_val %in% γ && sel_val %in% seq_along(γ)) {
-      sel_val <- γ[sel_val]
+    arrows(gam, cv - se, gam, cv + se, code = 3, angle = 90, length = 0.05)
+    if (!sel_val %in% gam && sel_val %in% seq_along(gam)) {
+      sel_val <- gam[sel_val]
     }
     abline(v = sel_val, lty = 2)
 
@@ -210,7 +214,7 @@ plot_cv <- function(mhpca_obj,
     for (var in names(mat_list)) {
       plot_idx <- plot_idx + 1
       m <- mat_list[[var]]
-      γ <- m[, "gamma"]
+      gam <- m[, "gamma"]
       cv <- m[, "CV"]
       se <- m[, "SE"]
 
@@ -226,19 +230,19 @@ plot_cv <- function(mhpca_obj,
       } else {
         vnum <- as.integer(sub("Var", "", var))
         desc <- if (type == "fd") "functional variable" else "non-functional variable"
-        ttl <- paste0(ordinal(vnum), " ", desc, " – ", pc)
+        ttl <- paste0(ordinal(vnum), " ", desc, " - ", pc)
       }
 
       # plot + bars + line
-      plot(γ, cv,
+      plot(gam, cv,
         type = "b", pch = 19, lwd = 1,
         xlab = expression(gamma), ylab = "CV",
         main = ttl, ylim = ylim
       )
-      arrows(γ, cv - se, γ, cv + se, code = 3, angle = 90, length = 0.05)
+      arrows(gam, cv - se, gam, cv + se, code = 3, angle = 90, length = 0.05)
       sel_val <- if (type == "u") tunes[[pc]] else sel_vec[as.integer(sub("Var", "", var))]
-      if (!sel_val %in% γ && sel_val %in% seq_along(γ)) {
-        sel_val <- γ[sel_val]
+      if (!sel_val %in% gam && sel_val %in% seq_along(gam)) {
+        sel_val <- gam[sel_val]
       }
       abline(v = sel_val, lty = 2)
 
@@ -249,3 +253,7 @@ plot_cv <- function(mhpca_obj,
     }
   }
 }
+
+# Method for the internal generic behind plot()
+#' @exportS3Method NULL
+op_plot.mhpca <- function(x, ...) plot_mhpca(x, ...)

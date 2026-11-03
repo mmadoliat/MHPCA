@@ -1,17 +1,19 @@
-I_alpha <- function(data, lambda) {
-  p <- length(data$coefs)
-  I <- c()
-  for (i in 1:p) {
-    # I is the diagonal matrix with penalty
-    I_sub <- lambda[i][[1]] * diag(prod(data$basis$nbasis[[i]]))
-    # generate block diagonal matrix
-    if (i == 1) {
-      I <- I_sub
-    } else {
-      I <- rbind(cbind(I, matrix(0, nrow = nrow(I), ncol = ncol(I_sub))), cbind(matrix(0, nrow = nrow(I_sub), ncol = ncol(I)), I_sub))
-    }
+# Dense block-diagonal matrix from a list of matrices.
+block_diag <- function(blocks) {
+  out <- blocks[[1]]
+  for (b in blocks[-1]) {
+    out <- rbind(cbind(out, matrix(0, nrow = nrow(out), ncol = ncol(b))),
+                 cbind(matrix(0, nrow = nrow(b), ncol = ncol(out)), b))
   }
-  return(I)
+  out
+}
+
+# Diagonal matrix of smoothing parameters: lambda[i] repeated for each basis
+# function of variable i.
+I_alpha <- function(data, lambda) {
+  block_diag(lapply(seq_along(data$coefs), function(i) {
+    lambda[i][[1]] * diag(prod(data$basis$nbasis[[i]]))
+  }))
 }
 
 
@@ -152,3 +154,33 @@ eval_basismf_validity_check <- function(evalarg, dimSupp) {
     stop("Length of evalarg list must be equal to dimSupp.")
   }
 }
+
+# "1st", "2nd", "3rd", "4th", ..., "11th", "12th", "13th", ..., "21st", ...
+ordinal <- function(n) {
+  suffix <- if (n %% 100 %in% 11:13) {
+    "th"
+  } else {
+    switch(as.character(n %% 10), "1" = "st", "2" = "nd", "3" = "rd", "th")
+  }
+  paste0(n, suffix)
+}
+
+# Validation of user-facing choice arguments, so a typo fails immediately with
+# a clear message instead of deep inside the fitting code.
+check_choice <- function(x, choices, arg) {
+  if (!is.character(x) || length(x) != 1 || !(x %in% choices)) {
+    stop(sprintf("`%s` must be one of %s.", arg, paste0("\"", choices, "\"", collapse = ", ")),
+         call. = FALSE)
+  }
+  x
+}
+
+# A single TRUE / FALSE (also accepts "TRUE" / "FALSE").
+check_flag <- function(x, arg) {
+  flag <- if (length(x) == 1) as.logical(x) else NA
+  if (is.na(flag)) stop(sprintf("`%s` must be TRUE or FALSE.", arg), call. = FALSE)
+  flag
+}
+
+# Sparsity penalty types understood by sparse_pen_fun().
+sparse_penalty_types <- c("soft", "hard", "SCAD", "adaptive")

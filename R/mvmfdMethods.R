@@ -73,8 +73,8 @@ plot_mvmfd <- function(mvmfd_obj, xlab = NULL, ylab = NULL, ...) {
 #' @export
 "*.mvmfd" <- function(obj1, obj2) {
   if (xor(is.mvmfd(obj1), is.mvmfd(obj2))) {
-    if (xor(is.double(obj1), is.double(obj2))) {
-      if (is.double(obj1)) {
+    if (xor(is.numeric(obj1), is.numeric(obj2))) {
+      if (is.numeric(obj1)) {
         temp <- obj1
         obj1 <- obj2
         obj2 <- temp
@@ -103,7 +103,7 @@ plot_mvmfd <- function(mvmfd_obj, xlab = NULL, ylab = NULL, ...) {
   if (i[1] == "index") i <- 1:mvmfd_obj$nobs
   if (j[1] == "index") j <- 1:mvmfd_obj$nvar
   if (max(i) > mvmfd_obj$nobs | min(i) < 1) stop(" subscript i out of bounds")
-  if (max(j) > mvmfd_obj$nvar | min(i) < 1) stop(" subscript j out of bounds")
+  if (max(j) > mvmfd_obj$nvar | min(j) < 1) stop(" subscript j out of bounds")
   dimSupp <- mvmfd_obj$basis$dimSupp
   bs <- mvmfd_obj$basis[j]
   if (length(j) == 1) {
@@ -128,9 +128,10 @@ plot_mvmfd <- function(mvmfd_obj, xlab = NULL, ylab = NULL, ...) {
 }
 
 
-#' @title   Bivariate plot for `mvmfd` objects
+#' @title   Bivariate plot for `mvmfd` and `hd` objects
 #'
-#' @param mvmfd_obj An `mvmfd` object
+#' @param mvmfd_obj An `mvmfd` object with two variables, or an `hd` object
+#'   whose functional part has two variables
 #' @param type Type of plot ('l' for lines, 'p' for points, etc.)
 #' @param lty Line type
 #' @param xlab Label for the x-axis
@@ -141,6 +142,10 @@ plot_mvmfd <- function(mvmfd_obj, xlab = NULL, ylab = NULL, ...) {
 #'
 #' @export
 bimfdplot <- function(mvmfd_obj, type = "l", lty = 1, xlab = "", ylab = "", main = "", ...) {
+  if (is.hd(mvmfd_obj)) {
+    if (is.null(mvmfd_obj$mf)) stop("There is no functional part in the hd object")
+    mvmfd_obj <- mvmfd_obj$mf
+  }
   nvar <- mvmfd_obj$nvar
   stopifnot(nvar == 2)
   stopifnot(all(mvmfd_obj$basis$supp[[1]] == mvmfd_obj$basis$supp[[2]]))
@@ -209,3 +214,15 @@ scale_mvmfd <- function(mvmfd_obj, mvmfd_eval_length = rep(100,mvmfd_obj$nvar),w
   return(Mvmfd(mfd_list))
 }
   
+
+# Methods for the internal generics behind length(), plot(), mean(), sd(), scale()
+#' @exportS3Method NULL
+op_length.mvmfd <- function(x, ...) x$nobs
+#' @exportS3Method NULL
+op_plot.mvmfd <- function(x, ...) plot_mvmfd(x, ...)
+#' @exportS3Method NULL
+op_mean.mvmfd <- function(x, ...) mean_mvmfd(x, ...)
+#' @exportS3Method NULL
+op_sd.mvmfd <- function(x, ...) sd_mvmfd(x, ...)
+#' @exportS3Method NULL
+op_scale.mvmfd <- function(x, ...) scale_mvmfd(x, ...)

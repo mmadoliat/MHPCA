@@ -4,7 +4,7 @@
 #' Computes the extended BIC (eBIC) for sparse hybrid functional-vector PCA.
 #' Uses simplified eBIC formula: eBIC = -2log(L) + q*log(n) + 2*xi*q*log(p)
 #'
-#' @param fdata Functional data coefficient matrix (n x J), transformed (C %*% G_half)
+#' @param fdata Functional data coefficient matrix (n x J), transformed (C \%*\% G_half)
 #' @param nfdata Non-functional data matrix (n x m)
 #' @param u_hat Estimated left singular vector (n x 1)
 #' @param fv_hat Estimated functional right singular vector (J x 1), or NULL
@@ -250,7 +250,7 @@ compute_eBIC_hybrid <- function(fdata,
 #' 2. Then tune gamma_nfd | gamma_u* (sparsity in non-functional v)
 #' 3. Finally tune gamma_fd | gamma_u*, gamma_nfd* (sparsity in functional v)
 #'
-#' @param fdata Functional data coefficient matrix (n x J), transformed (C %*% G_half)
+#' @param fdata Functional data coefficient matrix (n x J), transformed (C \%*\% G_half)
 #' @param nfdata Non-functional data matrix (n x m)
 #' @param hd_obj Hybrid data object
 #' @param sparse_tuning_u Vector of candidate gamma values for u
@@ -261,8 +261,10 @@ compute_eBIC_hybrid <- function(fdata,
 #' @param sparse_tuning_type_fd Type of sparsity penalty for fd
 #' @param G_half Square root of Gram matrix
 #' @param G_half_inverse Inverse of G_half
-#' @param S_smooth Smoothing matrix (or list for GCV case)
-#' @param S_2_inverse Inverse of S_2 matrix (or list for GCV case)
+#' @param S_smooth Smoothing matrix used while tuning (if a list is given, its
+#'   first element is used)
+#' @param S_2_inverse Inverse of the S_2 matrix matching `S_smooth` (if a list
+#'   is given, its first element is used)
 #' @param pen_u Logical: penalize u?
 #' @param pen_nfd Logical: penalize nfd?
 #' @param pen_fd Logical: penalize fd?
@@ -304,8 +306,9 @@ eBIC_sequential_hybrid <- function(fdata,
                                    verbose = TRUE) {
   
   # Handle S_smooth and S_2_inverse (may be list from GCV preprocessing)
-  S_smooth_use <- if (is.list(S_smooth) && !is.matrix(S_smooth)) S_smooth[[1]] else S_smooth
-  S_2_inverse_use <- if (is.list(S_2_inverse) && !is.matrix(S_2_inverse)) S_2_inverse[[1]] else S_2_inverse
+  first_or_null <- function(x) if (length(x) > 0) x[[1]] else NULL
+  S_smooth_use <- if (is.list(S_smooth) && !is.matrix(S_smooth)) first_or_null(S_smooth) else S_smooth
+  S_2_inverse_use <- if (is.list(S_2_inverse) && !is.matrix(S_2_inverse)) first_or_null(S_2_inverse) else S_2_inverse
   
   # Quick exit if nothing to tune
   if (is.null(sparse_tuning_u) &&
@@ -322,48 +325,21 @@ eBIC_sequential_hybrid <- function(fdata,
     ))
   }
   
-  # Initialize best values
-  best_u <- 0
-  
-  if (!is.null(sparse_tuning_nfd)) {
-    d <- length(sparse_tuning_nfd)
-    best_nfd <- numeric(d)
-    names(best_nfd) <- paste0("Var", seq_len(d))
-  } else {
-    best_nfd <- NULL
-    d <- 0
-  }
-  
-  if (!is.null(sparse_tuning_fd)) {
-    dd <- length(sparse_tuning_fd)
-    best_fd <- numeric(dd)
-    names(best_fd) <- paste0("Var", seq_len(dd))
-  } else {
-    best_fd <- NULL
-    dd <- 0
-  }
-  
-  eBIC_scores_u <- NULL
-  eBIC_scores_nfd <- NULL
-  eBIC_scores_fd <- NULL
-  
-  #-----------------------------------------
-  # Stage 1: Tune gamma_u
-  # tuning_stage = "u": df = k_u, RSS from both components
-  #-----------------------------------------
-  if (!is.null(sparse_tuning_u) && isTRUE(pen_u)) {
-    n_gamma_u <- length(sparse_tuning_u)
-    eBIC_scores_u <- numeric(n_gamma_u)
-    
-    for (idx in seq_len(n_gamma_u)) {
-      candidate_u <- sparse_tuning_u[idx]
-      
+  # Fit with the candidates `cands` for block `block` (variable j), the other
+  # blocks held at their current selections, and score each fit by eBIC.
+  # The block being tuned is always penalized during its own stage.
+  evaluate_ebic <- function(block, j, cands, current) {
+    pen <- list(pen_u = pen_u, pen_nfd = pen_nfd, pen_fd = pen_fd)
+    pen[[paste0("pen_", block)]] <- TRUE
+    scores <- numeric(length(cands))
+    for (idx in seq_along(cands)) {
+      trial <- with_candidate(current, block, j, cands[idx])
       fit <- init_sequential_hybrid(
         fdata = fdata,
         nfdata = nfdata,
-        sparse_tuning_result_u = candidate_u,
-        sparse_tuning_result_nfd = best_nfd,
-        sparse_tuning_result_fd = best_fd,
+        sparse_tuning_result_u = trial$u,
+        sparse_tuning_result_nfd = trial$nfd,
+        sparse_tuning_result_fd = trial$fd,
         sparse_tuning_type_u = sparse_tuning_type_u,
         sparse_tuning_type_nfd = sparse_tuning_type_nfd,
         sparse_tuning_type_fd = sparse_tuning_type_fd,
@@ -371,201 +347,46 @@ eBIC_sequential_hybrid <- function(fdata,
         S_2_inverse = S_2_inverse_use,
         G_half_inverse = G_half_inverse,
         G_half = G_half,
-        pen_u = TRUE,
-        pen_nfd = pen_nfd,
-        pen_fd = pen_fd,
+        pen_u = pen$pen_u,
+        pen_nfd = pen$pen_nfd,
+        pen_fd = pen$pen_fd,
         tol = tol,
         max_iter = max_iter
       )
-      
-      fv_hat <- fit[[1]]
-      nfv_hat <- fit[[2]]
-      u_hat <- fit[[3]]
-      
-      ebic_result <- compute_eBIC_hybrid(
+      scores[idx] <- compute_eBIC_hybrid(
         fdata = fdata,
         nfdata = nfdata,
-        u_hat = u_hat,
-        fv_hat = fv_hat,
-        nfv_hat = nfv_hat,
+        u_hat = fit[[3]],
+        fv_hat = fit[[1]],
+        nfv_hat = fit[[2]],
         hd_obj = hd_obj,
         G_half = G_half,
         xi = xi,
         N_type = N_type,
         RSS_type = RSS_type,
-        tuning_stage = "u"
-      )
-      
-      eBIC_scores_u[idx] <- ebic_result$eBIC
+        tuning_stage = block
+      )$eBIC
     }
-    
-    best_index_u <- which.min(eBIC_scores_u)
-    best_u <- sparse_tuning_u[best_index_u]
-    names(eBIC_scores_u) <- as.character(sparse_tuning_u)
-    
-    count <- count + n_gamma_u
-    if (!is.null(pb)) setTxtProgressBar(pb, count)
-  } else {
-    best_u <- 0
-    eBIC_scores_u <- NULL
-    count <- count + 1
-    if (!is.null(pb)) setTxtProgressBar(pb, count)
+    names(scores) <- as.character(cands)
+    list(score = scores, se = NULL)
   }
-  
-  #-----------------------------------------
-  # Stage 2: Tune gamma_nfd (loop over variables)
-  # tuning_stage = "nfd": df = k_nfv, RSS from non-functional only
-  #-----------------------------------------
-  if (!is.null(sparse_tuning_nfd) && isTRUE(pen_nfd)) {
-    eBIC_scores_nfd <- vector("list", length = d)
-    
-    for (j in seq_len(d)) {
-      cand_nfd <- sparse_tuning_nfd[[j]]
-      n_gamma_nfd <- length(cand_nfd)
-      eBIC_var <- numeric(n_gamma_nfd)
-      
-      for (idx in seq_len(n_gamma_nfd)) {
-        candidate_nfd <- best_nfd
-        candidate_nfd[j] <- cand_nfd[idx]
-        
-        fit <- init_sequential_hybrid(
-          fdata = fdata,
-          nfdata = nfdata,
-          sparse_tuning_result_u = best_u,
-          sparse_tuning_result_nfd = candidate_nfd,
-          sparse_tuning_result_fd = best_fd,
-          sparse_tuning_type_u = sparse_tuning_type_u,
-          sparse_tuning_type_nfd = sparse_tuning_type_nfd,
-          sparse_tuning_type_fd = sparse_tuning_type_fd,
-          S_smooth = S_smooth_use,
-          S_2_inverse = S_2_inverse_use,
-          G_half_inverse = G_half_inverse,
-          G_half = G_half,
-          pen_u = pen_u,
-          pen_nfd = TRUE,
-          pen_fd = pen_fd,
-          tol = tol,
-          max_iter = max_iter
-        )
-        
-        fv_hat <- fit[[1]]
-        nfv_hat <- fit[[2]]
-        u_hat <- fit[[3]]
-        
-        ebic_result <- compute_eBIC_hybrid(
-          fdata = fdata,
-          nfdata = nfdata,
-          u_hat = u_hat,
-          fv_hat = fv_hat,
-          nfv_hat = nfv_hat,
-          hd_obj = hd_obj,
-          G_half = G_half,
-          xi = xi,
-          N_type = N_type,
-          RSS_type = RSS_type,
-          tuning_stage = "nfd"
-        )
-        
-        eBIC_var[idx] <- ebic_result$eBIC
-      }
-      
-      best_index_nfd <- which.min(eBIC_var)
-      best_nfd[j] <- cand_nfd[best_index_nfd]
-      eBIC_scores_nfd[[j]] <- eBIC_var
-      names(eBIC_scores_nfd[[j]]) <- as.character(cand_nfd)
-      
-      count <- count + n_gamma_nfd
-    }
-    
-    names(eBIC_scores_nfd) <- paste0("Var", seq_len(d))
-    if (!is.null(pb)) setTxtProgressBar(pb, count)
-  } else {
-    best_nfd <- NULL
-    eBIC_scores_nfd <- NULL
-    count <- count + 1
-    if (!is.null(pb)) setTxtProgressBar(pb, count)
-  }
-  
-  #-----------------------------------------
-  # Stage 3: Tune gamma_fd (loop over variables)
-  # tuning_stage = "fd": df = k_fv, RSS from functional only
-  #-----------------------------------------
-  if (!is.null(sparse_tuning_fd) && isTRUE(pen_fd)) {
-    eBIC_scores_fd <- vector("list", length = dd)
-    
-    for (j in seq_len(dd)) {
-      cand_fd <- sparse_tuning_fd[[j]]
-      n_gamma_fd <- length(cand_fd)
-      eBIC_var <- numeric(n_gamma_fd)
-      
-      for (idx in seq_len(n_gamma_fd)) {
-        candidate_fd <- best_fd
-        candidate_fd[j] <- cand_fd[idx]
-        
-        fit <- init_sequential_hybrid(
-          fdata = fdata,
-          nfdata = nfdata,
-          sparse_tuning_result_u = best_u,
-          sparse_tuning_result_nfd = best_nfd,
-          sparse_tuning_result_fd = candidate_fd,
-          sparse_tuning_type_u = sparse_tuning_type_u,
-          sparse_tuning_type_nfd = sparse_tuning_type_nfd,
-          sparse_tuning_type_fd = sparse_tuning_type_fd,
-          S_smooth = S_smooth_use,
-          S_2_inverse = S_2_inverse_use,
-          G_half_inverse = G_half_inverse,
-          G_half = G_half,
-          pen_u = pen_u,
-          pen_nfd = pen_nfd,
-          pen_fd = TRUE,
-          tol = tol,
-          max_iter = max_iter
-        )
-        
-        fv_hat <- fit[[1]]
-        nfv_hat <- fit[[2]]
-        u_hat <- fit[[3]]
-        
-        ebic_result <- compute_eBIC_hybrid(
-          fdata = fdata,
-          nfdata = nfdata,
-          u_hat = u_hat,
-          fv_hat = fv_hat,
-          nfv_hat = nfv_hat,
-          hd_obj = hd_obj,
-          G_half = G_half,
-          xi = xi,
-          N_type = N_type,
-          RSS_type = RSS_type,
-          tuning_stage = "fd"
-        )
-        
-        eBIC_var[idx] <- ebic_result$eBIC
-      }
-      
-      best_index_fd <- which.min(eBIC_var)
-      best_fd[j] <- cand_fd[best_index_fd]
-      eBIC_scores_fd[[j]] <- eBIC_var
-      names(eBIC_scores_fd[[j]]) <- as.character(cand_fd)
-      
-      count <- count + n_gamma_fd
-    }
-    
-    names(eBIC_scores_fd) <- paste0("Var", seq_len(dd))
-    if (!is.null(pb)) setTxtProgressBar(pb, count)
-  } else {
-    best_fd <- NULL
-    eBIC_scores_fd <- NULL
-    count <- count + 1
-    if (!is.null(pb)) setTxtProgressBar(pb, count)
-  }
-  
+
+  tuned <- tune_sparse_blocks(
+    candidates = list(u = sparse_tuning_u, nfd = sparse_tuning_nfd, fd = sparse_tuning_fd),
+    pen = list(u = pen_u, nfd = pen_nfd, fd = pen_fd),
+    method = "ebic",
+    evaluate = evaluate_ebic,
+    pick = function(score, se) which.min(score),
+    pb = pb, count = count, passes = 1,
+    name_scores = TRUE
+  )
+
   return(list(
-    sparse_tuning_selection_u = best_u,
-    sparse_tuning_selection_nfd = best_nfd,
-    sparse_tuning_selection_fd = best_fd,
-    eBIC_scores_u = eBIC_scores_u,
-    eBIC_scores_nfd = eBIC_scores_nfd,
-    eBIC_scores_fd = eBIC_scores_fd
+    sparse_tuning_selection_u = tuned$selection$u,
+    sparse_tuning_selection_nfd = tuned$selection$nfd,
+    sparse_tuning_selection_fd = tuned$selection$fd,
+    eBIC_scores_u = tuned$scores$u,
+    eBIC_scores_nfd = tuned$scores$nfd,
+    eBIC_scores_fd = tuned$scores$fd
   ))
 }

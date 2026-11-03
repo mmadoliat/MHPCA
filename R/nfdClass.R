@@ -5,6 +5,8 @@
 #' Vector data objects are constructed by specifying a matrix of data points.
 #' 
 #' @param data A numeric matrix of data points.
+#' @param spars_par Optional integer vector of sparsity parameters to store
+#'   with the object.
 #'
 #' @return `nfd` object
 #' @export

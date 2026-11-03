@@ -1,24 +1,17 @@
-mean_hd <- function(hd_obj) {
-  mf <- NULL
-  nf <- NULL
-  if (!is.null(hd_obj$mf)) mf <- mean(hd_obj$mf)
-  if (!is.null(hd_obj$nf)) nf <- mean(hd_obj$nf)
-  mvlist <- Filter(Negate(is.null),list(mf,nf))
-  return(Hd(mvlist))
+# Apply f to each part of an hd object that is present (mf, then nf) and
+# rebuild an hd from the results.
+map_hd <- function(hd_obj, f) {
+  parts <- list(if (!is.null(hd_obj$mf)) f(hd_obj$mf), if (!is.null(hd_obj$nf)) f(hd_obj$nf))
+  Hd(Filter(Negate(is.null), parts))
 }
 
-sd_hd <- function(hd_obj) {
-  mf <- NULL
-  nf <- NULL
-  if (!is.null(hd_obj$mf)) mf <- sd(hd_obj$mf)
-  if (!is.null(hd_obj$nf)) nf <- sd(hd_obj$nf)
-  mvlist <- Filter(Negate(is.null),list(mf,nf))
-  return(Hd(mvlist))
-}
+mean_hd <- function(hd_obj) map_hd(hd_obj, mean)
+
+sd_hd <- function(hd_obj) map_hd(hd_obj, sd)
 
 plot_hd <- function(hd_obj, xlab = NULL, ylab = NULL, ...) {
   if (is.null(hd_obj$mf)) stop("hd objects doesn't have functional part")
-  plot(hd_obj$mf, ...)
+  plot(hd_obj$mf, xlab = xlab, ylab = ylab, ...)
 }
 
 
@@ -28,17 +21,25 @@ plot_hd <- function(hd_obj, xlab = NULL, ylab = NULL, ...) {
 #' data `mvmfd` and/or `mvnfd`. The function ensures proper scaling 
 #' for all components based on their respective types and returns a scaled `hd` object.
 #'
-#' @param hd_obj A `hd` object, which can be an `mfd`, `mvmfd`, `nfd`, `mvnfd`.
-#' @param mfd_eval_length A numeric vector specifying the number of evaluation points for functional variables.
-#' @param f_weight A numeric vector of scaling factors for functional variables. The length must match number of functional variables.
-#' @param nf_weight A numeric vector of scaling factors for non-functional variables. The length must match the number of non functional variables.
-
-#' @return A scaled high-dimensional data object of class 'Hd'.
+#' @param hd_obj A `hd` object.
+#' @param method How to scale: "component" (default) scales each variable
+#'   separately; "balanced" rescales the non-functional part so that both
+#'   parts have the same total variation (sum of squared norms of the centred
+#'   observations); "manual" multiplies the functional and
+#'   non-functional parts by `f_weight` and `nf_weight` (rescaled to sum to 1;
+#'   if only one is given, the other is 1 minus it).
+#' @param f_weight Scaling factor(s) for the functional part: one per
+#'   functional variable for "component", a single weight for "manual".
+#' @param nf_weight Scaling factor(s) for the non-functional part: one per
+#'   non-functional variable for "component", a single weight for "manual".
+#' @param mf_eval_length A numeric vector giving the number of evaluation
+#'   points for each functional variable ("component" only; default 100 each).
+#' @return A scaled `hd` object.
 #'
 #' @examples
-#' # Example usage:
-#' # Assuming `hd_obj` is a valid high-dimensional data object:
-#' # scaled_hd <- scale_hd(hd_obj, mfd_eval_length = c(100, 200), weight = c(0.5, 0.8, 1.2))
+#' # Assuming `hd_obj` is a valid hd object:
+#' # scaled_hd <- scale_hd(hd_obj)
+#' # scaled_hd <- scale_hd(hd_obj, method = "manual", f_weight = 0.5)
 scale_hd <- function(hd_obj,
                      method = c("component", "balanced","manual"),
                      f_weight = NULL,
@@ -48,13 +49,14 @@ scale_hd <- function(hd_obj,
   mf <- hd_obj$mf
   nf <- hd_obj$nf
   if (method == "component") {
-    mf_eval_length <- if (is.null(mf_eval_length)) rep(100, mf$nvar) else mf_eval_length
+    if (is.null(mf_eval_length) && !is.null(mf)) mf_eval_length <- rep(100, mf$nvar)
     mvmfd_scaled <- if (!is.null(mf)) scale_mvmfd(mf, mf_eval_length, f_weight)
     mvnfd_scaled <- if (!is.null(nf)) scale_mvnfd(nf, nf_weight)
     
   } else if (method == "balanced") {
     if (is.null(mf) || is.null(nf)) stop("Balanced scaling requires both mf and nf")
-    w_top    <- sum(norm_mvmfd(mf - mean(mf)))
+    # total variation (sum of squared norms of the centred data) of each part
+    w_top    <- sum(norm_mvmfd(mf - mean(mf))^2)
     nf_new <- nfd(do.call("cbind",lapply(seq_len(nf$nvar),function(i) nf[,i])))
     w_bottom <- sum(apply(sweep(nf_new, 2, colMeans(nf_new), "-"), 2, norm, "2")^2)
     w_half   <- sqrt(w_top / w_bottom)
@@ -135,22 +137,17 @@ scale_hd <- function(hd_obj,
 #' @export
 "*.hd" <- function(obj1, obj2) {
   if (xor(is.hd(obj1), is.hd(obj2))) {
-    if (xor(is.double(obj1), is.double(obj2))) {
-      if (is.double(obj1)) {
+    if (xor(is.numeric(obj1), is.numeric(obj2))) {
+      if (is.numeric(obj1)) {
         temp <- obj1
         obj1 <- obj2
         obj2 <- temp
       }
     }
-    mf <- NULL
-    nf <- NULL
-    if (!is.null(obj1$mf)) mf <- obj2 * obj1$mf
-    if (!is.null(obj1$nf)) nf <- obj2 * obj1$nf
-    mv_list <- list(Filter(Negate(is.null), list(mf,nf)))
+    return(map_hd(obj1, function(part) obj2 * part))
   } else {
     stop("One object must be an hd, and the other one a scalar")
   }
-  return(Hd(mv_list))
 }
 
 #'  Extract subsets of an `hd` object
@@ -162,61 +159,21 @@ scale_hd <- function(hd_obj,
 #' @seealso \code{\link{hd}},\code{\link{mvbasismfd}}
 #' @export
 "[.hd" <- function(hd_obj, i = NULL, j = NULL) {
-  jj <- 0
-  if (!is.null(hd_obj$mf)){
-    nobs <- hd_obj$mf$nobs
-    jj <- jj+1
-  }
-  if (!is.null(hd_obj$nf)){
-    nobs <- hd_obj$nf$nobs
-    jj <- jj+1
-  }
+  # j indexes the parts that are present: the functional part (if any) first,
+  # then the non-functional part.
+  parts <- Filter(Negate(is.null), list(hd_obj$mf, hd_obj$nf))
+  nobs <- parts[[1]]$nobs
   if (is.null(i)) i <- 1:nobs
-  if (is.null(j)) j <- 1:jj
+  if (is.null(j)) j <- seq_along(parts)
   if (max(i) > nobs | min(i) < 1) stop(" subscript i out of bounds")
-  if (max(j) > jj | min(i) < 1) stop(" subscript j out of bounds")
-  if (length(j) == 2){
-    mf_obj_subset <- list(hd_obj$mf[i,])
-    nf_obj_subset <- list(hd_obj$nf[i,])
-  } else if (length(j) == 1){
-    if (!is.null(hd_obj$mf)) {
-      mf_obj_subset <- list(hd_obj$mf[i,])
-      nf_obj_subset <- NULL
-    } else {
-        nf_obj_subset <- list(hd_obj$nf[i,])
-        mf_obj_subset <- NULL
-        }
-  }
-  mv_list <- Filter(Negate(is.null),c(mf_obj_subset,nf_obj_subset))
+  if (max(j) > length(parts) | min(j) < 1) stop(" subscript j out of bounds")
+  mv_list <- lapply(parts[j], function(part) part[i, ])
   return(Hd(mv_list))
   
 }
 
 
-#' @title   Bivariate plot for `hd` objects
-#'
-#' @param hd_obj An `hd` object
-#' @param type Type of plot ('l' for lines, 'p' for points, etc.)
-#' @param lty Line type
-#' @param xlab Label for the x-axis
-#' @param ylab Label for the y-axis
-#' @param main Main title
-#' @param ... Additional arguments for the matplot function
-#' @seealso \code{\link{hd}}, \code{\link{mvbasismfd}}
-#'
-#' @export
-bimfdplot <- function(hd_obj, type = "l", lty = 1, xlab = "", ylab = "", main = "", ...) {
-  if (is.null(hd_obj$mf)) stop("There is no functional part in hf object")
-  mf_obj <- hd_obj$mf
-  nvar <- mf_obj$nvar
-  stopifnot(nvar == 2)
-  stopifnot(all(mf_obj$basis$supp[[1]] == mf_obj$basis$supp[[2]]))
-  supp <- mf_obj$basis$supp[[1]]
-  x_grids <- seq(supp[1, 1], supp[2, 1], len = 1000)
-  X <- mf_obj[, 1]$eval(x_grids)
-  Y <- mf_obj[, 2]$eval(x_grids)
-  matplot(X, Y, type = type, lty = lty, xlab = xlab, ylab = ylab, main = main, ...)
-}
+# bimfdplot() for hd objects is handled by bimfdplot() in mvmfdMethods.R.
 
 
 #' @title Compute the inner product between two objects of class `hd`
@@ -228,7 +185,7 @@ bimfdplot <- function(hd_obj, type = "l", lty = 1, xlab = "", ylab = "", main = 
 #' @export
 inprod_hd <- function(hd_obj1, hd_obj2) {
   inpr <- 0
-  if (!is.null(hd_obj1$mf) & !is.null(hd_obj1$mf)){
+  if (!is.null(hd_obj1$mf) & !is.null(hd_obj2$mf)){
     inpr <- inpr + inprod_mvmfd(hd_obj1$mf,hd_obj2$mf)
   }
   if (!is.null(hd_obj1$nf) & !is.null(hd_obj2$nf)){
@@ -267,7 +224,7 @@ center_hd <- function(hd_obj){
         row_means <- rowMeans(flattened_mean)
         centered_flattened <- sweep(flattened_current, 1, row_means, "-")
         centered_coef <- centered_flattened
-        Mfd(X = center_coef,mdbs = mhd$mf$basis[i],method = "coefs")
+        Mfd(X = array(centered_coef, dim = c(mhd$mf$basis$nbasis[[i]], ncol(centered_coef))), mdbs = mhd$mf$basis[i], method = "coefs")
       }
       
     })
@@ -291,3 +248,16 @@ center_hd <- function(hd_obj){
   }
   return(Hd(c(mfd_list,nfd_list)))
 }
+
+# Methods for the internal generics behind length(), plot(), mean(), sd(), scale()
+# length(): number of observations (hd itself has no `nobs` field)
+#' @exportS3Method NULL
+op_length.hd <- function(x, ...) if (!is.null(x$mf)) x$mf$nobs else x$nf$nobs
+#' @exportS3Method NULL
+op_plot.hd <- function(x, ...) plot_hd(x, ...)
+#' @exportS3Method NULL
+op_mean.hd <- function(x, ...) mean_hd(x, ...)
+#' @exportS3Method NULL
+op_sd.hd <- function(x, ...) sd_hd(x, ...)
+#' @exportS3Method NULL
+op_scale.hd <- function(x, ...) scale_hd(x, ...)

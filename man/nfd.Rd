@@ -8,6 +8,9 @@ nfd(data, spars_par = NULL)
 }
 \arguments{
 \item{data}{A numeric matrix of data points.}
+
+\item{spars_par}{Optional integer vector of sparsity parameters to store
+with the object.}
 }
 \value{
 `nfd` object

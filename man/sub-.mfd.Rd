@@ -4,12 +4,16 @@
 \alias{[.mfd}
 \title{Extract subsets of an `mfd` object}
 \usage{
-\method{[}{mfd}(mfd_obj, i = "index")
+\method{[}{mfd}(mfd_obj, i = "index", j)
 }
 \arguments{
 \item{mfd_obj}{An `mfd` object}
 
 \item{i}{An index or indices specifying the subsets to extract}
+
+\item{j}{Variable index. An `mfd` holds a single variable, so `j` can only
+be left empty or 1: `mfd_obj[1:3, ]` and `mfd_obj[1:3, 1]` are the same as
+`mfd_obj[1:3]`.}
 }
 \value{
 An `mfd` object containing the specified subsets

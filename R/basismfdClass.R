@@ -163,6 +163,54 @@ basismfd <- R6::R6Class("basismfd",
 Basismfd <- function(...) {
   basismfd$new(...)
 }
-#' @rdname basismfd
 
 
+
+# Operations that are not defined for basis objects: give a clear error instead
+# of an obscure one from base R.
+basis_op_error <- function(op, x) {
+  stop(sprintf("`%s` is not defined for basis objects (%s); use it on the data objects (mfd, mvmfd, hd) instead.",
+               op, class(x)[1]), call. = FALSE)
+}
+
+#' Operations on basis objects
+#'
+#' Arithmetic, comparison and subsetting are not defined for basis objects
+#' (`basismfd`, and arithmetic for `mvbasismfd`); these methods only give an
+#' informative error. Use them on the data objects (`mfd`, `mvmfd`, `hd`).
+#' @param e1,e2 Operands.
+#' @param x A `basismfd` object.
+#' @param ... Ignored.
+#' @return None; these methods always signal an error.
+#' @export
+Ops.basismfd <- function(e1, e2) {
+  basis_op_error(.Generic, if (inherits(e1, c("basismfd", "mvbasismfd"))) e1 else e2)
+}
+
+#' @rdname Ops.basismfd
+#' @export
+Ops.mvbasismfd <- function(e1, e2) {
+  basis_op_error(.Generic, if (inherits(e1, c("basismfd", "mvbasismfd"))) e1 else e2)
+}
+
+#' @rdname Ops.basismfd
+#' @export
+"[.basismfd" <- function(x, ...) basis_op_error("[", x)
+
+# mean(), sd(), scale() and plot() of basis objects
+#' @exportS3Method NULL
+op_mean.basismfd <- function(x, ...) basis_op_error("mean", x)
+#' @exportS3Method NULL
+op_sd.basismfd <- function(x, ...) basis_op_error("sd", x)
+#' @exportS3Method NULL
+op_scale.basismfd <- function(x, ...) basis_op_error("scale", x)
+#' @exportS3Method NULL
+op_plot.basismfd <- function(x, ...) basis_op_error("plot", x)
+#' @exportS3Method NULL
+op_mean.mvbasismfd <- function(x, ...) basis_op_error("mean", x)
+#' @exportS3Method NULL
+op_sd.mvbasismfd <- function(x, ...) basis_op_error("sd", x)
+#' @exportS3Method NULL
+op_scale.mvbasismfd <- function(x, ...) basis_op_error("scale", x)
+#' @exportS3Method NULL
+op_plot.mvbasismfd <- function(x, ...) basis_op_error("plot", x)

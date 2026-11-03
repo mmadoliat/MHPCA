@@ -1,36 +1,77 @@
+# Output fields of an mhpca object. Each is stored in private$.<name> and
+# exposed as a read-only active binding; to add an output, add its name here
+# and assign private$.<name> in initialize().
+mhpca_fields <- c(
+  "pc_hd", "lsv", "values", "smooth_tuning", "sparse_tuning_u",
+  "sparse_tuning_nfd", "sparse_tuning_fd", "GCVs", "CVs_u", "CVs_nfd",
+  "CVs_fd", "eBICs_u", "eBICs_nfd", "eBICs_fd", "selection_method", "mean_hd"
+)
+
+# Read-only active bindings for R6 fields stored as private$.<name>.
+# `labels` overrides the field name shown in the error message.
+# The bodies are built with the field name written in literally because R6
+# re-parents active-binding functions, so they cannot rely on closures.
+read_only_fields <- function(fields, labels = character()) {
+  bindings <- lapply(fields, function(field) {
+    label <- if (field %in% names(labels)) labels[[field]] else field
+    f <- function(value) NULL
+    body(f) <- substitute(
+      if (missing(value)) private[[PRIVATE]] else stop(MESSAGE, call. = FALSE),
+      list(PRIVATE = paste0(".", field), MESSAGE = sprintf("`$%s` is read only", label))
+    )
+    f
+  })
+  names(bindings) <- fields
+  bindings
+}
+
+# Private storage (all NULL initially) for the fields above.
+private_fields <- function(fields) {
+  stats::setNames(rep(list(NULL), length(fields)), paste0(".", fields))
+}
+
+# Call `target` with every argument of the calling function, passed by name
+# and still unevaluated: forward_args(f) inside g(a, b) is the same as writing
+# f(a = a, b = b). Used so a wrapper such as Mhpca() does not have to repeat
+# its whole argument list.
+forward_args <- function(target) {
+  caller <- parent.frame()
+  arg_names <- names(formals(sys.function(sys.parent())))
+  args <- stats::setNames(lapply(arg_names, as.name), arg_names)
+  eval(as.call(c(substitute(target), args)), caller)
+}
+
 #' @title A Class for `MHPCA` objects
 #'
 #' @description
-#' The `mhpca` class represents hybrid principal components components.
+#' The `mhpca` class represents multivariate hybrid principal components.
 #'
-
-#' @field pc_mfd An object of class `mvmfd` where the first indices (fields)
-#' represents harmonics and  second indices represents variables
-#' @field pc_nfd An object of class `mvnfd` where the first indices (fields)
-#' represents harmonics and  second indices represents variables
-#' @field lsv = Left singular values vectors
-#' @field values = The set of eigenvalues
-#' @field smooth_tuning = The list of smoothing penalties parameters
-#' @field sparse_tuning_u = The list of sparse penalties parameters
-#' @field GCVs = Generalized cross validations scores of smoothing penalties parameters.
-#'               If both smoothing and sparse tuning penalties are used in the MHPCA method,
-#'               this represents the conditional generalized cross-validation scores, which
-#'               means it is computed based on the optimal sparse tuning parameter selected via cross validation.
-#' @field CVs_u = Cross validations scores of sparse penalties on u parameters
-#' @field CVs_nfd = Cross validations scores of sparse penalties on nfd parameters
-#' @field eBICs_u = Extended BIC scores of sparse penalties on u parameters
-#' @field eBICs_nfd = Extended BIC scores of sparse penalties on nfd parameters
-#' @field eBICs_fd = Extended BIC scores of sparse penalties on fd parameters
-#' @field mean_mfd A multivariate functional data object giving the mean function
-#' @field mean_nfd A data object giving the mean of non functional objects
-#' 
-
+#' @field pc_hd The principal components: an `hd` object for hybrid data, or
+#'   an `mvmfd` / `mvnfd` object when the data has only a functional or only a
+#'   non-functional part. The first index selects components.
+#' @field lsv Left singular vectors (scores direction), one column per component.
+#' @field values The variance explained by each component.
+#' @field smooth_tuning The selected smoothing parameters.
+#' @field sparse_tuning_u The selected sparsity parameters for the scores (u).
+#' @field sparse_tuning_nfd The selected sparsity parameters for the non-functional loadings.
+#' @field sparse_tuning_fd The selected sparsity parameters for the functional loadings.
+#' @field GCVs Generalized cross-validation scores of the smoothing parameters.
+#'   If sparsity is also tuned, these are computed at the selected sparsity.
+#' @field CVs_u Cross-validation scores of the sparsity parameters for u.
+#' @field CVs_nfd Cross-validation scores of the sparsity parameters for the non-functional loadings.
+#' @field CVs_fd Cross-validation scores of the sparsity parameters for the functional loadings.
+#' @field eBICs_u Extended BIC scores of the sparsity parameters for u.
+#' @field eBICs_nfd Extended BIC scores of the sparsity parameters for the non-functional loadings.
+#' @field eBICs_fd Extended BIC scores of the sparsity parameters for the functional loadings.
+#' @field selection_method How sparsity parameters were selected ("cv" or "ebic").
+#' @field mean_hd The mean of the data, with the same structure as `pc_hd`.
+#'
 #' @examples
 #' require(fda)
 #' # Brownian Bridge simulation on [0,1]
 #' M <- 110 # number of components
 #' N <- 20 # number of instances
-#' n <- 100 # number of grides
+#' n <- 100 # number of grid points
 #' t0 <- seq(0, 1, len = n)
 #' j <- 1:M
 #' alpha1 <- list(a1 = 2^seq(0, 1, length.out = 3), a2 = 2^seq(0, 1, length.out = 3))
@@ -49,17 +90,19 @@
 #' mdbs <- Basismfd(bs)
 #' mfd1 <- Mfd(X = X_1, mdbs = mdbs)
 #' mfd2 <- Mfd(X = X_2, mdbs = mdbs)
-#' hd_obj <- hd(mfd1, mfd2)
+#' hd_obj <- Hd(mfd1, mfd2)
 #' k <- 2
-#' Re0 <- Mhpca(hd_obj, ncomp = k, alpha = c(0, 0))
-#' fpc0 <- Re0$pc_mfd
-#' scores0 <- inprod_hd(hd_obj, fpc0)
+#' # Smoothing parameters selected by GCV from a grid for each variable
+#' Re0 <- Mhpca(hd_obj, ncomp = k, smooth_tuning = alpha1)
+#' Re0$smooth_tuning
+#' scores0 <- inprod_mvmfd(hd_obj$mf, Re0$pc_hd)
 #' dim(scores0)
-#' Re0$alpha
-#' Re1 <- Mhpca(hd_obj, ncomp = k, alpha = alpha1)
-#' Re1$alpha
-#' Re3 <- Mhpca(mfd1, ncomp = k, alpha = alpha1$a1)
-#' Re3$alpha
+#' # Fixed smoothing parameters, one per component
+#' Re1 <- Mhpca(hd_obj, ncomp = k, smooth_tuning = c(0, 0), smooth_GCV = FALSE)
+#' Re1$values
+#' # A single functional variable
+#' Re2 <- Mhpca(mfd1, ncomp = k, smooth_tuning = list(alpha1$a1))
+#' Re2$smooth_tuning
 
 #' @import R6
 #' @importFrom fda getbasispenalty
@@ -101,6 +144,16 @@ mhpca <- R6::R6Class("mhpca",
       
       # Validate sparse_selection_method
       sparse_selection_method <- match.arg(sparse_selection_method, c("cv", "ebic"))
+      method <- check_choice(method, c("power", "eigen"), "method")
+      smoothing_type <- check_choice(smoothing_type, c("coefpen", "basispen"), "smoothing_type")
+      sparse_type_u <- check_choice(sparse_type_u, sparse_penalty_types, "sparse_type_u")
+      sparse_type_nfd <- check_choice(sparse_type_nfd, sparse_penalty_types, "sparse_type_nfd")
+      sparse_type_fd <- check_choice(sparse_type_fd, sparse_penalty_types, "sparse_type_fd")
+      cv.pick <- check_choice(cv.pick, c("1se", "min"), "cv.pick")
+      ebic_RSS_type <- check_choice(ebic_RSS_type, c("direct", "refitted"), "ebic_RSS_type")
+      alpha_orth <- check_flag(alpha_orth, "alpha_orth")
+      # sequential power (one component at a time, with sparsity) vs joint power / eigen
+      sequential <- method == "power" && !alpha_orth
       
       # Validate ebic_xi
       if (sparse_selection_method == "ebic") {
@@ -134,6 +187,14 @@ mhpca <- R6::R6Class("mhpca",
       if (is.null(sparse_tuning_u)) {
         sparse_tuning_u <- hd_obj$spars_par
       }
+      # Sparsity grids for a data part that is not present are ignored (tuning
+      # them would run on empty data).
+      if (is.null(hd_obj$mf)) sparse_tuning_fd <- NULL
+      if (is.null(hd_obj$nf)) sparse_tuning_nfd <- NULL
+      # A block is only penalized when it has sparsity parameters.
+      pen_u <- isTRUE(pen_u) && !is.null(sparse_tuning_u)
+      pen_nfd <- isTRUE(pen_nfd) && !is.null(sparse_tuning_nfd)
+      pen_fd <- isTRUE(pen_fd) && !is.null(sparse_tuning_fd)
       if (isTRUE(parallel)) {
         ## use workers that the user already registered
         ncor <- foreach::getDoParWorkers()
@@ -143,161 +204,43 @@ mhpca <- R6::R6Class("mhpca",
         ncor <- 1L
       }
       
-      if (method == "power" & alpha_orth == "FALSE") {
+      if (sequential) {
         if (!is.null(hd_obj$mf)) {
-          # Adjust the vector length to match the required dimensions if they are incorrect
-          if (is.vector(smooth_tuning) & !is.list(smooth_tuning)) {
-            if (smooth_GCV == FALSE) {
-              if (length(smooth_tuning) != ncomp) {
-                warning("The length of 'smooth_tuning' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
-                smooth_tuning <- rep(smooth_tuning, length.out = ncomp)
-              }
-              smooth_tuning <- replicate(hd_obj$mf$nvar, smooth_tuning, simplify = FALSE)
-            } else {
-              warning("The length of 'smooth_tuning' did not match 'hd_obj$mf$nvar' and has been adjusted accordingly.", call. = FALSE)
-              smooth_tuning <- replicate(hd_obj$mf$nvar, smooth_tuning, simplify = FALSE)
-            }
-          }
-
-          # Adjust the matrix to match the required dimensions if they are incorrect
-          else if (is.matrix(smooth_tuning)) {
-            if (smooth_GCV == FALSE) {
-              if (!all(dim(smooth_tuning) == c(hd_obj$mf$nvar, ncomp))) {
-                smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = hd_obj$mf$nvar), rep(1:ncol(smooth_tuning), length.out = ncomp)]
-                # print(smooth_tuning)
-                smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                # print(smooth_tuning)
-                warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
-              } else {
-                smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-              }
-            } else {
-              if (dim(smooth_tuning)[1] != hd_obj$mf$nvar) {
-                smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = hd_obj$mf$nvar), , drop = FALSE][1:hd_obj$mf$nvar, , drop = FALSE]
-                smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
-              } else {
-                smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-              }
-            }
-          }
-
-          # Adjust the list length and element sizes to match the required dimensions if they are incorrect
-          else if (is.list(smooth_tuning)) {
-            if (smooth_GCV == FALSE) {
-              if (length(smooth_tuning) != hd_obj$mf$nvar) {
-                warning("Adjusting 'smooth_tuning' to match 'hd_obj$mf$nvar'.", call. = FALSE)
-                smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)
-              }
-              smooth_tuning <- lapply(smooth_tuning, function(vec) {
-                if (length(vec) != ncomp) {
-                  warning("Adjusting vector length in 'smooth_tuning' to match 'ncomp'.", call. = FALSE)
-                  vec <- rep(vec, length.out = ncomp)
-                }
-                vec
-              })
-            } else {
-              if (length(smooth_tuning) != hd_obj$mf$nvar) {
-                warning("Adjusting 'smooth_tuning' to match 'hd_obj$mf$nvar'.", call. = FALSE)
-                smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)
-              }
-
-              # smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)[1:hd_obj$mf$nvar]
-            }
-          }
-
-          if (!is.null(smooth_tuning)) {
-            names(smooth_tuning) <- paste0("var", 1:hd_obj$mf$nvar)
-          }
-          
-          if (is.vector(sparse_tuning_fd) & !is.list(sparse_tuning_fd)) {
-            if (sparse_CV == FALSE) {
-              if (length(sparse_tuning_fd) != ncomp) {
-                warning("The length of 'sparse_tuning_fd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
-                sparse_tuning_fd <- rep(sparse_tuning_fd, length.out = ncomp)
-              }
-              sparse_tuning_fd <- replicate(hd_obj$mf$nvar, sparse_tuning_fd, simplify = FALSE)
-            } else {
-              
-              warning("The length of 'sparse_tuning_fd' did not match 'hd_obj$mf$nvar' and has been adjusted accordingly.", call. = FALSE)
-              sparse_tuning_fd <- replicate(hd_obj$mf$nvar, sparse_tuning_fd, simplify = FALSE)
-            }
-          } 
-          else if (is.list(sparse_tuning_fd)) {
-            if (sparse_CV == FALSE) {
-              if (length(sparse_tuning_fd) != hd_obj$mf$nvar) {
-                warning("Adjusting 'sparse_tuning_fd' to match 'hd_obj$mf$nvar'.", call. = FALSE)
-                sparse_tuning_fd <- rep(sparse_tuning_fd, length.out = hd_obj$mf$nvar)
-              }
-              sparse_tuning_fd <- lapply(sparse_tuning_fd, function(vec) {
-                if (length(vec) != ncomp) {
-                  warning("Adjusting vector length in 'sparse_tuning_fd' to match 'ncomp'.", call. = FALSE)
-                  vec <- rep(vec, length.out = ncomp)
-                }
-                vec
-              })
-            } else {
-              if (length(sparse_tuning_fd) != hd_obj$mf$nvar) {
-                warning("Adjusting 'sparse_tuning_fd' to match 'hd_obj$mf$nvar'.", call. = FALSE)
-                sparse_tuning_fd <- rep(sparse_tuning_fd, length.out = hd_obj$mf$nvar)
-              }
-              
-              
-            }
-          }
-          if (!is.null(sparse_tuning_fd)) {
-            names(sparse_tuning_fd) <- paste0("var", 1:hd_obj$mf$nvar)
-          }
-        }
-        
-        if (!is.null(hd_obj$nf)){
-          if (is.vector(sparse_tuning_nfd) & !is.list(sparse_tuning_nfd)) {
-            if (sparse_CV == FALSE) {
-              if (length(sparse_tuning_nfd) != ncomp) {
-                warning("The length of 'sparse_tuning_nfd' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
-                sparse_tuning_nfd <- rep(sparse_tuning_nfd, length.out = ncomp)
-              }
-              sparse_tuning_nfd <- replicate(hd_obj$nf$nvar, sparse_tuning_nfd, simplify = FALSE)
-            } else {
-              
-              warning("The length of 'sparse_tuning_nfd' did not match 'hd_obj$mf$nvar' and has been adjusted accordingly.", call. = FALSE)
-              sparse_tuning_nfd <- replicate(hd_obj$nf$nvar, sparse_tuning_nfd, simplify = FALSE)
-            }
-          } 
-          else if (is.list(sparse_tuning_nfd)) {
-            if (sparse_CV == FALSE) {
-              if (length(sparse_tuning_nfd) != hd_obj$nf$nvar) {
-                warning("Adjusting 'sparse_tuning_nfd' to match 'hd_obj$nf$nvar'.", call. = FALSE)
-                sparse_tuning_nfd <- rep(sparse_tuning_nfd, length.out = hd_obj$nf$nvar)
-              }
-              sparse_tuning_nfd <- lapply(sparse_tuning_nfd, function(vec) {
-                if (length(vec) != ncomp) {
-                  warning("Adjusting vector length in 'sparse_tuning_nfd' to match 'ncomp'.", call. = FALSE)
-                  vec <- rep(vec, length.out = ncomp)
-                }
-                vec
-              })
-            } else {
-              if (length(sparse_tuning_nfd) != hd_obj$nf$nvar) {
-                warning("Adjusting 'sparse_tuning_nfd' to match 'hd_obj$nf$nvar'.", call. = FALSE)
-                sparse_tuning_nfd <- rep(sparse_tuning_nfd, length.out = hd_obj$mf$nvar)
-              }
-              
-              
-            }
-          }
-          if (!is.null(sparse_tuning_nfd)) {
-            names(sparse_tuning_nfd) <- paste0("var", 1:hd_obj$nf$nvar)
-          }
+          smooth_tuning <- normalize_tuning(
+            smooth_tuning, "smooth_tuning", nvar = hd_obj$mf$nvar, ncomp = ncomp,
+            grid = smooth_GCV, mode = "per_component",
+            vec_label = "'hd_obj$mf$nvar'", list_label = "'hd_obj$mf$nvar'",
+            allow_matrix = TRUE
+          )
+          sparse_tuning_fd <- normalize_tuning(
+            sparse_tuning_fd, "sparse_tuning_fd", nvar = hd_obj$mf$nvar, ncomp = ncomp,
+            grid = sparse_CV, mode = "per_component",
+            vec_label = "'hd_obj$mf$nvar'", list_label = "'hd_obj$mf$nvar'"
+          )
         }
 
-
-        # Adjust the list length and element sizes to match the required dimensions if they are incorrect
-        if (sparse_CV == FALSE & length(sparse_tuning_u) != ncomp & !is.null(sparse_tuning_u)) {
-          warning("The length of 'sparse_tuning_u' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
-          sparse_tuning_u <- rep(sparse_tuning_u, length.out = ncomp)
+        if (!is.null(hd_obj$nf)) {
+          sparse_tuning_nfd <- normalize_tuning(
+            sparse_tuning_nfd, "sparse_tuning_nfd", nvar = hd_obj$nf$nvar, ncomp = ncomp,
+            grid = sparse_CV, mode = "per_component",
+            vec_label = "'hd_obj$nf$nvar'", list_label = "'hd_obj$nf$nvar'"
+          )
         }
 
+        sparse_tuning_u <- normalize_tuning_u(sparse_tuning_u, "sparse_tuning_u", ncomp, sparse_CV)
+
+        settings <- mhpca_settings(
+          smoothing_type = smoothing_type, centerfns = centerfns,
+          smooth_GCV = smooth_GCV, sparse_CV = sparse_CV,
+          sparse_type_u = sparse_type_u, sparse_type_nfd = sparse_type_nfd,
+          sparse_type_fd = sparse_type_fd,
+          nfold_u = nfold_u, nfold_nfd = nfold_nfd, nfold_fd = nfold_fd,
+          pen_u = pen_u, pen_nfd = pen_nfd, pen_fd = pen_fd,
+          sparse_iter = sparse_iter, cv.pick = cv.pick,
+          sparse_selection_method = sparse_selection_method,
+          ebic_xi = ebic_xi, ebic_N_type = ebic_N_type, ebic_RSS_type = ebic_RSS_type,
+          tol = tol, max_iter = max_iter, ncor = ncor
+        )
         result <- sequential_power_hybrid(
           hd_obj = hd_obj,
           n = ncomp,
@@ -305,88 +248,23 @@ mhpca <- R6::R6Class("mhpca",
           sparse_tuning_u = sparse_tuning_u,
           sparse_tuning_nfd = sparse_tuning_nfd,
           sparse_tuning_fd = sparse_tuning_fd,
-          centerfns = centerfns,
-          alpha_orth = alpha_orth,
-          smooth_tuning_type = smoothing_type,
-          sparse_tuning_type_u = sparse_type_u,
-          sparse_tuning_type_nfd = sparse_type_nfd,
-          sparse_tuning_type_fd = sparse_type_fd,
-          nfold_u = nfold_u,
-          nfold_nfd = nfold_nfd,
-          nfold_fd = nfold_fd,
-          sparse_CV = sparse_CV,
-          smooth_GCV = smooth_GCV,
-          pen_nfd = pen_nfd,
-          pen_fd = pen_fd,
-          pen_u = pen_u,
-          ncor = ncor,
-          sparse_iter = sparse_iter,
-          tol = tol, max_iter = max_iter, cv.pick = cv.pick,
-          sparse_selection_method = sparse_selection_method,
-          ebic_xi = ebic_xi,
-          ebic_N_type = ebic_N_type,
-          ebic_RSS_type = ebic_RSS_type
+          settings = settings
         )
-      } else if (method == "eigen" || alpha_orth == "TRUE") {
+      } else {
         if (!is.null(hd_obj$mf)) {
-          # Adjust the vector to match the required lengths if they are incorrect
-          if (is.vector(smooth_tuning) & !is.list(smooth_tuning)) {
-            if (smooth_GCV == FALSE) {
-              if (length(smooth_tuning) != hd_obj$mf$nvar) {
-                warning("The length of 'smooth_tuning' did not match number of variables and has been adjusted accordingly.", call. = FALSE)
-                smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)
-              }
-              smooth_tuning <- lapply(1:hd_obj$mf$nvar, function(i) smooth_tuning[i])
-            } else {
-              warning("The length of 'smooth_tuning' did not match number of variables and has been adjusted accordingly.", call. = FALSE)
-              smooth_tuning <- replicate(hd_obj$mf$nvar, smooth_tuning, simplify = FALSE)
-            }
-          } else if (is.matrix(smooth_tuning)) { # Adjust the matrix to match the required if they are incorrect
-            if (smooth_GCV == FALSE) {
-              if (!all(dim(smooth_tuning) == c(hd_obj$mf$nvar, 1))) {
-                smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = hd_obj$mf$nvar), rep(1:ncol(smooth_tuning), length.out = 1)]
-                smooth_tuning <- as.list(smooth_tuning)
-                warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
-              } else {
-                smooth_tuning <- as.list(smooth_tuning)
-              }
-            } else {
-              if (dim(smooth_tuning)[1] != hd_obj$mf$nvar) {
-                smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = hd_obj$mf$nvar), , drop = FALSE][1:hd_obj$mf$nvar, , drop = FALSE]
-                smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
-              } else {
-                smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-              }
-            }
-          } else if (is.list(smooth_tuning)) { # Adjust the list length and element sizes to match the required dimensions if they are incorrect
-            if (smooth_GCV == FALSE) {
-              if (length(smooth_tuning) != hd_obj$mf$nvar) {
-                warning("Adjusting 'smooth_tuning' to match 'hd_obj$mf$nvar'.", call. = FALSE)
-                smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)
-              }
-              smooth_tuning <- lapply(smooth_tuning, function(vec) {
-                if (length(vec) != 1) {
-                  warning("Adjusting vector length in 'smooth_tuning' to match 'ncomp'.", call. = FALSE)
-                  vec <- rep(vec, length.out = 1)
-                }
-                vec
-              })
-            } else {
-              if (length(smooth_tuning) != hd_obj$mf$nvar) {
-                warning("Adjusting 'smooth_tuning' to match 'hd_obj$mf$nvar'.", call. = FALSE)
-                smooth_tuning <- rep(smooth_tuning, length.out = hd_obj$mf$nvar)[1:hd_obj$mf$nvar]
-              }
-            }
-          }
-
-          if (!is.null(smooth_tuning)) {
-            names(smooth_tuning) <- paste0("var", 1:hd_obj$mf$nvar)
-          }
+          smooth_tuning <- normalize_tuning(
+            smooth_tuning, "smooth_tuning", nvar = hd_obj$mf$nvar, ncomp = ncomp,
+            grid = smooth_GCV, mode = "per_variable",
+            vec_label = "number of variables", list_label = "'hd_obj$mf$nvar'",
+            allow_matrix = TRUE
+          )
         }
 
         if (method == "power") {
-          result <- joint_power_hybrid(hd_obj = hd_obj, n = ncomp, smooth_tuning = smooth_tuning, centerfns = centerfns, alpha_orth = alpha_orth, smooth_tuning_type = smoothing_type,tol=tol,max_iter = max_iter)
+          settings <- mhpca_settings(smoothing_type = smoothing_type, centerfns = centerfns,
+                                     tol = tol, max_iter = max_iter)
+          result <- joint_power_hybrid(hd_obj = hd_obj, n = ncomp, smooth_tuning = smooth_tuning,
+                                       settings = settings)
         } else {
           result <- eigen_approach_hybrid(hd_obj = hd_obj, n = ncomp, alpha = smooth_tuning, centerfns = centerfns, penalty_type = smoothing_type)
         }
@@ -421,6 +299,9 @@ mhpca <- R6::R6Class("mhpca",
         pcnfd <- NULL
       }
 
+      # Mean of the input data (hd_obj is replaced by the components below).
+      data_mean <- mean(hd_obj)
+
       if (!is.null(hd_obj$mf) && !is.null(hd_obj$nf)) {
         mfd_obj <- Mvmfd(pcmfd)
         nfd_obj <- Mvnfd(pcnfd)
@@ -439,14 +320,14 @@ mhpca <- R6::R6Class("mhpca",
 
       private$.lsv <- result$lsv
       private$.values <- result$variance
-      private$.smooth_tuning <- result$smooth_tuning
-      if (alpha_orth == "FALSE" && method == "power") {
+      private$.smooth_tuning <- result[["smooth_tuning_result"]]
+      if (sequential) {
         
         private$.sparse_tuning_u <- result$sparse_tuning_result_u
         private$.sparse_tuning_nfd <- result$sparse_tuning_result_nfd
         private$.sparse_tuning_fd <- result$sparse_tuning_result_fd
         private$.selection_method <- sparse_selection_method
-        private$.GCVs <- result$GCV_score
+        private$.GCVs <- result[["GCV_score"]]
         # Store CV or eBIC scores based on selection method
         if (sparse_selection_method == "cv") {
           private$.CVs_u <- result$CV_score_u
@@ -469,167 +350,14 @@ mhpca <- R6::R6Class("mhpca",
         # private$.CV_se_fd <- result$cv_se_fd
         
       } else {
-        private$.GCVs <- result$GCV_score
+        private$.GCVs <- result[["GCV_score"]]
       }
-      private$.mean_hd <- mean(hd_obj)
+      # Same form as pc_hd: hd for hybrid data, otherwise the single part.
+      private$.mean_hd <- if (is.hd(hd_obj)) data_mean else if (is.mvmfd(hd_obj)) data_mean$mf else data_mean$nf
     }
   ),
-  active = list(
-    pc_hd = function(value) {
-      if (missing(value)) {
-        private$.pc_hd
-      } else {
-        stop("`$pc_hd` is read only", call. = FALSE)
-      }
-    },
-    lsv = function(value) {
-      if (missing(value)) {
-        private$.lsv
-      } else {
-        stop("`$lsv` is read only", call. = FALSE)
-      }
-    },
-    values = function(value) {
-      if (missing(value)) {
-        private$.values
-      } else {
-        stop("`$sigma` is read only", call. = FALSE)
-      }
-    },
-    smooth_tuning = function(value) {
-      if (missing(value)) {
-        private$.smooth_tuning
-      } else {
-        stop("`$smooth_tuning` is read only", call. = FALSE)
-      }
-    },
-    sparse_tuning_u = function(value) {
-      if (missing(value)) {
-        private$.sparse_tuning_u
-      } else {
-        stop("`$sparse_tuning_u` is read only", call. = FALSE)
-      }
-    },
-    sparse_tuning_nfd = function(value) {
-      if (missing(value)) {
-        private$.sparse_tuning_nfd
-      } else {
-        stop("`$sparse_tuning_nfd` is read only", call. = FALSE)
-      }
-    },
-    sparse_tuning_fd = function(value) {
-      if (missing(value)) {
-        private$.sparse_tuning_fd
-      } else {
-        stop("`$sparse_tuning_fd` is read only", call. = FALSE)
-      }
-    },
-    GCVs = function(value) {
-      if (missing(value)) {
-        private$.GCVs
-      } else {
-        stop("`$GCVs` is read only", call. = FALSE)
-      }
-    },
-    CVs_u = function(value) {
-      if (missing(value)) {
-        private$.CVs_u
-      } else {
-        stop("`$CVs_u` is read only", call. = FALSE)
-      }
-    },
-    CVs_nfd = function(value) {
-      if (missing(value)) {
-        private$.CVs_nfd
-      } else {
-        stop("`$CVs_nfd` is read only", call. = FALSE)
-      }
-    },
-    CVs_fd = function(value) {
-      if (missing(value)) {
-        private$.CVs_fd
-      } else {
-        stop("`$CVs_fd` is read only", call. = FALSE)
-      }
-    },
-    eBICs_u = function(value) {
-      if (missing(value)) {
-        private$.eBICs_u
-      } else {
-        stop("`$eBICs_u` is read only", call. = FALSE)
-      }
-    },
-    eBICs_nfd = function(value) {
-      if (missing(value)) {
-        private$.eBICs_nfd
-      } else {
-        stop("`$eBICs_nfd` is read only", call. = FALSE)
-      }
-    },
-    eBICs_fd = function(value) {
-      if (missing(value)) {
-        private$.eBICs_fd
-      } else {
-        stop("`$eBICs_fd` is read only", call. = FALSE)
-      }
-    },
-    selection_method = function(value) {
-      if (missing(value)) {
-        private$.selection_method
-      } else {
-        stop("`$selection_method` is read only", call. = FALSE)
-      }
-    },
-    # CV_se_u = function(value) {
-    #   if (missing(value)) {
-    #     private$.CV_se_u
-    #   } else {
-    #     stop("`$CV_se_u` is read only", call. = FALSE)
-    #   }
-    # }, 
-    # CV_se_nfd = function(value) {
-    #   if (missing(value)) {
-    #     private$.CV_se_nfd
-    #   } else {
-    #     stop("`$CV_se_nfd` is read only", call. = FALSE)
-    #   }
-    # }, 
-    # CV_se_fd = function(value) {
-    #   if (missing(value)) {
-    #     private$.CV_se_fd
-    #   } else {
-    #     stop("`$CV_se_fd` is read only", call. = FALSE)
-    #   }
-    # }, 
-    mean_hd = function(value) {
-      if (missing(value)) {
-        private$.mean_hd
-      } else {
-        stop("`$mean_hd` is read only", call. = FALSE)
-      }
-    }
-  ),
-  private = list(
-    .pc_hd = NULL,
-    .lsv = NULL,
-    .values = NULL,
-    .smooth_tuning = NULL,
-    .sparse_tuning_u = NULL,
-    .sparse_tuning_nfd = NULL,
-    .sparse_tuning_fd = NULL,
-    .GCVs = NULL,
-    .CVs_u = NULL,
-    .CVs_nfd = NULL,
-    .CVs_fd = NULL,
-    .eBICs_u = NULL,
-    .eBICs_nfd = NULL,
-    .eBICs_fd = NULL,
-    .selection_method = NULL,
-    # .CV_se_u = NULL,
-    # .CV_se_nfd = NULL,
-    # .CV_se_fd = NULL,
-    .mean_hd = NULL
-  )
+  active = read_only_fields(mhpca_fields),
+  private = private_fields(mhpca_fields)
 )
 
 #' @rdname mhpca
@@ -659,9 +387,9 @@ mhpca <- R6::R6Class("mhpca",
 #'                   If `method` is "power", setting `alpha_orth = FALSE` (default) uses the sequential power approach,
 #'                   while setting `alpha_orth = TRUE` uses the joint power approach.
 #' @param smoothing_type The type of smoothing penalty to be applied on the coefficients. The types "coefpen" and "basispen" is supported. Default is "coefpen".
-#' @param sparse_type_u The type of sparse penalty to be applied on the coefficients. The types "soft", "hard" and "SCAD" is supported. Default is "soft".
-#' @param sparse_type_nfd The type of sparse penalty to be applied on the nfd right singular vectors. The types "soft", "hard" and "SCAD" is supported. Default is "soft".
-#' @param sparse_type_fd The type of sparse penalty to be applied on the fd right singular vectors. The types "soft", "hard" and "SCAD" is supported. Default is "soft".
+#' @param sparse_type_u The type of sparse penalty to be applied on the coefficients. The types "soft", "hard", "SCAD" and "adaptive" are supported. Default is "soft".
+#' @param sparse_type_nfd The type of sparse penalty to be applied on the nfd right singular vectors. The types "soft", "hard", "SCAD" and "adaptive" are supported. Default is "soft".
+#' @param sparse_type_fd The type of sparse penalty to be applied on the fd right singular vectors. The types "soft", "hard", "SCAD" and "adaptive" are supported. Default is "soft".
 #' @param nfold_u  An integer specifying the number of folds in the sparse cross-validation process for u. Default is 30.
 #' @param nfold_nfd  An integer specifying the number of folds in the sparse cross-validation process for nfd. Default is 30.
 #' @param nfold_fd  An integer specifying the number of folds in the sparse cross-validation process for fd. Default is 30.
@@ -687,6 +415,7 @@ mhpca <- R6::R6Class("mhpca",
 #' @param sparse_selection_method Character: "cv" for cross-validation or "ebic" for extended BIC. Default is "cv".
 #' @param ebic_xi eBIC tuning parameter in [0,1]. 0 = standard BIC, 1 = most conservative. Default is 0.5.
 #' @param ebic_N_type How to compute effective sample size for eBIC: "product", "sum", or a numeric value.
+#' @param ebic_RSS_type Residual sum of squares used by eBIC: "direct" (default) or "refitted".
 #' @export
 Mhpca <- function(hd_obj,
                   method = "power",
@@ -718,38 +447,6 @@ Mhpca <- function(hd_obj,
                   ebic_xi = 0.5,
                   ebic_N_type = "product",
                   ebic_RSS_type = "direct") {
-  mhpca$new(
-    hd_obj = hd_obj,
-    method = method,
-    ncomp = ncomp,
-    smooth_tuning = smooth_tuning,
-    sparse_tuning_u = sparse_tuning_u,
-    sparse_tuning_nfd = sparse_tuning_nfd,
-    sparse_tuning_fd = sparse_tuning_fd,
-    centerfns = centerfns,
-    alpha_orth = alpha_orth,
-    smoothing_type = smoothing_type,
-    sparse_type_u = sparse_type_u,
-    sparse_type_nfd = sparse_type_nfd,
-    sparse_type_fd = sparse_type_fd,
-    nfold_u = nfold_u,
-    nfold_nfd = nfold_nfd,
-    nfold_fd = nfold_fd,
-    parallel = parallel,
-    sparse_iter=sparse_iter,
-    tol = tol, 
-    max_iter = max_iter,
-    sparse_CV = sparse_CV,
-    cv.pick = cv.pick,
-    smooth_GCV = smooth_GCV,
-    pen_nfd = pen_nfd,
-    pen_fd = pen_fd,
-    pen_u = pen_u,
-    sparse_selection_method = sparse_selection_method,
-    ebic_xi = ebic_xi,
-    ebic_N_type = ebic_N_type,
-    ebic_RSS_type =ebic_RSS_type
-    
-  )
+  forward_args(mhpca$new)
 }
 #' @rdname mhpca

@@ -1,7 +1,7 @@
 #' @title A Class for `ReMFPCA` objects
 #'
 #' @description
-#' The `remfpca` class represents regularized functional principal components components.
+#' The `remfpca` class represents regularized functional principal components.
 #'
 
 #' @field pc_mfd An object of class `mvmfd` where the first indices (fields)
@@ -43,15 +43,18 @@
 #' mfd2 <- Mfd(X = X_2, mdbs = mdbs)
 #' mvmfd_obj <- Mvmfd(mfd1, mfd2)
 #' k <- 2
-#' Re0 <- Remfpca(mvmfd_obj, ncomp = k, alpha = c(0, 0))
+#' # Smoothing parameters selected by GCV from a grid for each variable
+#' Re0 <- Remfpca(mvmfd_obj, ncomp = k, smooth_tuning = alpha1)
 #' fpc0 <- Re0$pc_mfd
 #' scores0 <- inprod_mvmfd(mvmfd_obj, fpc0)
 #' dim(scores0)
-#' Re0$alpha
-#' Re1 <- Remfpca(mvmfd_obj, ncomp = k, alpha = alpha1)
-#' Re1$alpha
-#' Re3 <- Remfpca(mfd1, ncomp = k, alpha = alpha1$a1)
-#' Re3$alpha
+#' Re0$smooth_tuning
+#' # Fixed smoothing parameters, one per component
+#' Re1 <- Remfpca(mvmfd_obj, ncomp = k, smooth_tuning = c(0, 0), smooth_GCV = FALSE)
+#' Re1$values
+#' # A single functional variable
+#' Re2 <- Remfpca(mfd1, ncomp = k, smooth_tuning = list(alpha1$a1))
+#' Re2$smooth_tuning
 
 #' @import R6
 #' @importFrom fda getbasispenalty
@@ -67,152 +70,31 @@ remfpca <- R6::R6Class("remfpca",
                                  # if (is.vector(smooth_tuning)) smooth_tuning <- as.list(smooth_tuning)
                                  # if (is.vector(smooth_tuning)&& !is.list(smooth_tuning)) smooth_tuning <- list(smooth_tuning)
                                  if (is.mfd(mvmfd_obj)) mvmfd_obj <- mvmfd$new(mvmfd_obj)
+                                 method <- check_choice(method, c("power", "eigen"), "method")
+                                 smoothing_type <- check_choice(smoothing_type, c("coefpen", "basispen"), "smoothing_type")
+                                 sparse_type <- check_choice(sparse_type, sparse_penalty_types, "sparse_type")
+                                 alpha_orth <- check_flag(alpha_orth, "alpha_orth")
+                                 sequential <- method == "power" && !alpha_orth
                                  
-                                 if (method == "power" & alpha_orth == "FALSE") {
-                                   # Adjust the vector length to match the required dimensions if they are incorrect
-                                   if (is.vector(smooth_tuning)& !is.list(smooth_tuning)) {
-                                     if (smooth_GCV == FALSE) {
-                                     if (length(smooth_tuning) != ncomp) {
-                                       warning("The length of 'smooth_tuning' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
-                                       smooth_tuning <- rep(smooth_tuning, length.out = ncomp)
-                                     }
-                                     smooth_tuning <- replicate(mvmfd_obj$nvar, smooth_tuning, simplify = FALSE)
-                                     }
-                                     else{
-                                       warning("The length of 'smooth_tuning' did not match 'mvmfd_obj$nvar' and has been adjusted accordingly.", call. = FALSE)
-                                       smooth_tuning <- replicate(mvmfd_obj$nvar, smooth_tuning, simplify = FALSE)
-                                     }
-                                   }
-                                   
-                                   # Adjust the matrix to match the required dimensions if they are incorrect
-                                   else if (is.matrix(smooth_tuning)) {
-                                     if (smooth_GCV == FALSE) {
-                                     if (!all(dim(smooth_tuning) == c(mvmfd_obj$nvar, ncomp))) {
-                                       smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = mvmfd_obj$nvar), rep(1:ncol(smooth_tuning), length.out = ncomp)]
-                                       # print(smooth_tuning)
-                                       smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                                       # print(smooth_tuning)
-                                       warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
-                                     } else{
-                                       smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                                     }
-                                     }
-                                     else{
-                                       if (dim(smooth_tuning)[1] != mvmfd_obj$nvar) {
-                                       smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = mvmfd_obj$nvar), , drop = FALSE][1:mvmfd_obj$nvar, , drop = FALSE]
-                                       smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                                       warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
-                                       }
-                                       else{
-                                         smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                                       }
-                                     }
-                                   }
-                                   
-                                   # Adjust the list length and element sizes to match the required dimensions if they are incorrect
-                                   else if (is.list(smooth_tuning)) {
-                                     if (smooth_GCV == FALSE) {
-                                     if (length(smooth_tuning) != mvmfd_obj$nvar) {
-                                       warning("Adjusting 'smooth_tuning' to match 'mvmfd_obj$nvar'.", call. = FALSE)
-                                       smooth_tuning <- rep(smooth_tuning, length.out = mvmfd_obj$nvar)
-                                     }
-                                     smooth_tuning <- lapply(smooth_tuning, function(vec) {
-                                       if (length(vec) != ncomp) {
-                                         warning("Adjusting vector length in 'smooth_tuning' to match 'ncomp'.", call. = FALSE)
-                                         vec <- rep(vec, length.out = ncomp)
-                                       }
-                                       vec
-                                     })
-                                     }
-                                     else{
-                                       if (length(smooth_tuning) != mvmfd_obj$nvar) {
-                                         warning("Adjusting 'smooth_tuning' to match 'mvmfd_obj$nvar'.", call. = FALSE)
-                                         smooth_tuning <- rep(smooth_tuning, length.out = mvmfd_obj$nvar)
-                                       }
-                                       
-                                       # smooth_tuning <- rep(smooth_tuning, length.out = mvmfd_obj$nvar)[1:mvmfd_obj$nvar]
-                                     }
-                                   }
-                                   
-                                   if (!is.null(smooth_tuning)) {
-                                   names(smooth_tuning) <- paste0("var", 1:mvmfd_obj$nvar)
-                                   }
-                                   
-                                   # Adjust the list length and element sizes to match the required dimensions if they are incorrect
-                                   if (sparse_CV == FALSE & length(sparse_tuning) != ncomp & !is.null(sparse_tuning)) {
-                                     warning("The length of 'sparse_tuning' did not match 'ncomp' and has been adjusted accordingly.", call. = FALSE)
-                                     sparse_tuning <- rep(sparse_tuning, length.out = ncomp)
-                                   }
+                                 if (sequential) {
+                                   smooth_tuning <- normalize_tuning(
+                                     smooth_tuning, "smooth_tuning", nvar = mvmfd_obj$nvar, ncomp = ncomp,
+                                     grid = smooth_GCV, mode = "per_component",
+                                     vec_label = "'mvmfd_obj$nvar'", list_label = "'mvmfd_obj$nvar'",
+                                     allow_matrix = TRUE
+                                   )
+                                   sparse_tuning <- normalize_tuning_u(sparse_tuning, "sparse_tuning", ncomp, sparse_CV)
                                    
                                    result <- sequential_power(mvmfd_obj = mvmfd_obj, n = ncomp, smooth_tuning = smooth_tuning, sparse_tuning=sparse_tuning, centerfns = centerfns, alpha_orth = alpha_orth, smooth_tuning_type = smoothing_type, sparse_tuning_type = sparse_type, K_fold = K_fold, sparse_CV, smooth_GCV)
                                  } 
                                  
-                                 # else if (method == "power" & alpha_orth == "TRUE") {
-                                 else if (method == "eigen" || alpha_orth == "TRUE") {
-                                   # Adjust the vector to match the required lengths if they are incorrect
-                                   if (is.vector(smooth_tuning) & !is.list(smooth_tuning)) {
-                                     if (smooth_GCV == FALSE) {
-                                     if (length(smooth_tuning) != mvmfd_obj$nvar) {
-                                       warning("The length of 'smooth_tuning' did not match number of variables and has been adjusted accordingly.", call. = FALSE)
-                                       smooth_tuning <- rep(smooth_tuning, length.out = mvmfd_obj$nvar)
-                                     }
-                                     smooth_tuning <- lapply(1:mvmfd_obj$nvar, function(i) smooth_tuning[i])
-                                     }
-                                     else{
-                                       warning("The length of 'smooth_tuning' did not match number of variables and has been adjusted accordingly.", call. = FALSE)
-                                       smooth_tuning <- replicate(mvmfd_obj$nvar, smooth_tuning, simplify = FALSE)
-                                     }
-                                   }
-                                   
-                                   # Adjust the matrix to match the required if they are incorrect
-                                   else if (is.matrix(smooth_tuning)) {
-                                     if (smooth_GCV == FALSE) {
-                                     if (!all(dim(smooth_tuning) == c(mvmfd_obj$nvar, 1))) {
-                                       smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = mvmfd_obj$nvar), rep(1:ncol(smooth_tuning), length.out = 1)]
-                                       smooth_tuning <- as.list(smooth_tuning)
-                                       warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
-                                     } else{
-                                       smooth_tuning <- as.list(smooth_tuning)
-                                     }
-                                     } 
-                                     else{
-                                       if (dim(smooth_tuning)[1] != mvmfd_obj$nvar) {
-                                       smooth_tuning <- smooth_tuning[rep(1:nrow(smooth_tuning), length.out = mvmfd_obj$nvar), , drop = FALSE][1:mvmfd_obj$nvar, , drop = FALSE]
-                                       smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                                       warning("The dimensions of 'smooth_tuning' did not match the expected size and have been adjusted accordingly.", call. = FALSE)
-                                       }
-                                       else{
-                                         smooth_tuning <- split(smooth_tuning, row(smooth_tuning))
-                                       }
-                                     }
-                                   }
-                                   
-                                   # Adjust the list length and element sizes to match the required dimensions if they are incorrect
-                                   else if (is.list(smooth_tuning)) {
-                                     if (smooth_GCV == FALSE) {
-                                     if (length(smooth_tuning) != mvmfd_obj$nvar) {
-                                       warning("Adjusting 'smooth_tuning' to match 'mvmfd_obj$nvar'.", call. = FALSE)
-                                       smooth_tuning <- rep(smooth_tuning, length.out = mvmfd_obj$nvar)
-                                     }
-                                     smooth_tuning <- lapply(smooth_tuning, function(vec) {
-                                       if (length(vec) != 1) {
-                                         warning("Adjusting vector length in 'smooth_tuning' to match 'ncomp'.", call. = FALSE)
-                                         vec <- rep(vec, length.out = 1)
-                                       }
-                                       vec
-                                     })
-                                     }
-                                     else{
-                                       if (length(smooth_tuning) != mvmfd_obj$nvar) {
-                                        warning("Adjusting 'smooth_tuning' to match 'mvmfd_obj$nvar'.", call. = FALSE)
-                                        smooth_tuning <- rep(smooth_tuning, length.out = mvmfd_obj$nvar)[1:mvmfd_obj$nvar]
-                                       }
-                                     }
-                                   }
-                                   
-                                   if (!is.null(smooth_tuning)) {
-                                     names(smooth_tuning) <- paste0("var", 1:mvmfd_obj$nvar)
-                                   }
+                                 else {
+                                   smooth_tuning <- normalize_tuning(
+                                     smooth_tuning, "smooth_tuning", nvar = mvmfd_obj$nvar, ncomp = ncomp,
+                                     grid = smooth_GCV, mode = "per_variable",
+                                     vec_label = "number of variables", list_label = "'mvmfd_obj$nvar'",
+                                     allow_matrix = TRUE
+                                   )
                                    if (method == "power") {
                                      result <- joint_power(mvmfd_obj = mvmfd_obj, n = ncomp, smooth_tuning = smooth_tuning, centerfns = centerfns, alpha_orth = alpha_orth, smooth_tuning_type = smoothing_type)
                                    } else{
@@ -243,7 +125,7 @@ remfpca <- R6::R6Class("remfpca",
                                  private$.lsv <- result[[2]]
                                  private$.values <- result[[3]]
                                  private$.smooth_tuning <- result[[4]]
-                                 if (alpha_orth == "FALSE" && method == "power") {
+                                 if (sequential) {
                                    private$.sparse_tuning <- result[[5]]
                                    private$.CVs <- result[[6]]
                                    private$.GCVs <- result[[7]]
@@ -346,7 +228,7 @@ remfpca <- R6::R6Class("remfpca",
 #'                   If `method` is "power", setting `alpha_orth = FALSE` (default) uses the sequential power approach, 
 #'                   while setting `alpha_orth = TRUE` uses the joint power approach.
 #' @param smoothing_type The type of smoothing penalty to be applied on the coefficients. The types "coefpen" and "basispen" is supported. Default is "coefpen".
-#' @param sparse_type The type of sparse penalty to be applied on the coefficients. The types "soft-threshold", "hard-threshold" and "SCAD" is supported. Default is "soft-threshold".
+#' @param sparse_type The type of sparse penalty to be applied on the coefficients. The types "soft", "hard", "SCAD" and "adaptive" are supported. Default is "soft".
 #' @param K_fold  An integer specifying the number of folds in the sparse cross-validation process. Default is 30. 
 #' @param sparse_CV @param sparse_CV Logical indicating whether cross-validation should be applied to select the optimal sparse tuning parameter in sequential power approach. 
 #'                                        If `sparse_CV = TRUE`, a series of tuning parameters should be provided as a vector with positive number with max equals to number of subjects. 

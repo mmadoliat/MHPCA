@@ -2,7 +2,7 @@
 % Please edit documentation in R/imgMethods.R
 \name{print.img}
 \alias{print.img}
-\title{Title}
+\title{Print Method for `img` Objects}
 \usage{
 \method{print}{img}(x, ...)
 }
@@ -12,12 +12,13 @@
 \item{...}{other args}
 }
 \value{
-`img` class
+Invisibly returns `x`.
 }
 \description{
-Title
+Print Method for `img` Objects
 }
 \examples{
  x <- matrix(rnorm(100),ncol = 10)
 img_obj <- img(x)
+print(img_obj)
 }

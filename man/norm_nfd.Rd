@@ -2,18 +2,18 @@
 % Please edit documentation in R/nfdMethods.R
 \name{norm_nfd}
 \alias{norm_nfd}
-\title{Compute the norm objects of object `nfd`}
+\title{Compute the norm of an object of class `nfd`}
 \usage{
 norm_nfd(nfd_obj1)
 }
 \arguments{
-\item{nfd_obj}{An `nfd` object}
+\item{nfd_obj1}{An `nfd` object}
 }
 \value{
 The norm of `nfd` objects
 }
 \description{
-Compute the norm objects of object `nfd`
+Compute the norm of an object of class `nfd`
 }
 \seealso{
 \code{\link{nfd}}

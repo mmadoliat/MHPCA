@@ -26,12 +26,12 @@ sd_mvnfd <- function(mvnfd_obj) {
     stop("Both objects must have same number of variables")
   }
   for (i in seq_len(obj1$nvar)) {
-    if (all(dim(obj1$data[[i]]) != dim(obj2$data[[i]]))){
+    if (any(dim(obj1$data[[i]]) != dim(obj2$data[[i]]))){
       stop("Both objects must have same dimension")
     }
   }
   nfd_list <- lapply(seq_len(obj1$nvar),function(i){
-    return(nfd(obj1$data[[i]] + obj2$data[[2]]))
+    return(nfd(obj1$data[[i]] + obj2$data[[i]]))
   })
   return(Mvnfd(nfd_list))
 }
@@ -66,8 +66,8 @@ sd_mvnfd <- function(mvnfd_obj) {
 #' @export
 "*.mvnfd" <- function(obj1, obj2) {
   if (xor(is.mvnfd(obj1), is.mvnfd(obj2))) {
-    if (xor(is.double(obj1), is.double(obj2))) {
-      if (is.double(obj1)) {
+    if (xor(is.numeric(obj1), is.numeric(obj2))) {
+      if (is.numeric(obj1)) {
         temp <- obj1
         obj1 <- obj2
         obj2 <- temp
@@ -130,12 +130,12 @@ sd_mvnfd <- function(mvnfd_obj) {
 inprod_mvnfd <- function(mvnfd_obj1, mvnfd_obj2) {
   if (!is.mvnfd(mvnfd_obj1) || !is.mvnfd(mvnfd_obj2)) stop("Both objects must be of `mvnfd` object type")
   if (mvnfd_obj1$nvar != mvnfd_obj2$nvar) stop("Both objects must have same number of variables")
-  return(do.call("+",lapply(seq_along(mvnfd_obj1$data),function(i) inprod_nfd(mvnfd_obj1[,i],mvnfd_obj2[,i]))))
+  return(Reduce("+",lapply(seq_along(mvnfd_obj1$data),function(i) inprod_nfd(mvnfd_obj1[,i],mvnfd_obj2[,i]))))
 }
 
-#' @title Compute the inner product between two objects of class `mvnfd`
+#' @title Compute the norm of an object of class `mvnfd`
 #'
-#' @param mvnfd_obj An `mvnfd` object
+#' @param mvnfd_obj1 An `mvnfd` object
 #' @return The norm of `mvnfd` objects
 #' @seealso \code{\link{mvnfd}}
 #' @export
@@ -182,3 +182,12 @@ scale_mvnfd <- function(mvnfd_obj,weight = NULL){
   mvnfd_scaled <- Mvnfd(nfd_list)
   return(mvnfd_scaled)
 }
+
+# Methods for the internal generics behind mean(), sd(), scale()
+# (length() and plot() fall back to base for mvnfd)
+#' @exportS3Method NULL
+op_mean.mvnfd <- function(x, ...) mean_mvnfd(x, ...)
+#' @exportS3Method NULL
+op_sd.mvnfd <- function(x, ...) sd_mvnfd(x, ...)
+#' @exportS3Method NULL
+op_scale.mvnfd <- function(x, ...) scale_mvnfd(x, ...)

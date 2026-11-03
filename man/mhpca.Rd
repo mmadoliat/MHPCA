@@ -67,11 +67,11 @@ while setting `alpha_orth = TRUE` uses the joint power approach.}
 
 \item{smoothing_type}{The type of smoothing penalty to be applied on the coefficients. The types "coefpen" and "basispen" is supported. Default is "coefpen".}
 
-\item{sparse_type_u}{The type of sparse penalty to be applied on the coefficients. The types "soft", "hard" and "SCAD" is supported. Default is "soft".}
+\item{sparse_type_u}{The type of sparse penalty to be applied on the coefficients. The types "soft", "hard", "SCAD" and "adaptive" are supported. Default is "soft".}
 
-\item{sparse_type_nfd}{The type of sparse penalty to be applied on the nfd right singular vectors. The types "soft", "hard" and "SCAD" is supported. Default is "soft".}
+\item{sparse_type_nfd}{The type of sparse penalty to be applied on the nfd right singular vectors. The types "soft", "hard", "SCAD" and "adaptive" are supported. Default is "soft".}
 
-\item{sparse_type_fd}{The type of sparse penalty to be applied on the fd right singular vectors. The types "soft", "hard" and "SCAD" is supported. Default is "soft".}
+\item{sparse_type_fd}{The type of sparse penalty to be applied on the fd right singular vectors. The types "soft", "hard", "SCAD" and "adaptive" are supported. Default is "soft".}
 
 \item{nfold_u}{An integer specifying the number of folds in the sparse cross-validation process for u. Default is 30.}
 
@@ -113,9 +113,11 @@ If the dimensions of input tuning parameters are incorrect, it will be converted
 \item{ebic_xi}{eBIC tuning parameter in [0,1]. 0 = standard BIC, 1 = most conservative. Default is 0.5.}
 
 \item{ebic_N_type}{How to compute effective sample size for eBIC: "product", "sum", or a numeric value.}
+
+\item{ebic_RSS_type}{Residual sum of squares used by eBIC: "direct" (default) or "refitted".}
 }
 \description{
-The `mhpca` class represents hybrid principal components components.
+The `mhpca` class represents multivariate hybrid principal components.
 
 The `mhpca` class represents regularized functional principal components ('MHFPCs') components.
 }
@@ -124,7 +126,7 @@ require(fda)
 # Brownian Bridge simulation on [0,1]
 M <- 110 # number of components
 N <- 20 # number of instances
-n <- 100 # number of grides
+n <- 100 # number of grid points
 t0 <- seq(0, 1, len = n)
 j <- 1:M
 alpha1 <- list(a1 = 2^seq(0, 1, length.out = 3), a2 = 2^seq(0, 1, length.out = 3))
@@ -143,71 +145,60 @@ bs <- create.bspline.basis(c(0, 1), 51)
 mdbs <- Basismfd(bs)
 mfd1 <- Mfd(X = X_1, mdbs = mdbs)
 mfd2 <- Mfd(X = X_2, mdbs = mdbs)
-hd_obj <- hd(mfd1, mfd2)
+hd_obj <- Hd(mfd1, mfd2)
 k <- 2
-Re0 <- Mhpca(hd_obj, ncomp = k, alpha = c(0, 0))
-fpc0 <- Re0$pc_mfd
-scores0 <- inprod_hd(hd_obj, fpc0)
+# Smoothing parameters selected by GCV from a grid for each variable
+Re0 <- Mhpca(hd_obj, ncomp = k, smooth_tuning = alpha1)
+Re0$smooth_tuning
+scores0 <- inprod_mvmfd(hd_obj$mf, Re0$pc_hd)
 dim(scores0)
-Re0$alpha
-Re1 <- Mhpca(hd_obj, ncomp = k, alpha = alpha1)
-Re1$alpha
-Re3 <- Mhpca(mfd1, ncomp = k, alpha = alpha1$a1)
-Re3$alpha
+# Fixed smoothing parameters, one per component
+Re1 <- Mhpca(hd_obj, ncomp = k, smooth_tuning = c(0, 0), smooth_GCV = FALSE)
+Re1$values
+# A single functional variable
+Re2 <- Mhpca(mfd1, ncomp = k, smooth_tuning = list(alpha1$a1))
+Re2$smooth_tuning
 }
 \seealso{
 \code{\link{hd}}
 }
-\section{Public fields}{
-\if{html}{\out{<div class="r6-fields">}}
-\describe{
-\item{\code{pc_mfd}}{An object of class `mvmfd` where the first indices (fields)
-represents harmonics and  second indices represents variables}
-
-\item{\code{pc_nfd}}{An object of class `mvnfd` where the first indices (fields)
-represents harmonics and  second indices represents variables}
-
-\item{\code{mean_mfd}}{A multivariate functional data object giving the mean function}
-
-\item{\code{mean_nfd}}{A data object giving the mean of non functional objects}
-}
-\if{html}{\out{</div>}}
-}
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
 \describe{
-\item{\code{pc_mfd}}{An object of class `mvmfd` where the first indices (fields)
-represents harmonics and  second indices represents variables}
+\item{\code{pc_hd}}{The principal components: an `hd` object for hybrid data, or
+an `mvmfd` / `mvnfd` object when the data has only a functional or only a
+non-functional part. The first index selects components.}
 
-\item{\code{pc_nfd}}{An object of class `mvnfd` where the first indices (fields)
-represents harmonics and  second indices represents variables}
+\item{\code{lsv}}{Left singular vectors (scores direction), one column per component.}
 
-\item{\code{lsv}}{= Left singular values vectors}
+\item{\code{values}}{The variance explained by each component.}
 
-\item{\code{values}}{= The set of eigenvalues}
+\item{\code{smooth_tuning}}{The selected smoothing parameters.}
 
-\item{\code{smooth_tuning}}{= The list of smoothing penalties parameters}
+\item{\code{sparse_tuning_u}}{The selected sparsity parameters for the scores (u).}
 
-\item{\code{sparse_tuning_u}}{= The list of sparse penalties parameters}
+\item{\code{sparse_tuning_nfd}}{The selected sparsity parameters for the non-functional loadings.}
 
-\item{\code{GCVs}}{= Generalized cross validations scores of smoothing penalties parameters.
-If both smoothing and sparse tuning penalties are used in the MHPCA method,
-this represents the conditional generalized cross-validation scores, which
-means it is computed based on the optimal sparse tuning parameter selected via cross validation.}
+\item{\code{sparse_tuning_fd}}{The selected sparsity parameters for the functional loadings.}
 
-\item{\code{CVs_u}}{= Cross validations scores of sparse penalties on u parameters}
+\item{\code{GCVs}}{Generalized cross-validation scores of the smoothing parameters.
+If sparsity is also tuned, these are computed at the selected sparsity.}
 
-\item{\code{CVs_nfd}}{= Cross validations scores of sparse penalties on nfd parameters}
+\item{\code{CVs_u}}{Cross-validation scores of the sparsity parameters for u.}
 
-\item{\code{eBICs_u}}{= Extended BIC scores of sparse penalties on u parameters}
+\item{\code{CVs_nfd}}{Cross-validation scores of the sparsity parameters for the non-functional loadings.}
 
-\item{\code{eBICs_nfd}}{= Extended BIC scores of sparse penalties on nfd parameters}
+\item{\code{CVs_fd}}{Cross-validation scores of the sparsity parameters for the functional loadings.}
 
-\item{\code{eBICs_fd}}{= Extended BIC scores of sparse penalties on fd parameters}
+\item{\code{eBICs_u}}{Extended BIC scores of the sparsity parameters for u.}
 
-\item{\code{mean_mfd}}{A multivariate functional data object giving the mean function}
+\item{\code{eBICs_nfd}}{Extended BIC scores of the sparsity parameters for the non-functional loadings.}
 
-\item{\code{mean_nfd}}{A data object giving the mean of non functional objects}
+\item{\code{eBICs_fd}}{Extended BIC scores of the sparsity parameters for the functional loadings.}
+
+\item{\code{selection_method}}{How sparsity parameters were selected ("cv" or "ebic").}
+
+\item{\code{mean_hd}}{The mean of the data, with the same structure as `pc_hd`.}
 }
 \if{html}{\out{</div>}}
 }

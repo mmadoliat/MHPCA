@@ -13,16 +13,26 @@ scale_hd(
 )
 }
 \arguments{
-\item{hd_obj}{A `hd` object, which can be an `mfd`, `mvmfd`, `nfd`, `mvnfd`.}
+\item{hd_obj}{A `hd` object.}
 
-\item{f_weight}{A numeric vector of scaling factors for functional variables. The length must match number of functional variables.}
+\item{method}{How to scale: "component" (default) scales each variable
+separately; "balanced" rescales the non-functional part so that both
+parts have the same total variation (sum of squared norms of the centred
+observations); "manual" multiplies the functional and
+non-functional parts by `f_weight` and `nf_weight` (rescaled to sum to 1;
+if only one is given, the other is 1 minus it).}
 
-\item{nf_weight}{A numeric vector of scaling factors for non-functional variables. The length must match the number of non functional variables.}
+\item{f_weight}{Scaling factor(s) for the functional part: one per
+functional variable for "component", a single weight for "manual".}
 
-\item{mfd_eval_length}{A numeric vector specifying the number of evaluation points for functional variables.}
+\item{nf_weight}{Scaling factor(s) for the non-functional part: one per
+non-functional variable for "component", a single weight for "manual".}
+
+\item{mf_eval_length}{A numeric vector giving the number of evaluation
+points for each functional variable ("component" only; default 100 each).}
 }
 \value{
-A scaled high-dimensional data object of class 'Hd'.
+A scaled `hd` object.
 }
 \description{
 This function scales a `hd` object, which may consist of multivariate functional 
@@ -30,7 +40,7 @@ data `mvmfd` and/or `mvnfd`. The function ensures proper scaling
 for all components based on their respective types and returns a scaled `hd` object.
 }
 \examples{
-# Example usage:
-# Assuming `hd_obj` is a valid high-dimensional data object:
-# scaled_hd <- scale_hd(hd_obj, mfd_eval_length = c(100, 200), weight = c(0.5, 0.8, 1.2))
+# Assuming `hd_obj` is a valid hd object:
+# scaled_hd <- scale_hd(hd_obj)
+# scaled_hd <- scale_hd(hd_obj, method = "manual", f_weight = 0.5)
 }

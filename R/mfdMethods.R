@@ -1,12 +1,13 @@
 mean_mfd <- function(mfd_obj) {
-  cof <- apply(mfd_obj$coefs, 1, mean)
+  # average over observations (the last dimension; 2-D variables have 3)
+  cof <- apply(mfd_obj$coefs, basis_margins(mfd_obj$coefs), mean)
   bs <- mfd_obj$basis
   return(Mfd(X = cof, mdbs = bs, method = "coefs"))
 }
 
 
 sd_mfd <- function(mfd_obj) {
-  cof <- apply(mfd_obj$coefs, 1, sd)
+  cof <- apply(mfd_obj$coefs, basis_margins(mfd_obj$coefs), sd)
   bs <- mfd_obj$basis
   return(Mfd(X = cof, mdbs = bs, method = "coefs"))
 }
@@ -38,11 +39,7 @@ plot_mfd <- function(mfd_obj, obs = 1, xlab = "", ylab = "", main = "", type = "
 #' @param ... all `length` function arguments.
 #' @export
 length <- function(x, ...) {
-  if (inherits(x, c("mfd","mvmfd","nfd","hd"))) {
-    return(x$nobs)
-  } else {
-    return(base::length(x, ...))
-  }
+  op_length(x, ...)
 }
 
 #' @title plots an object of classes `mfd`, `mvmfd`, `hd`, `remfpca` or `mhpca`
@@ -53,19 +50,7 @@ length <- function(x, ...) {
 #' @param ... all `plot` function arguments.
 #' @export
 plot <- function(x, ...) {
-  if (inherits(x, "mfd")) {
-    return(plot_mfd(x, ...))
-  } else if (inherits(x, "mvmfd")) {
-    return(plot_mvmfd(x, ...))
-  } else if (inherits(x, "hd")){
-    return(plot_hd(x, ...))
-  } else if (inherits(x, "mhpca")) {
-    return(plot_mhpca(x, ...))
-  } else if (inherits(x, "remfpca")) {
-    return(plot_remfpca(x, ...))
-  } else {
-    return(base::plot(x, ...))
-  }
+  op_plot(x, ...)
 }
 # mean should change to include vector data as well 
 #' @title mean of an object of classes `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`.
@@ -77,19 +62,7 @@ plot <- function(x, ...) {
 #' @return An object of class `mfd`
 #' @export
 mean <- function(x, ...) {
-  if (inherits(x, "mfd")) {
-    return(mean_mfd(x, ...))
-  } else if (inherits(x, "mvmfd")){
-    return(mean_mvmfd(x, ...))
-  } else if (inherits(x, "hd")) {
-    return(mean_hd(x, ...))
-  } else if (inherits(x,"nfd")){
-    return(mean_nfd(x, ...))
-  } else if (inherits(x,"mvnfd")) {
-    return(mean_mvnfd(x, ...))
-  } else {
-    return(base::mean(x, ...))
-  }
+  op_mean(x, ...)
 }
 
 #' @title Standard deviation of an object of class `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`..
@@ -101,19 +74,7 @@ mean <- function(x, ...) {
 #' @return An object of class `mfd`, `mvmfd`, `nfd`, `mvnfd`, `mvmfd` or `hd`.
 #' @export
 sd <- function(x, ...) {
-  if (inherits(x, "mfd")) {
-    return(sd_mfd(x, ...))
-  } else if (inherits(x, "mvmfd")){
-    return(sd_mvmfd(x, ...))
-  } else if (inherits(x, "hd")) {
-    return(sd_hd(x, ...))
-  } else if (inherits(x,"nfd")){
-    return(sd_nfd(x, ...))
-  } else if (inherits(x,"mvnfd")) {
-    return(sd_mvnfd(x, ...))
-  } else {
-    return(stats::sd(x, ...))
-  }
+  op_sd(x, ...)
 }
 
 #' @title Compute the inner product between two objects of class `mfd`
@@ -169,12 +130,8 @@ scale_mfd <- function(mfd_obj,mfd_eval_length = 100,weight = NULL){
   } else {
     scaling_factor <- weight
   }
-  v1_scaled <- scaling_factor*v1
-  t <- do.call(seq,c(as.list(mfd_obj$basis$supp),length.out = nrow(v1_scaled))) 
-  bspline_basis <- fda::create.bspline.basis(mfd_obj$basis$supp, mfd_obj$basis$nbasis)
-  mfd_basis <- basismfd$new(bspline_basis)
-  mfd_object_scaled <- mfd$new(t, v1_scaled, mfd_basis)
-  return(mfd_object_scaled)
+  # Scaling is linear, so scale the coefficients and keep the original basis.
+  return(mfd$new(X = scaling_factor * mfd_obj$coefs, mdbs = mfd_obj$basis, method = "coefs"))
 }
 
 #' @title Add two `mfd` objects
@@ -189,8 +146,8 @@ scale_mfd <- function(mfd_obj,mfd_eval_length = 100,weight = NULL){
     return(obj1)
   }
   if (xor(is.mfd(obj1), is.mfd(obj2))) {
-    if (!xor(is.double(obj1), is.double(obj2))) stop("At least one object must be a mfd, and the other one can be a scalar")
-    if (is.double(obj1)) {
+    if (!xor(is.numeric(obj1), is.numeric(obj2))) stop("At least one object must be a mfd, and the other one can be a scalar")
+    if (is.numeric(obj1)) {
       temp <- obj1
       obj1 <- obj2
       obj2 <- temp
@@ -234,8 +191,8 @@ scale_mfd <- function(mfd_obj,mfd_eval_length = 100,weight = NULL){
 #' @export
 "*.mfd" <- function(obj1, obj2) {
   if (xor(is.mfd(obj1), is.mfd(obj2))) {
-    if (xor(is.double(obj1), is.double(obj2))) {
-      if (is.double(obj1)) {
+    if (xor(is.numeric(obj1), is.numeric(obj2))) {
+      if (is.numeric(obj1)) {
         temp <- obj1
         obj1 <- obj2
         obj2 <- temp
@@ -260,8 +217,8 @@ scale_mfd <- function(mfd_obj,mfd_eval_length = 100,weight = NULL){
     return((-1) * obj1)
   }
   if (xor(is.mfd(obj1), is.mfd(obj2))) {
-    if (!xor(is.double(obj1), is.double(obj2))) stop("At least one object must be an mfd, and the other one can be a scalar")
-    if (is.double(obj1)) {
+    if (!xor(is.numeric(obj1), is.numeric(obj2))) stop("At least one object must be an mfd, and the other one can be a scalar")
+    if (is.numeric(obj1)) {
       coef <- obj1 + (-1) * obj2$coefs
       obj1 <- obj2
     } else {
@@ -277,11 +234,18 @@ scale_mfd <- function(mfd_obj,mfd_eval_length = 100,weight = NULL){
 #'
 #' @param mfd_obj An `mfd` object
 #' @param i An index or indices specifying the subsets to extract
+#' @param j Variable index. An `mfd` holds a single variable, so `j` can only
+#'   be left empty or 1: `mfd_obj[1:3, ]` and `mfd_obj[1:3, 1]` are the same as
+#'   `mfd_obj[1:3]`.
 #' @return An `mfd` object containing the specified subsets
 #' @seealso \code{\link{basismfd}}, \code{\link{mfd}}
 #' @export
-"[.mfd" <- function(mfd_obj, i = "index") {
-  if (is.null(i)) i <- 1:mfd_obj$nobs
+"[.mfd" <- function(mfd_obj, i = "index", j) {
+  if (!missing(j) && !identical(as.numeric(j), 1)) {
+    stop("An `mfd` object holds a single variable, so its second index can only be 1 (or left empty).",
+         call. = FALSE)
+  }
+  if (is.null(i) || identical(i, "index")) i <- 1:mfd_obj$nobs
   if (max(i) > mfd_obj$nobs | min(i) < 1) stop(" subscript i out of bounds")
   bs <- mfd_obj$basis$clone()
   if (mfd_obj$basis$dimSupp == 1) {
@@ -301,17 +265,42 @@ scale_mfd <- function(mfd_obj,mfd_eval_length = 100,weight = NULL){
 #' @return An object of class `mfd`, `mvmfd`, `nfd`, `mvnfd` or `hd`.
 #' @export
 scale <- function(x, ...) {
-  if (inherits(x, "mfd")) {
-    return(scale_mfd(x, ...))
-  } else if (inherits(x, "mvmfd")){
-    return(scale_mvmfd(x, ...))
-  } else if (inherits(x, "hd")) {
-    return(scale_hd(x, ...))
-  } else if (inherits(x,"nfd")){
-    return(scale_nfd(x, ...))
-  } else if (inherits(x,"mvnfd")) {
-    return(scale_mvnfd(x, ...))
-  } else {
-    return(base::scale(x, ...))
-  }
+  op_scale(x, ...)
 }
+
+# Internal generics behind the exported length(), plot(), mean(), sd() and
+# scale(). To support a new class, define op_<name>.<class> next to that
+# class's other methods; objects without a method fall back to base/stats.
+# These are deliberately not methods of base's own generics: registering e.g.
+# length.nfd would change what base R itself sees for these objects.
+op_length <- function(x, ...) UseMethod("op_length")
+op_plot <- function(x, ...) UseMethod("op_plot")
+op_mean <- function(x, ...) UseMethod("op_mean")
+op_sd <- function(x, ...) UseMethod("op_sd")
+op_scale <- function(x, ...) UseMethod("op_scale")
+
+#' @exportS3Method NULL
+op_length.default <- function(x, ...) base::length(x, ...)
+#' @exportS3Method NULL
+op_plot.default <- function(x, ...) base::plot(x, ...)
+#' @exportS3Method NULL
+op_mean.default <- function(x, ...) base::mean(x, ...)
+#' @exportS3Method NULL
+op_sd.default <- function(x, ...) stats::sd(x, ...)
+#' @exportS3Method NULL
+op_scale.default <- function(x, ...) base::scale(x, ...)
+
+#' @exportS3Method NULL
+op_length.mfd <- function(x, ...) x$nobs
+#' @exportS3Method NULL
+op_plot.mfd <- function(x, ...) plot_mfd(x, ...)
+#' @exportS3Method NULL
+op_mean.mfd <- function(x, ...) mean_mfd(x, ...)
+#' @exportS3Method NULL
+op_sd.mfd <- function(x, ...) sd_mfd(x, ...)
+#' @exportS3Method NULL
+op_scale.mfd <- function(x, ...) scale_mfd(x, ...)
+
+# Margins of a coefficient array that index basis functions: all dimensions
+# except the last one, which indexes observations.
+basis_margins <- function(coefs) seq_len(length(dim(coefs)) - 1)

@@ -1,15 +1,16 @@
 
-#' Title
+#' Print Method for `img` Objects
 #'
 #' @param x a matrix
 #' @param ... other args
 #'
-#' @return `img` class
+#' @return Invisibly returns `x`.
 #' @export
 #'
 #' @examples
 #'  x <- matrix(rnorm(100),ncol = 10)
 #' img_obj <- img(x)
+#' print(img_obj)
 print.img <- function(x, ...) {
   cat("An object of class 'img':\n")
   
@@ -55,11 +56,22 @@ print.img <- function(x, ...) {
   invisible(x)
 }
 
+#' Check if an object is of class 'img'
+#'
+#' @param x The object to check.
+#' @return TRUE if the object is of class 'img', FALSE otherwise.
 #' @export
 is.img <- function(x) {
   inherits(x, "img")
 }
 
+#' Original dimensions of the images in an `img` object
+#'
+#' @param x An object of class `img`.
+#' @return The dimensions of a single image before vectorization.
+#' @examples
+#' img_obj <- img(matrix(1:6, 2), matrix(7:12, 2))
+#' dim_original(img_obj)
 #' @export
 dim_original <- function(x) {
   if (!is.img(x)) {

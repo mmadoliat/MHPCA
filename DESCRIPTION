@@ -16,10 +16,19 @@ Encoding: UTF-8
 LazyData: TRUE
 Imports: 
     fda,
+    stats,
+    graphics,
     expm,
     Matrix,
     foreach,
     parallel,
     utils
+Suggests:
+    testthat (>= 3.0.0),
+    spls,
+    jsonlite,
+    waldo,
+    withr
+Config/testthat/edition: 3
 RoxygenNote: 7.3.2
 Depends: R (>= 4.0), R6

@@ -11,13 +11,12 @@
 #' # Create some vector data
 #' data_matrix1 <- matrix(rnorm(100), nrow = 10, ncol = 10)
 #' data_matrix2 <- matrix(rnorm(100), nrow = 10, ncol = 10)
-
-#' nfd_obj1 <- Nfd(data = data_matrix1)
-#' nfd_obj2 <- Nfd(data = data_matrix2)
+#' nfd_obj1 <- nfd(data = data_matrix1)
+#' nfd_obj2 <- nfd(data = data_matrix2)
 #' mvnfd_obj <- Mvnfd(nfd_obj1,nfd_obj2)
 #' print(mvnfd_obj)
-#' nfd_obj$data
-#' nfd_obj$nobs
+#' mvnfd_obj$data
+#' mvnfd_obj$nobs
 #'
 #' @import R6
 #'

@@ -146,10 +146,7 @@ print.nfd = function(x,...) {
 #' The result of the subsetting operation is returned as an 'nfd' object.
 #'
 #' @param x An object of class `nfd`.
-#' @param i (optional) Numeric, logical, or character vector specifying the rows to extract.
-#' @param j (optional) Numeric, logical, or character vector specifying the columns to extract.
-#' @param drop Logical indicating whether to drop dimensions (default is `FALSE`).
-#' @param ... Further arguments passed to or from other methods.
+#' @param ... Row and column indices (`i`, `j`) and `drop`, as for matrix subsetting.
 #'
 #' @return An `nfd` object containing the subset of the original data.
 #' @export
@@ -198,9 +195,9 @@ inprod_nfd <- function(nfd_obj1, nfd_obj2) {
   return(nfd_obj1%*%t(nfd_obj2))
 }
 
-#' @title Compute the norm objects of object `nfd`
+#' @title Compute the norm of an object of class `nfd`
 #'
-#' @param nfd_obj An `nfd` object
+#' @param nfd_obj1 An `nfd` object
 #' @return The norm of `nfd` objects
 #' @seealso \code{\link{nfd}}
 #' @export
@@ -233,3 +230,14 @@ scale_nfd <- function(nfd_obj,weight = NULL){
   nfd_obj_scaled <- scaling_factor*nfd_obj
   return(nfd_obj_scaled)
 }
+
+# Methods for the internal generics behind length(), mean(), sd(), scale()
+# (plot() falls back to base::plot for nfd)
+#' @exportS3Method NULL
+op_length.nfd <- function(x, ...) x$nobs
+#' @exportS3Method NULL
+op_mean.nfd <- function(x, ...) mean_nfd(x, ...)
+#' @exportS3Method NULL
+op_sd.nfd <- function(x, ...) sd_nfd(x, ...)
+#' @exportS3Method NULL
+op_scale.nfd <- function(x, ...) scale_nfd(x, ...)

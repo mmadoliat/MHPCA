@@ -1,0 +1,841 @@
+---
+title: "real_data"
+output: html_document
+date: "2025-03-17"
+---
+
+```{r}
+library(spls)
+library(MHPCA)
+data("yeast")
+
+# ChIP-chip data
+x <- yeast$x
+colnames(x) <- sub("_YPD$", "", colnames(x))
+# gene expression functional 542 genes and and each column is mrna level measure at each 7 minutes
+y <- yeast$y
+rm(yeast)
+
+
+# Create B-spline basis and multivariate functional data (mfd) objects
+v1 <- t(y)
+scaling_factor_tfunction <- sqrt(mean(diag(var(v1))))
+v1 <- 1/sqrt(mean(diag(var(v1))))*v1
+nbasis_f <- 16
+t0_f <- 0
+t1_f <- 119
+grid_point <- ncol(y)
+t <- seq(t0_f, t1_f, length.out = grid_point)
+bspline_basis <- fda::create.bspline.basis(c(t0_f,t1_f),nbasis_f)
+mfd_basis <- basismfd$new(bspline_basis)
+mfd_v1 <- mfd$new(t,v1,mfd_basis)
+hd_obj1f <- Hd(list(mfd_v1))
+
+#vector data
+vector_data <- x
+scaling_factor_vector <- sqrt(mean(diag(var(vector_data))))
+vector_data <- 1/scaling_factor_vector*vector_data
+nfd_obj1 <- nfd(vector_data)
+
+hd_obj <- Hd(mfd_v1,nfd_obj1)
+```
+
+```{r}
+# Load required libraries
+
+plot_expression_virdis <- function(y) {
+  # Load required libraries
+  require(ggplot2)
+  require(reshape2)
+  require(viridis)
+  df <- melt(y)
+  names(df) <- c("Series", "Time", "Expression")
+  df$Time <- as.numeric(sub("alpha", "", df$Time))
+  
+  # Create the plot
+  p <- ggplot(df, aes(x = Time, y = Expression, group = Series, color = factor(Series))) +
+    geom_line(alpha = 0.7) +
+    scale_x_continuous(breaks = seq(0, 119, by = 7),expand = expansion(.01)) +
+    scale_y_continuous(limits = c(-3, 5), breaks = seq(-3, 5, by = 1)) +
+    geom_vline(xintercept = 60, linetype = "dashed", color = "red", size = 1) +
+    scale_color_viridis_d(option = "H") +
+    labs(x = "Time (minutes)", y = "Expression level") +
+    theme_bw(base_size = 14) +
+    theme(legend.position = "none")
+  return(p)
+}
+plot_expression_virdis(y)
+
+```
+
+
+# Model
+```{r}
+set.seed(123)
+alpha1 <- list(a1 = 2^seq(-30, 0, length.out = 40))
+sparse_tuning_u <-  as.integer(seq(0, 80, length.out = 3))
+sparse_tuning_nfd <- as.integer(seq(0, 105, length.out = 3))
+sparse_tuning_fd <- as.integer(seq(0, 15, length.out = 3))
+# seq smooth
+res_power_smooth <- Mhpca(hd_obj = hd_obj,method = "power",ncomp = 4,smooth_tuning = alpha1, centerfns = T,alpha_orth = F,smoothing_type = "basispen")
+
+# seq, sparse
+cl <- parallel::makeCluster(9)
+doParallel::registerDoParallel(cl)
+res_power_sparse <- Mhpca(
+  hd_obj = hd_obj,method = "power", ncomp = 4, parallel = TRUE,sparse_iter = 1,centerfns = T,alpha_orth = F,smooth_tuning = alpha1,smooth_GCV = T,
+  smoothing_type = "basispen",sparse_tuning_nfd = sparse_tuning_nfd,sparse_tuning_fd = sparse_tuning_fd,
+  sparse_tuning_u = sparse_tuning_u,nfold_nfd = 10,nfold_u = 10,nfold_fd = 10,
+  sparse_CV = TRUE,pen_u = T,pen_nfd = T,pen_fd = T
+)
+parallel::stopCluster(cl)
+foreach::registerDoSEQ()
+foreach::getDoParWorkers() 
+
+# joint, smooth 
+
+res_joint <- Mhpca(hd_obj = hd_obj,method = "power",ncomp = 4,smoothing_type = "basispen",smooth_tuning = alpha1,alpha_orth = TRUE,centerfns = T,smooth_GCV = T)
+# eigen, smooth
+res_eigen <- Mhpca(hd_obj = hd_obj,method = "eigen",ncomp = 4,smooth_tuning = alpha1,smoothing_type = "basispen",smooth_GCV = T,centerfns = T)
+res_remfpca <- Mhpca(
+  hd_obj = hd_obj$mf,method = "power", ncomp = 4,centerfns = T,alpha_orth = F,smooth_tuning = alpha1,smooth_GCV = T,
+  smoothing_type = "basispen",sparse_tuning_fd = sparse_tuning_fd,
+  sparse_tuning_u = sparse_tuning_u,nfold_u = 10,nfold_fd = 10,
+  sparse_CV = TRUE,pen_u = T,pen_nfd = F,pen_fd = T
+)
+res_remfpca <- Mhpca(
+  hd_obj = hd_obj$mf,method = "power", ncomp = 4)
+```
+
+```{r}
+scores_power_smooth <- t(inprod_hd(res_power_smooth$pc_hd,hd_obj))
+scores_power_sparse <- t(inprod_hd(res_power_sparse$pc_hd,hd_obj))
+scores_power_joint <- t(inprod_hd(res_joint$pc_hd,hd_obj))
+scores_eigen <- t(inprod_hd(res_eigen$pc_hd,hd_obj))
+nfpc_sparse <- t(res_power_sparse$pc_hd$nf$data[[1]])
+```
+
+```{r}
+non_sparse_tf <- list()
+for (i in 1:ncol(nfpc_sparse)) {
+  nonzeroIdx <- which(nfpc_sparse[,i] != 0)
+  non_sparse_tf[[i]] <- rownames(nfpc_sparse)[nonzeroIdx]
+}
+names(non_sparse_tf) <- paste0("tf",seq_len(length(non_sparse_tf)))
+val_tf <- c("ACE2","FKH1","FKH2","GAT3","MBP1","MCM1","NDD1","REB1","STB1","STE12","SWI4","SWI5","SWI6")
+non_val_tf <- c("ARG80","CIN5","DOT6","HAA1","HIR1","HIR2","HSF1","JNO4","MAL13","MET4","MSN2","PHD1","PHO2","PUT3","RIM101","SFL1","SIP4","SOK2","YAP5")
+all_huang_tf <- c(val_tf,non_val_tf)
+
+### fpc1 comparison # 6
+# in val
+non_sparse_tf[[1]][which(non_sparse_tf[[1]] %in% val_tf)] # 5
+#in non val
+non_sparse_tf[[1]][which(non_sparse_tf[[1]] %in% non_val_tf)] # 1
+# in non of them
+non_sparse_tf[[1]][which(!(non_sparse_tf[[1]] %in% all_huang_tf))] # 0
+
+### fpc2 comparison # 8
+# in val
+non_sparse_tf[[2]][which(non_sparse_tf[[2]] %in% val_tf)] # 7
+#in non val
+non_sparse_tf[[2]][which(non_sparse_tf[[2]] %in% non_val_tf)] # 0
+# in non of them
+non_sparse_tf[[2]][which(!(non_sparse_tf[[2]] %in% all_huang_tf))] # 1
+
+
+### fpc3 comparison # 12
+# in val
+non_sparse_tf[[3]][which(non_sparse_tf[[3]] %in% val_tf)] # 6
+#in non val
+non_sparse_tf[[3]][which(non_sparse_tf[[3]] %in% non_val_tf)] # 3
+# in non of them
+non_sparse_tf[[3]][which(!(non_sparse_tf[[3]] %in% all_huang_tf))] # 3
+
+
+
+### total 99
+# in val
+unique(unlist(non_sparse_tf))[unique(unlist(non_sparse_tf)) %in% val_tf] # 13
+#in non val
+unique(unlist(non_sparse_tf))[unique(unlist(non_sparse_tf)) %in% non_val_tf] # 17
+# in non of them
+unique(unlist(non_sparse_tf))[which(!(unique(unlist(non_sparse_tf)) %in% all_huang_tf))] # 69
+```
+
+
+
+# hybrid pca paper based on happ 
+```{r}
+source("happ_hpca_file.R")
+happ_res <- hybrid_pca_happ(hd_obj = hd_obj,ncomp = 3)
+happ_res$hpc_obj$mf |> plot()
+```
+
+
+
+# 
+```{r}
+tt <- seq(t0_f, t1_f, length.out = 119)
+pc_loadings <- res_power_sparse$pc_hd$eval(tt)
+fpc <- pc_loadings[[1]]
+colnames(fpc) <- paste0("fpc",1:ncol(fpc))
+nfpc <- t(pc_loadings[[2]])
+colnames(nfpc) <- paste0("nfpc",1:ncol(nfpc))
+ave <- res_power_sparse$mean_hd$eval(tt)
+f_ave <- ave[[1]]
+colnames(f_ave) <- "f_mean"
+nf_ave <- t(ave[[2]])
+colnames(nf_ave) <- "nf_mean"
+scores <- t(inprod_hd(res_power_sparse$pc_hd,hd_obj))
+alpha <- .1 
+fpc_positive <- as.vector(f_ave) + alpha*fpc 
+fpc_negative <- as.vector(f_ave) - alpha*fpc 
+colnames(fpc_positive) <- paste0("p",1:ncol(fpc_positive))
+colnames(fpc_negative) <- paste0("n",1:ncol(fpc_negative))
+fpc_df <- cbind(f_ave,fpc_positive,fpc_negative) |> as.data.frame()
+
+plot_fpc <- function(mat, fpc = 1, main = "My Plot", xlab = "X-axis", ylab = "Y-axis") {
+  # Determine the column name and y-range (with na.rm in case of missing values)
+  colname <- paste0("fpc", fpc)
+  y_range <- range(mat, na.rm = TRUE)
+  
+  # Save current graphical parameters and set new ones for publication quality
+  old_par <- par(no.readonly = TRUE)
+  par(cex.axis = 1.2,   # Increase axis tick label size
+      cex.lab  = 1.3,   # Increase axis label size
+      cex.main = 1.5,   # Increase title size
+      mar = c(5, 5, 4, 2) + 0.1)  # Adjust margins
+  
+  # Create the plot with enhanced line width and without default axes (we'll add them manually)
+  plot(mat[, fpc], type = "l", main = main, xlab = xlab, ylab = ylab,
+       ylim = y_range, lwd = 2, col = "black", axes = FALSE)
+  
+  # Draw custom axes and a surrounding box
+  axis(1, cex.axis = 1.2)
+  axis(2, cex.axis = 1.2)
+  box()
+  
+  # Add a grey horizontal line at y = 0
+  abline(h = 0, col = "grey", lwd = 2)
+  
+  # Add a grey dashed vertical line at x = 60
+  abline(v = 60, col = "grey", lwd = 2, lty = 2)
+  
+  # Restore original graphical parameters
+  par(old_par)
+}
+
+plot_fpc(-fpc,fpc = 1,main = "1st fpc",xlab = "time")
+plot_fpc(-fpc,fpc = 2,main = "2st fpc",xlab = "time")
+plot_fpc(-fpc,fpc = 3,main = "3st fpc",xlab = "time")
+plot_fpc(fpc,fpc = 4,main = "4st fpc",xlab = "time")
+
+plot_fpc_pn <- function(data, fpc = 1, main = "My Plot", xlab = "X-axis", ylab = "Y-axis") {
+  p_col <- paste0("p", fpc)
+  n_col <- paste0("n", fpc)
+  y_range <- range(data$f_mean, data[[p_col]], data[[n_col]], na.rm = TRUE)
+  plot(data$f_mean, type = "l", main = main, xlab = xlab, ylab = ylab, ylim = c(-.05,.2))
+  points(data[[p_col]], col = "blue", pch = "+")
+  points(data[[n_col]], col = "red", pch = "-")
+  # legend("topright", legend = c("f_mean", p_col, n_col),
+  #        col = c("black", "blue", "red"),
+  #        lty = c(1, NA, NA), pch = c(NA, "+", "-"))
+}
+plot_fpc_pn(fpc_df,fpc = 1,main = "1st fpc",xlab = "time")
+plot_fpc_pn(fpc_df,fpc = 2,main = "2st fpc",xlab = "time")
+plot_fpc_pn(fpc_df,fpc = 3,main = "3st fpc",xlab = "time")
+plot_fpc_pn(fpc_df,fpc = 4,main = "4st fpc",xlab = "time")
+```
+
+```{r}
+library(reshape2)
+plot_fpc_gg <- function(t0_f, t1_f, res, hd_obj,
+                          fpc_index = 1, alpha = 0.1,
+                          main = "My Plot", xlab = "Time (minutes)", ylab = "Expression Level",y_limits = c(-.25,.25)) {
+  # Generate a time grid
+  tt <- seq(t0_f, t1_f, length.out = 119)
+  
+  # Evaluate principal component loadings at time grid
+  pc_loadings <- res$pc_hd$eval(tt)
+  fpc <- pc_loadings[[1]]
+  colnames(fpc) <- paste0("fpc", 1:ncol(fpc))
+  
+  nfpc <- t(pc_loadings[[2]])
+  colnames(nfpc) <- paste0("nfpc", 1:ncol(nfpc))
+  
+  # Evaluate the mean function
+  ave <- res$mean_hd$eval(tt)
+  f_ave <- ave[[1]]
+  colnames(f_ave) <- "f_mean"
+  
+  nf_ave <- t(ave[[2]])
+  colnames(nf_ave) <- "nf_mean"
+  
+  # Compute positive and negative perturbations from the mean
+  fpc_positive <- as.vector(f_ave) + alpha * fpc 
+  fpc_negative <- as.vector(f_ave) - alpha * fpc 
+  colnames(fpc_positive) <- paste0("p", 1:ncol(fpc_positive))
+  colnames(fpc_negative) <- paste0("n", 1:ncol(fpc_negative))
+  
+  # Combine into a single data frame and add time
+  fpc_df <- cbind(f_ave, fpc_positive, fpc_negative) |> as.data.frame()
+  fpc_df$time <- tt
+  
+  # Select the columns corresponding to the specified fpc index
+  p_col <- paste0("p", fpc_index)
+  n_col <- paste0("n", fpc_index)
+  
+  # Reshape the data to long format for ggplot2
+  
+  df_long <- melt(fpc_df, id.vars = "time", 
+                  measure.vars = c("f_mean", p_col, n_col),
+                  variable.name = "variable", 
+                  value.name = "value")
+  
+  # Define custom colors for each series
+  my_colors <- c("f_mean" = "black")
+  my_colors[p_col] <- "blue"
+  my_colors[n_col] <- "red"
+  
+  p <- ggplot(df_long, aes(x = time, y = value, group = variable, color = factor(variable))) +
+    geom_line(alpha = 0.7,size = 1.2) +
+    scale_x_continuous(breaks = seq(0, 119, by = 7)) +
+    scale_y_continuous(limits = c(y_limits[1], y_limits[2]), breaks = seq(y_limits[1], y_limits[2], by = .05)) +
+    geom_vline(xintercept = 60, linetype = "dashed", color = "green", size = .5) +
+    scale_color_manual(name = "",values = my_colors,labels = c("Mean", "Positive", "Negative")) +
+    labs(x = xlab, y = ylab) +
+    theme_bw(base_size = 14) +
+    theme(legend.position = "top")
+  return(p)
+}
+plot_fpc_gg(t0_f = 0,t1_f = 119,res = res_power_sparse,hd_obj = hd_obj,fpc_index = 1,alpha = .3)
+plot_fpc_gg(t0_f = 0,t1_f = 119,res = res_power_sparse,hd_obj = hd_obj,fpc_index = 2,alpha = .3)
+plot_fpc_gg(t0_f = 0,t1_f = 119,res = res_power_sparse,hd_obj = hd_obj,fpc_index = 3,alpha = .3)
+plot_fpc_gg(t0_f = 0,t1_f = 119,res = res_power_sparse,hd_obj = hd_obj,fpc_index = 4,alpha = .3)
+```
+
+# plot fpc's in one plot
+```{r}
+plot_fpc_vecs <- function(vecs, 
+                          main = "My Plot", 
+                          xlab = "X-axis", 
+                          ylab = "Y-axis", 
+                          legend_title = "Series",
+                          vline_x = 60,
+                          x_breaks = NULL, 
+                          y_limits = NULL, 
+                          y_break_by = 0.05,
+                          colors = NULL, 
+                          alpha = 0.7, 
+                          size = 1.2) {
+  # If the list of vectors does not have names, assign default names
+  if (is.null(names(vecs))) {
+    names(vecs) <- paste0("Series", seq_along(vecs))
+  }
+  
+  # Create a data frame for each vector with its x-values (using sequence along the vector)
+  df_list <- lapply(names(vecs), function(nm) {
+    v <- vecs[[nm]]
+    data.frame(Time = seq_along(v),
+               Expression = v,
+               Series = nm)
+  })
+  
+  # Combine into one data frame
+  df <- do.call(rbind, df_list)
+  
+  # Determine global x-axis range
+  x_range <- range(sapply(vecs, length))
+  if (is.null(x_breaks)) {
+    x_breaks <- seq(x_range[1], x_range[2], by = 7)
+  }
+  
+  # Determine global y-axis limits from all vectors if not supplied
+  if (is.null(y_limits)) {
+    y_limits <- range(df$Expression, na.rm = TRUE)
+  }
+  y_breaks <- seq(y_limits[1], y_limits[2], by = y_break_by)
+  
+  # Build the plot
+  library(ggplot2)
+  p <- ggplot(df, aes(x = Time, y = Expression, group = Series, color = factor(Series))) +
+    geom_line(alpha = alpha, size = size) +
+    scale_x_continuous(breaks = seq(0, 119, by = 7)) +
+    scale_y_continuous(limits = y_limits, breaks = y_breaks) +
+    geom_vline(xintercept = vline_x, linetype = "dashed", color = "red", size = 1) +
+    labs(title = main, x = xlab, y = ylab, color = legend_title) +
+    theme_bw(base_size = 14) +
+    theme(legend.position = "top")
+  
+  # If user-supplied colors are provided, use them; otherwise use a default viridis scale
+  if (!is.null(colors)) {
+    p <- p + scale_color_manual(values = colors)
+  } else {
+    p <- p + scale_color_viridis_d(option = "H")
+  }
+  
+  return(p)
+}
+plot_fpc_vecs(vecs = list(fpc[,1],fpc[,2],fpc[,3],fpc[,4]))
+
+```
+# supsfpca and suppca 
+```{r}
+#install.packages("R.matlab")  # Install if not already installed
+library(R.matlab)
+supsfpca_results <- readMat("../runthis/supsfpca_results/supsfpca_results.mat")
+suppca_results <- readMat("../runthis/suppca_results/suppca_results.mat")
+```
+
+# plots of fpca in different models
+```{r}
+melt_data <- function(data, time_end = 119) {
+  data |> as.data.frame() |> 
+    (\(d) {
+      colnames(d) <- paste0("pc", seq_len(ncol(d)))
+      d$Time <- seq(0, time_end, length.out = nrow(d))
+      reshape2::melt(d, id.vars = "Time", variable.name = "pc")
+    })()
+}
+
+tt <- seq(t0_f, t1_f, length.out = 120)
+mfd_obj <- res_power_sparse$pc_hd$mf[,1]
+scaled_mfd_coefs <- (res_power_sparse$pc_hd$mf[,1]$coefs) %*% diag(1/norm_mfd(res_power_sparse$pc_hd$mf[,1]))
+scaled_mfd <- Mfd(X = scaled_mfd_coefs, mdbs = res_power_sparse$pc_hd$mf[,1]$basis, method = "coefs")
+pc_loadings_sparse <- melt_data (scaled_mfd$eval(tt))
+pc_loadings_remfpca  <- melt_data (res_remfpca$pc_hd$eval(tt)[[1]] %*% diag(c(1,1,1,1)))
+pc_loadings_supsfpca <-  melt_data (supsfpca_results$V %*% diag(c(1,1,-1,1)))
+pc_loadings_suppca   <- melt_data (suppca_results$V)
+scaled_happ <- t(happ_res$f_loadings[[1]]@X) %*% diag(1/apply(t(happ_res$f_loadings[[1]]@X),2,norm,"2"))
+pc_loadings_happ <- melt_data(scaled_happ %*% diag(c(-1,1,1,1)))
+pc_loadings_sparse$Method   <- "HPCA"
+# pc_loadings_remfpca$Method    <- "Remfpca"
+pc_loadings_supsfpca$Method <- "SUPSFPCA"
+pc_loadings_suppca$Method   <- "SUPPCA"
+pc_loadings_happ$Method <- "HFV-PCA"
+
+# Combine all data frames into one long data frame
+pc_all <- rbind(pc_loadings_sparse, pc_loadings_supsfpca, pc_loadings_suppca,pc_loadings_happ)
+pc_all$Method <- factor(pc_all$Method,
+                        levels = c("HPCA", "HFV-PCA", "SUPSFPCA", "SUPPCA"))
+
+p <- ggplot(pc_all, aes(x = Time, y = value, group = Method, 
+                         color = factor(Method), linetype = factor(Method))) +
+  geom_line(alpha = 1, size = 1.5) +
+  facet_wrap(~ pc, scales = "free_y") +
+  scale_x_continuous(breaks = seq(0, 119, by = 14)) +
+  scale_y_continuous(limits = c(-1, 1), breaks = seq(-1, 1, by = 0.5)) +
+  geom_vline(xintercept = 60, linetype = "dashed", color = "red", size = .1) +
+  labs(title = "", x = "Time (Minutes)", y = "", 
+       color = "", linetype = "") +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted","dotdash")) +
+  theme_bw(base_size = 14) +
+  theme(legend.position = "top")
+
+# Print the plot
+print(p)
+
+```
+
+
+
+# optimal cluster number
+```{r}
+set.seed(123)
+optimal_clusters <- function(data, max_clusters = 10, seed = 123) {
+  # Load necessary libraries
+  require(factoextra)
+  set.seed(seed)
+  
+  # Elbow method: Look at the total within-cluster sum of squares (wss)
+  elbow_plot <- fviz_nbclust(data, kmeans, method = "wss", k.max = max_clusters) +
+    labs(subtitle = "Elbow Method")
+  
+  # Silhouette method: Evaluate the average silhouette width for different cluster solutions
+  silhouette_plot <- fviz_nbclust(data, kmeans, method = "silhouette", k.max = max_clusters) +
+    labs(subtitle = "Silhouette Method")
+  
+  # Gap Statistic: Compare the change in within-cluster dispersion with that expected under a null reference distribution
+  gap_plot <- fviz_nbclust(data, kmeans, nstart = 25, method = "gap_stat", k.max = max_clusters) +
+    labs(subtitle = "Gap Statistic")
+  
+  # Return the three plots as a list
+  return(list(elbow = elbow_plot, silhouette = silhouette_plot, gap = gap_plot))
+}
+
+# Example usage on your scores_power_sparse data:
+results <- optimal_clusters(scores_power_sparse, max_clusters = 10)
+
+# Display the plots:
+print(results$elbow)
+print(results$silhouette)
+print(results$gap)
+
+```
+
+# k-means clustering 6
+```{r}
+library(cluster)
+library(factoextra)
+d <- dist(scores_power_sparse)
+set.seed(123)  # for reproducibility
+kmeans_result <- kmeans(scores_power_sparse, centers = 6)
+clusters <- kmeans_result$cluster
+cluster_rows <- split(1:nrow(scores_power_sparse), clusters)
+sil <- silhouette(kmeans_result$cluster, d)
+fviz_silhouette(sil)
+```
+
+# k-means clustering 5 huang
+```{r}
+library(cluster)
+library(factoextra)
+d <- dist(scores_power_sparse)
+set.seed(123)  # for reproducibility
+kmeans_result <- kmeans(scores_power_sparse, centers = 5)
+clusters <- kmeans_result$cluster
+cluster_rows <- split(1:nrow(scores_power_sparse), clusters)
+sil <- silhouette(kmeans_result$cluster, d)
+fviz_silhouette(sil)
+```
+
+# k-means clustering 2
+```{r}
+library(cluster)
+library(factoextra)
+d <- dist(scores_power_sparse)
+set.seed(123)  # for reproducibility
+kmeans_result <- kmeans(scores_power_sparse, centers = 2)
+clusters <- kmeans_result$cluster
+cluster_rows <- split(1:nrow(scores_power_sparse), clusters)
+sil <- silhouette(kmeans_result$cluster, d)
+fviz_silhouette(sil)
+```
+
+# k-means clustering 10
+```{r}
+library(cluster)
+library(factoextra)
+d <- dist(scores_power_sparse)
+set.seed(123)  # for reproducibility
+kmeans_result <- kmeans(scores_power_sparse, centers = 10)
+clusters <- kmeans_result$cluster
+cluster_rows <- split(1:nrow(scores_power_sparse), clusters)
+sil <- silhouette(kmeans_result$cluster, d)
+fviz_silhouette(sil)
+# plot clusters
+```
+
+
+```{r}
+plot_expression_color <- function(y,color,title) {
+  # Load required libraries
+  require(ggplot2)
+  require(reshape2)
+  require(viridis)
+  df <- melt(y)
+  names(df) <- c("Series", "Time", "Expression")
+  df$Time <- as.numeric(sub("alpha", "", df$Time))
+  
+  # Create the plot
+  p <- ggplot(df, aes(x = Time, y = Expression, group = Series, color = factor(Series))) +
+    geom_line(color = color,alpha = 0.4,linewidth = .25) +
+    scale_x_continuous(breaks = seq(0, 119, by = 14),expand = c(0,0)) +
+    scale_y_continuous(limits = c(-4, 4), breaks = seq(-4, 4, by = 2)) +
+    #geom_vline(xintercept = 60, linetype = "dashed", color = "red", size = 1) +
+    labs(x = "", y = "",title = title) +
+    theme_bw(base_size = 14) +
+    theme(legend.position = "none",plot.title = element_text(size = 10, hjust = 0.5))
+  return(p)
+}
+
+plot_expression_cluster <- function(y, cluster_rows, cp) {
+  # Load required libraries
+  require(ggplot2)
+  require(reshape2)
+  
+  # Create a vector to hold the cluster assignment for each row of y
+  cluster_assignment <- rep(NA, nrow(y))
+  for(i in seq_along(cluster_rows)){
+    cluster_assignment[cluster_rows[[i]]] <- i
+  }
+  
+  # Force sequential row numbering regardless of row names:
+  row_numbers <- seq_len(nrow(y))
+  
+  # Convert the matrix y into a data frame and add a row identifier column:
+  y_df <- as.data.frame(y)
+  y_df$row_id <- row_numbers
+  
+  # Melt the data frame using the row_id as the identifier.
+  # This ensures that the "Series" column now corresponds to the row number.
+  df <- melt(y_df, id.vars = "row_id")
+  names(df) <- c("Series", "Time", "Expression")
+  
+  # Use the row number (Series) to assign the proper cluster.
+  df$cluster <- factor(cluster_assignment[df$Series])
+  
+  # Process the Time column (remove "alpha" if it is a prefix)
+  df$Time <- as.numeric(sub("alpha", "", df$Time))
+  
+  # Optionally remove rows with NA clusters (if any row did not receive a cluster)
+  df <- df[!is.na(df$cluster), ]
+  
+  # Create the plot with lines colored by their cluster membership
+  p <- ggplot(df, aes(x = Time, y = Expression, group = Series, color = cluster)) +
+    geom_line(alpha = 0.4,linewidth = .25) +
+    scale_x_continuous(breaks = seq(0, 119, by = 14),expand = c(0,0)) +
+    scale_y_continuous(limits = c(-4, 4), breaks = seq(-4, 4, by = 2)) +
+    #geom_vline(xintercept = 60, linetype = "dashed", color = "red", size = 1) +
+    scale_color_manual(values = cp) +
+    labs(x = "", y = "",title = "Raw Data of 542 genes") +
+    theme_bw(base_size = 14) +
+    theme(legend.position = "none",plot.title = element_text(size = 10, hjust = 0.5))
+  
+  return(p)
+}
+
+```
+
+```{r}
+
+cp <- rainbow(5)
+plot_expression_color(y[cluster_rows[[1]],],cp[1],title = paste("Cluster 1 with",length(cluster_rows[[1]]),"genes")) # 20
+plot_expression_color(y[cluster_rows[[2]],],cp[2],title = paste("Cluster 2 with",length(cluster_rows[[2]]),"genes")) # 44
+plot_expression_color(y[cluster_rows[[3]],],cp[3], title = paste("Cluster 3 with",length(cluster_rows[[3]]),"genes")) # 104
+plot_expression_color(y[cluster_rows[[4]],],cp[4], title = paste("Cluster 4 with",length(cluster_rows[[4]]),"genes")) # 340
+plot_expression_color(y[cluster_rows[[5]],],cp[5],title = paste("Cluster 5 with",length(cluster_rows[[5]]),"genes")) # 34
+plot_expression_cluster(y,cluster_rows,cp = cp)
+```
+```{r}
+library(ggplot2)
+library(gridExtra)
+library(grid)  # for unit()
+
+# Generate your plot objects (assuming your functions accept the title parameter)
+
+# Cluster plot (top left)
+p_cluster <- plot_expression_cluster(y, cluster_rows, cp = cp) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"))
+
+# Cluster-specific plots with reduced margins
+p1 <- plot_expression_color(y[cluster_rows[[1]], ], cp[1],
+       title = paste("Cluster 1 with", length(cluster_rows[[1]]), "genes")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"))
+
+p2 <- plot_expression_color(y[cluster_rows[[2]], ], cp[2],
+       title = paste("Cluster 2 with", length(cluster_rows[[2]]), "genes")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"))
+
+p3 <- plot_expression_color(y[cluster_rows[[3]], ], cp[3],
+       title = paste("Cluster 3 with", length(cluster_rows[[3]]), "genes")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"))
+
+p4 <- plot_expression_color(y[cluster_rows[[4]], ], cp[4],
+       title = paste("Cluster 4 with", length(cluster_rows[[4]]), "genes")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"))
+
+p5 <- plot_expression_color(y[cluster_rows[[5]], ], cp[5],
+       title = paste("Cluster 5 with", length(cluster_rows[[5]]), "genes")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"))
+
+# Arrange the plots in a 3x2 grid with adjusted row heights.
+# The heights argument here helps control relative row sizes.
+grid.arrange(p_cluster, p1,
+             p2, p3,
+             p4, p5,
+             nrow = 3, ncol = 2,
+             heights = c(1, 1, 1))
+
+```
+
+# Investigating u sparsity on clusters
+```{r}
+sparse_us <- lapply(seq_len(ncol(res_power_sparse$lsv)),function(i) unname(which(res_power_sparse$lsv[,i] ==0)))
+
+overlap_matrix <- sapply(cluster_rows, function(b) {
+  sapply(sparse_us, function(a) {
+    length(intersect(a, b))
+  })
+})
+rownames(overlap_matrix) <- paste0("sparse_u", seq_along(sparse_us))
+colnames(overlap_matrix) <- paste0("cluster", seq_along(cluster_rows))
+sparse_counts <- sapply(sparse_us, length)
+cluster_counts <- sapply(cluster_rows, length)
+total_overlap <- sum(overlap_matrix)
+# Combine the overlap matrix with the sparse_counts as an extra column.
+combined_matrix <- rbind(cbind(overlap_matrix, total_sparse = sparse_counts),total_cluster = c(cluster_counts,NA))
+combined_matrix
+
+# 
+expected_matrix <- outer(sparse_counts, cluster_counts, FUN = function(r, c) (r * c) / total_overlap)
+enrichment_matrix <- overlap_matrix / expected_matrix
+print(enrichment_matrix)
+library(ggplot2)
+library(reshape2)
+
+# Melt the enrichment matrix for plotting
+melted_enrichment <- melt(enrichment_matrix)
+names(melted_enrichment) <- c("Sparse", "Cluster", "Enrichment")
+
+# Create a heatmap. Here, a ratio of 1 (white) indicates the expected value,
+# red indicates overrepresentation (>1), and blue indicates underrepresentation (<1).
+ggplot(melted_enrichment, aes(x = Cluster, y = Sparse, fill = Enrichment)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", Enrichment)), color = "black") +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 1) +
+  theme_minimal() +
+  labs(title = "Enrichment of sparse_u in Clusters",
+       subtitle = "Enrichment Ratio: Observed / Expected",
+       x = "Cluster",
+       y = "sparse_u")
+
+total_items <- sum(cluster_counts)  # 542 in your case
+
+results <- list()  
+results_fisher <- list()
+
+for (i in seq_along(sparse_counts)) {
+  results_fisher[[i]] <- list()
+  for (j in seq_along(cluster_counts)) {
+
+    A <- overlap_matrix[i, j]
+    B <- sparse_counts[i] - A
+    C <- cluster_counts[j] - A
+    D <- total_items - (A + B + C)
+    
+    contingency_table <- matrix(c(A, B, C, D), nrow = 2, byrow = TRUE)
+    p_value <- fisher.test(contingency_table,alternative = "greater")$p.value
+    results_fisher[[i]][[j]] <- fisher.test(contingency_table,alternative = "greater")
+    results[[paste0("sparse", i, "_cluster", j)]] <- list(
+      table   = contingency_table,
+      p_value = p_value
+    )
+  }
+  names(results_fisher[[i]]) <- paste0("cluster",seq_along(cluster_counts))
+}
+names(results_fisher) <- paste0("sparse",seq_along(sparse_counts))
+
+# Create an empty 4x5 matrix
+p_val_matrix <- matrix(NA_real_, nrow = 4, ncol = 5)
+
+# Fill it with p-values
+for (i in seq_along(sparse_counts)) {
+  for (j in seq_along(cluster_counts)) {
+    p_val_matrix[i, j] <- results_fisher[[i]][[j]]$p.value
+  }
+}
+
+# (Optional) add row/col names
+rownames(p_val_matrix) <- paste0("sparse", seq_along(sparse_counts))
+colnames(p_val_matrix) <- paste0("cluster", seq_along(cluster_counts))
+overlap_matrix
+combined_matrix
+p_val_matrix
+```
+
+```{r}
+library(MASS)
+library(GGally)
+library(ggplot2)
+library(gridExtra)
+library(grid)
+
+# Create a data frame of your PCA scores and assign cluster labels
+df_paral <- as.data.frame(scores_power_sparse)
+# Rename the first four columns from V1...V4 to PC1...PC4
+names(df_paral)[1:4] <- paste0("PC", 1:4)
+df_paral$cluster <- NA
+
+# Loop through each cluster and assign a cluster label.
+for(i in seq_along(cluster_rows)) {
+  df_paral$cluster[ cluster_rows[[i]] ] <- paste("Cluster", i)
+}
+df_paral$cluster <- as.factor(df_paral$cluster)
+
+# Create a common theme to mimic your previous plots:
+common_theme <- theme_bw(base_size = 14) +
+  theme(legend.position = "none",
+        plot.title = element_text(size = 10, hjust = 0.5),
+        plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"))
+
+# Main parallel coordinate plot for all clusters
+p_paraller_main <- ggparcoord(data = df_paral,
+           columns = 1:4,          
+           groupColumn = "cluster",
+           scale = "globalminmax",
+           alphaLines = 0.4) + 
+  scale_color_manual(values = cp) +
+  labs(title = paste("542 genes of 5 Clusters"), x = "", y = "") + 
+  scale_y_continuous(limits = c(-30, 20)) +
+  common_theme
+
+# For each cluster, filter the data and create a parallel coordinate plot.
+p_parallel1 <- ggparcoord(data = subset(df_paral, cluster == "Cluster 1"),
+                          columns = 1:4,
+                          groupColumn = "cluster",
+                          scale = "globalminmax",
+                          alphaLines = 0.4) +
+  scale_color_manual(values = cp[1]) +
+  labs(title = paste("Cluster 1 with", length(cluster_rows[[1]]), "genes"), x = "", y = "") +
+  scale_y_continuous(limits = c(-30, 20)) +
+  common_theme
+
+p_parallel2 <- ggparcoord(data = subset(df_paral, cluster == "Cluster 2"),
+                          columns = 1:4,
+                          groupColumn = "cluster",
+                          scale = "globalminmax",
+                          alphaLines = 0.4) +
+  scale_color_manual(values = cp[2]) +
+  labs(title = paste("Cluster 2 with", length(cluster_rows[[2]]), "genes"), x = "", y = "") +
+  scale_y_continuous(limits = c(-30, 20)) +
+  common_theme
+
+p_parallel3 <- ggparcoord(data = subset(df_paral, cluster == "Cluster 3"),
+                          columns = 1:4,
+                          groupColumn = "cluster",
+                          scale = "globalminmax",
+                          alphaLines = 0.4) +
+  scale_color_manual(values = cp[3]) +
+  labs(title = paste("Cluster 3 with", length(cluster_rows[[3]]), "genes"), x = "", y = "") +
+  scale_y_continuous(limits = c(-30, 20)) +
+  common_theme
+
+p_parallel4 <- ggparcoord(data = subset(df_paral, cluster == "Cluster 4"),
+                          columns = 1:4,
+                          groupColumn = "cluster",
+                          scale = "globalminmax",
+                          alphaLines = 0.4) +
+  scale_color_manual(values = cp[4]) +
+  labs(title = paste("Cluster 4 with", length(cluster_rows[[4]]), "genes"), x = "", y = "") +
+  scale_y_continuous(limits = c(-30, 20)) +
+  common_theme
+
+p_parallel5 <- ggparcoord(data = subset(df_paral, cluster == "Cluster 5"),
+                          columns = 1:4,
+                          groupColumn = "cluster",
+                          scale = "globalminmax",
+                          alphaLines = 0.4) +
+  scale_color_manual(values = cp[5]) +
+  labs(title = paste("Cluster 5 with", length(cluster_rows[[5]]), "genes"), x = "", y = "") +
+  scale_y_continuous(limits = c(-30, 20)) +
+  common_theme
+
+# Arrange the plots in a grid (3 rows x 2 columns, with one empty cell)
+grid.arrange(p_paraller_main, p_parallel1, 
+             p_parallel2, p_parallel3, 
+             p_parallel4, p_parallel5, 
+             nrow = 3, ncol = 2)
+
+
+
+
+```
+# TF time
+
+```{r}
+y_reconstruction <- scores_power_sparse%*%t(res_power_sparse$pc_hd$mf$eval(seq(t0_f,t1_f,length=120))[[1]])
+x_reconstruction <-scores_power_sparse%*%(res_power_sparse$pc_hd$nf$data[[1]])
+xy_map <- t(x_reconstruction)%*%y_reconstruction
+```
+

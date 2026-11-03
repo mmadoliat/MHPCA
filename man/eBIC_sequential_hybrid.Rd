@@ -32,7 +32,7 @@ eBIC_sequential_hybrid(
 )
 }
 \arguments{
-\item{fdata}{Functional data coefficient matrix (n x J), transformed (C %*% G_half)}
+\item{fdata}{Functional data coefficient matrix (n x J), transformed (C \%*\% G_half)}
 
 \item{nfdata}{Non-functional data matrix (n x m)}
 
@@ -54,9 +54,11 @@ eBIC_sequential_hybrid(
 
 \item{G_half_inverse}{Inverse of G_half}
 
-\item{S_smooth}{Smoothing matrix (or list for GCV case)}
+\item{S_smooth}{Smoothing matrix used while tuning (if a list is given, its
+first element is used)}
 
-\item{S_2_inverse}{Inverse of S_2 matrix (or list for GCV case)}
+\item{S_2_inverse}{Inverse of the S_2 matrix matching `S_smooth` (if a list
+is given, its first element is used)}
 
 \item{pen_u}{Logical: penalize u?}
 

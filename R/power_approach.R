@@ -203,19 +203,6 @@ gcv_joint <- function(data, G_half, G, S_smooth, S_2_inverse, G_half_inverse, mv
 }
 
 
-ordinal_msg <- function(i) {
-  if (i == 1) {
-    return(paste0(i, "st"))
-  } else if (i == 2) {
-    return(paste0(i, "nd"))
-  } else if (i == 3) {
-    return(paste0(i, "rd"))
-  }
-  else {
-    return(paste0(i, "th"))
-  }
-}
-
 # Define a function to process mvmfd_obj
 centralized_mvmfd <- function(mvmfd_obj, centerfns = TRUE) {
   p <- mvmfd_obj$nvar
@@ -273,7 +260,7 @@ handle_variance_update <- function(i, n, C, G, v_total, mvmfd_obj, all_equal_che
 # sequential power algorithm
 sequential_power <- function(mvmfd_obj, n, smooth_tuning, smooth_tuning_type, sparse_tuning, sparse_tuning_type, centerfns, alpha_orth, K_fold, sparse_CV, smooth_GCV) {
   p <- mvmfd_obj$nvar
-  smooth_penalty <- MHPCA:::pen_fun(mvmfd_obj, type = smooth_tuning_type)
+  smooth_penalty <- pen_fun(mvmfd_obj, type = smooth_tuning_type)
   
   #######centralize########
   C <- centralized_mvmfd(mvmfd_obj, centerfns)
@@ -301,7 +288,7 @@ sequential_power <- function(mvmfd_obj, n, smooth_tuning, smooth_tuning_type, sp
       CV_score = list()
     }
     for (i in 1:n) {
-      cat(sprintf("Computing the %s PC...\n", ordinal_msg(i)))
+      message(sprintf("Computing the %s PC...", ordinal(i)))
       if (is.null(smooth_tuning)) {
         smooth_tuning_temp = expand.grid(lapply(rep(0,mvmfd_obj$nvar), function(x) x[1]))
       } else{
@@ -314,7 +301,7 @@ sequential_power <- function(mvmfd_obj, n, smooth_tuning, smooth_tuning_type, sp
         b_original = t(C_temp)%*%u
         C_temp = C_temp - u%*%t(b_original)
       }
-      D <- MHPCA:::I_alpha(mvmfd_obj, smooth_tuning_temp) %*% smooth_penalty
+      D <- I_alpha(mvmfd_obj, smooth_tuning_temp) %*% smooth_penalty
       S_2 <- solve(G + D)
       S_2_inverse[[1]] = solve(S_2)
       S_smooth[[1]] <- G_half %*% (S_2) %*% G_half
@@ -367,7 +354,7 @@ sequential_power <- function(mvmfd_obj, n, smooth_tuning, smooth_tuning_type, sp
     }
     
     S_smooth <- S_2_inverse <- list()
-    cat("Preprocessing...\n")
+    message("Preprocessing...")
     n_iter1 <- dim(smooth_tuning_temp)[1]
     pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
                          max = n_iter1, # Maximum value of the progress bar
@@ -377,7 +364,7 @@ sequential_power <- function(mvmfd_obj, n, smooth_tuning, smooth_tuning_type, sp
     #####Do the following computation in advance to save computational cost#####
     for (smooth_index in 1:dim(smooth_tuning_temp)[1]) {
       setTxtProgressBar(pb, smooth_index)
-      D <- MHPCA:::I_alpha(mvmfd_obj, smooth_tuning_temp[smooth_index, ]) %*% smooth_penalty
+      D <- I_alpha(mvmfd_obj, smooth_tuning_temp[smooth_index, ]) %*% smooth_penalty
       S_2 <- solve(G + D)
       S_2_inverse[[smooth_index]] = solve(S_2)
       S_smooth[[smooth_index]] <- G_half %*% (S_2) %*% G_half
@@ -392,7 +379,7 @@ sequential_power <- function(mvmfd_obj, n, smooth_tuning, smooth_tuning_type, sp
     }
     
     for (i in 1:n) {
-      cat(sprintf("Computing the %s PC...\n", ordinal_msg(i)))
+      message(sprintf("Computing the %s PC...", ordinal(i)))
       if (i == 1) {
         C_temp = C
       } 
@@ -453,9 +440,8 @@ sequential_power <- function(mvmfd_obj, n, smooth_tuning, smooth_tuning_type, sp
 
 # joint smooth and sparse power algorithm
 joint_power <- function(mvmfd_obj, n, smooth_tuning, smooth_tuning_type, centerfns, alpha_orth) {
-  print("*****")
   p <- mvmfd_obj$nvar
-  smooth_penalty <- MHPCA:::pen_fun(mvmfd_obj, type = smooth_tuning_type)
+  smooth_penalty <- pen_fun(mvmfd_obj, type = smooth_tuning_type)
   
   #######centralize########
   C <- centralized_mvmfd(mvmfd_obj, centerfns)
@@ -484,7 +470,7 @@ joint_power <- function(mvmfd_obj, n, smooth_tuning, smooth_tuning_type, centerf
   ####joint power####
   # I_a <- D <- S_2 <- S_smooth <- S_2_inverse <- list()
   S_smooth <- S_2_inverse <- list()
-  cat("Preprocessing...\n")
+  message("Preprocessing...")
   n_iter1 <- dim(smooth_tuning_temp)[1]
   pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
                        max = n_iter1, # Maximum value of the progress bar
@@ -494,13 +480,13 @@ joint_power <- function(mvmfd_obj, n, smooth_tuning, smooth_tuning_type, centerf
   #####Do the following computation in advance to save computational cost#####
   for (smooth_index in 1:dim(smooth_tuning_temp)[1]) {
     setTxtProgressBar(pb, smooth_index)
-    D <- MHPCA:::I_alpha(mvmfd_obj, smooth_tuning_temp[smooth_index, ]) %*% smooth_penalty
+    D <- I_alpha(mvmfd_obj, smooth_tuning_temp[smooth_index, ]) %*% smooth_penalty
     S_2 <- solve(G + D)
     S_2_inverse[[smooth_index]] = solve(S_2)
     S_smooth[[smooth_index]] <- G_half %*% (S_2) %*% G_half
   }
   close(pb)
-  cat(sprintf("Computing PCs...\n"))
+  message("Computing PCs...")
   # cv_result = gcv_joint(data = C, mvmfd_obj = mvmfd_obj, smooth_tuning = smooth_tuning, G = G, G_half = G_half, G_half_inverse = G_half_inverse, S_smooth = S_smooth, S_2_inverse = S_2_inverse, n = n)
   cv_result = gcv_joint(
     data = C, 

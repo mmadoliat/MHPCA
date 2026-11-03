@@ -171,5 +171,6 @@ eigen_approach_hybrid <- function(hd_obj, n, alpha, centerfns, penalty_type) {
   variance <- (diag(t(as.matrix(rbind(b,bv))) %*% V %*% as.matrix(rbind(b,bv))))
   lsv <- scale(v, center = FALSE, scale = sqrt(colSums(as.matrix(v)^2)))
 
-  return(list(pc_fd = pc, lsv = lsv, variance = variance, GCV_result = GCV_result, GCVs = GCVs,pc_nfd = bv))
+  # Same result names as the power algorithms.
+  return(list(pc_fd = pc, lsv = lsv, variance = variance, smooth_tuning_result = GCV_result, GCV_score = GCVs, pc_nfd = bv))
 }

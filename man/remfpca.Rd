@@ -43,7 +43,7 @@ while setting `alpha_orth = TRUE` uses the joint power approach.}
 
 \item{smoothing_type}{The type of smoothing penalty to be applied on the coefficients. The types "coefpen" and "basispen" is supported. Default is "coefpen".}
 
-\item{sparse_type}{The type of sparse penalty to be applied on the coefficients. The types "soft-threshold", "hard-threshold" and "SCAD" is supported. Default is "soft-threshold".}
+\item{sparse_type}{The type of sparse penalty to be applied on the coefficients. The types "soft", "hard", "SCAD" and "adaptive" are supported. Default is "soft".}
 
 \item{K_fold}{An integer specifying the number of folds in the sparse cross-validation process. Default is 30.}
 
@@ -61,7 +61,7 @@ If `method` is "power" and `alpha_orth = TRUE` (joint power), tuning parameters 
 If the dimensions of input tuning parameters are incorrect, it will be converted to a list internally, and a warning will be issued.}
 }
 \description{
-The `remfpca` class represents regularized functional principal components components.
+The `remfpca` class represents regularized functional principal components.
 
 The `remfpca` class represents regularized functional principal components ('ReMFPCs') components.
 }
@@ -91,15 +91,18 @@ mfd1 <- Mfd(X = X_1, mdbs = mdbs)
 mfd2 <- Mfd(X = X_2, mdbs = mdbs)
 mvmfd_obj <- Mvmfd(mfd1, mfd2)
 k <- 2
-Re0 <- Remfpca(mvmfd_obj, ncomp = k, alpha = c(0, 0))
+# Smoothing parameters selected by GCV from a grid for each variable
+Re0 <- Remfpca(mvmfd_obj, ncomp = k, smooth_tuning = alpha1)
 fpc0 <- Re0$pc_mfd
 scores0 <- inprod_mvmfd(mvmfd_obj, fpc0)
 dim(scores0)
-Re0$alpha
-Re1 <- Remfpca(mvmfd_obj, ncomp = k, alpha = alpha1)
-Re1$alpha
-Re3 <- Remfpca(mfd1, ncomp = k, alpha = alpha1$a1)
-Re3$alpha
+Re0$smooth_tuning
+# Fixed smoothing parameters, one per component
+Re1 <- Remfpca(mvmfd_obj, ncomp = k, smooth_tuning = c(0, 0), smooth_GCV = FALSE)
+Re1$values
+# A single functional variable
+Re2 <- Remfpca(mfd1, ncomp = k, smooth_tuning = list(alpha1$a1))
+Re2$smooth_tuning
 }
 \seealso{
 \code{\link{mvmfd}}
